@@ -7,14 +7,18 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/services/iam"],
       "options": {
-        "command": "webpack-cli build",
+        "command": "npx webpack-cli build",
         "args": ["--node-env=production"],
         "cwd": "services/iam"
       },
       "configurations": {
         "development": {
           "args": ["--node-env=development"]
+        },
+        "production": {
+          "args": ["--node-env=production"]
         }
       }
     },
