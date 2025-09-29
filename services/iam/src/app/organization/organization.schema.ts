@@ -9,6 +9,9 @@ export type OrganizationDocument = HydratedDocument<Organization>;
 export class Organization extends BaseSchema {
   @Prop()
   name: string;
+
+  @Prop()
+  description: string;
 }
 
 export const OrganizationSchema = SchemaFactory.createForClass(Organization);
