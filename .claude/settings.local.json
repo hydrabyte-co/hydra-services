@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(npx nx list:*)",
-      "Bash(npx nx show:*)"
+      "Bash(npx nx show:*)",
+      "Bash(curl -X POST http://localhost:3000/auth/login -H \"Content-Type: application/json\" -d '{\"\"\"\"username\"\"\"\": \"\"\"\"tonyh\"\"\"\", \"\"\"\"password\"\"\"\": \"\"\"\"123zXc_-\"\"\"\"}')",
+      "Bash(curl -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwiaWF0IjoxNzU5MzExMzYzLCJleHAiOjE3NTkzMTQ5NjN9.mSG2VWR7LIgoGItcW2g2yuNr21xOy5AhKcoAnO34jqw\" http://localhost:3000/auth/verify-token)",
+      "Bash(npx nx serve:*)",
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(killall:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzU5MzE5OTQyLCJleHAiOjE3NTkzMjM1NDJ9.aaTFtzeUi--awKR3Qy1mvRxR1W2wigNPp4S9vNmrH4Y\")",
+      "Bash(printf '{\"\"\"\"username\"\"\"\":\"\"\"\"tonyh\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"NewPass123!\"\"\"\"}')",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

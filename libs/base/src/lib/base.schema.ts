@@ -17,9 +17,11 @@ export abstract class BaseSchema {
   @Prop({ type: Object, default: {} })
   owner: {
     orgId: string;
+    groupId: string;
     userId: string;
     agentId: string;
-  } = { orgId: '', userId: '', agentId: '' };
+    appId: string;
+  } = { orgId: '', groupId: '', userId: '', agentId: '', appId: '' };
 
   @Prop({ type: Boolean, default: false })
   isDeleted = false;

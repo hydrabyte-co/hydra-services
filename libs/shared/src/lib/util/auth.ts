@@ -1,4 +1,5 @@
 import { PredefinedRole, PredefinedScope } from "../enum/roles";
+import { PermissionContext } from "../types/permission.types";
 
 export interface RequestContext {
   orgId: string;
@@ -7,14 +8,6 @@ export interface RequestContext {
   agentId: string;
   appId: string;
   roles: PredefinedRole[];
-}
-export interface PermissionContext {
-  allowAdministrative: boolean;
-  allowFind: boolean;
-  allowCreate: boolean;
-  allowUpdate: boolean;
-  allowHardDelete: boolean;
-  allowSoftDelete: boolean;
 }
 
 /**
@@ -41,86 +34,82 @@ export function getHighestRole(roles: PredefinedRole[]): PredefinedRole | undefi
 }
 
 
-export function createRoleBasedPermissions(context: RequestContext): {
-  filter: Record<string, unknown>;
-  permissions: PermissionContext;
-} {
+export function createRoleBasedPermissions(context: RequestContext): PermissionContext {
   const role = getHighestRole(context.roles) || '';
   const strs = role.split('.');
   const scope = strs[0] || PredefinedScope.Void;
   const roleName = strs[1] || 'unknown';
 
-  let filter: Record<string, unknown> = {};
   let permissions: PermissionContext = {
+    allowRead: false,
+    allowWrite: false,
+    allowDelete: false,
     allowAdministrative: false,
-    allowFind: false,
-    allowCreate: false,
-    allowUpdate: false,
-    allowHardDelete: false,
-    allowSoftDelete: false,
+    scope,
+    filter: {},
   };
 
   switch (roleName) {
     case 'owner':
       permissions = {
+        allowRead: true,
+        allowWrite: true,
+        allowDelete: true,
         allowAdministrative: true,
-        allowFind: true,
-        allowCreate: true,
-        allowUpdate: true,
-        allowHardDelete: true,
-        allowSoftDelete: true,
+        scope,
+        filter: {},
       };
       break;
     case 'editor':
       permissions = {
+        allowRead: true,
+        allowWrite: true,
+        allowDelete: true,
         allowAdministrative: false,
-        allowFind: true,
-        allowCreate: true,
-        allowUpdate: true,
-        allowHardDelete: false,
-        allowSoftDelete: true,
+        scope,
+        filter: {},
       };
       break;
     case 'viewer':
       permissions = {
+        allowRead: true,
+        allowWrite: false,
+        allowDelete: false,
         allowAdministrative: false,
-        allowFind: true,
-        allowCreate: false,
-        allowUpdate: false,
-        allowHardDelete: false,
-        allowSoftDelete: false,
+        scope,
+        filter: {},
       };
       break;
     default:
       permissions = {
+        allowRead: false,
+        allowWrite: false,
+        allowDelete: false,
         allowAdministrative: false,
-        allowFind: false,
-        allowCreate: false,
-        allowUpdate: false,
-        allowHardDelete: false,
-        allowSoftDelete: false,
+        scope,
+        filter: {},
       };
       break;
   }
 
   switch (scope) {
     case PredefinedScope.Universe: {
-      filter = {};
+      permissions.filter = {};
       break;
     }
     case PredefinedScope.Organization: {
-      filter = { 'owner.orgId': context.orgId };
+      permissions.filter = { 'owner.orgId': context.orgId };
       break;
     }
     case PredefinedScope.Group: {
-      filter = {
+      permissions.filter = {
         'owner.orgId': context.orgId,
         'owner.groupId': context.groupId,
       };
       break;
     }
     case PredefinedScope.Member: {
-      filter = {
+      permissions.filter = {
         'owner.orgId': context.orgId,
         'owner.groupId': context.groupId,
         $or: [
@@ -131,7 +120,7 @@ export function createRoleBasedPermissions(context: RequestContext): {
       break;
     }
     case PredefinedScope.Void: {
-      filter = { [Math.random()]: new Date().getTime() }; // return empty result
+      permissions.filter = { [Math.random()]: new Date().getTime() }; // return empty result
       break;
     }
   }
@@ -139,11 +128,7 @@ export function createRoleBasedPermissions(context: RequestContext): {
     role,
     scope,
     roleName,
-    filter,
     permissions,
   });
-  return {
-    filter,
-    permissions,
-  };
+  return permissions;
 }

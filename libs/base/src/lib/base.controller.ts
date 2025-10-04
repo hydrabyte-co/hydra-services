@@ -1,63 +1,86 @@
 import {
   Query,
   Body,
-  Delete,
-  Get,
   Param,
-  Post,
-  Put,
   BadRequestException,
   NotFoundException,
-  UsePipes,
-  ValidationPipe,
+  InternalServerErrorException,
+  Req,
 } from '@nestjs/common';
-import { validateSync } from 'class-validator';
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from './auth.guard';
 import { BaseService, FindManyResult, FindManyOptions } from './base.service';
 import { Types, ObjectId } from 'mongoose';
 import { PredefinedRole, RequestContext } from '@hydrabyte/shared';
 
-/**
- * Khi kế thừa, luôn truyền class DTO (có decorator class-validator) cho CreateDTO/UpdateDTO để ValidationPipe hoạt động.
- * Ví dụ:
- *   export class OrganizationController extends BaseController<Organization, CreateOrganizationDto, UpdateOrganizationDto> {}
- */
-export class BaseController<
-  Entity,
-  CreateDTO,
-  UpdateDTO
-> {
-  constructor(
-    protected readonly service: BaseService<Entity, CreateDTO, UpdateDTO>
-  ) {}
-  private context: RequestContext = {
-    orgId: '',
-    groupId: '',
-    userId: '',
-    agentId: '',
-    appId: '',
-    roles: [PredefinedRole.UniverseOwner],
-  };
+export type FindAllQuery = {
+  page?: number;
+  limit?: number;
+  sort?: string;
+  [key: string]: string | number | boolean | undefined;
+};
 
-  @Post()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async create(@Body() createDTO: CreateDTO): Promise<Entity> {
-    console.log(typeof createDTO);
-     //console.log(validateSync(createDTO));
-    return this.service.create(createDTO, this.context);
+/**
+ * Base abstract controller providing common CRUD operations.
+ *
+ * Usage example:
+ * ```typescript
+ * @Controller('organizations')
+ * export class OrganizationController extends BaseController<Organization> {
+ *   constructor(protected readonly organizationService: OrganizationService) {
+ *     super(organizationService);
+ *   }
+ *
+ *   @Post()
+ *   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+ *   async create(@Body() createDTO: CreateOrganizationDto): Promise<Organization> {
+ *     return this.service.create(createDTO, this.context);
+ *   }
+ *
+ *   @Put(':id')
+ *   async update(@Param('id') id: string, @Body() updateDto: UpdateOrganizationDto) {
+ *     return super.update(id, updateDto);
+ *   }
+ * }
+ * ```
+ */
+export abstract class BaseController<Entity> {
+  constructor(protected readonly service: BaseService<Entity>) {}
+
+  /**
+   * Extract request context from JWT payload in request.
+   * Override this method if you need custom context extraction logic.
+   */
+  protected getContext(req: any): RequestContext {
+    if (req.user) {
+      return {
+        orgId: req.user.orgId || '',
+        groupId: req.user.groupId || '',
+        userId: req.user.sub || req.user.userId || '',
+        agentId: req.user.agentId || '',
+        appId: req.user.appId || '',
+        roles: req.user.roles || [PredefinedRole.UniverseOwner],
+      };
+    }
+    // Fallback for requests without authentication
+    return {
+      orgId: '',
+      groupId: '',
+      userId: '',
+      agentId: '',
+      appId: '',
+      roles: [],
+    };
   }
 
-  @Get()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async findAll(
-    @Query() query: {
-      page?: number;
-      limit?: number;
-      sort?: string;
-      [key: string]: string | number | boolean | undefined;
-    }
-  ): Promise<FindManyResult<Entity>> {
+  /**
+   * Utility method to parse query string parameters into FindManyOptions.
+   * Supports filtering, sorting, pagination with MongoDB operators.
+   *
+   * Examples:
+   * - Filtering: ?name=John&age:gt=18
+   * - Sorting: ?sort=createdAt:desc,name:asc
+   * - Pagination: ?page=1&limit=20
+   */
+  protected handleQueryStringForFindMany(query: FindAllQuery): FindManyOptions {
     const findManyOptions: FindManyOptions = {
       filter: {},
       sort: {
@@ -137,33 +160,7 @@ export class BaseController<
         findManyOptions.sort![field] = 1;
       });
     }
-    return this.service.findAll(findManyOptions, this.context);
-  }
-
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Entity | null> {
-    const objId = this.convertToObjectId(id);
-    const result = await this.service.findById(objId, this.context);
-    if (!result || (result as any)?.isDeleted) {
-      throw new NotFoundException(`Resource id ${id} not found`);
-    } else {
-      return result;
-    }
-  }
-
-  @Put(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateDTO
-  ): Promise<Entity | null> {
-    const objId = this.convertToObjectId(id);
-    return this.service.update(objId, updateDto, this.context);
-  }
-
-  @Delete(':id')
-  async delete(@Param('id') id: string): Promise<Entity | null> {
-    const objId = this.convertToObjectId(id);
-    return this.service.softDelete(objId, this.context);
+    return findManyOptions;
   }
 
   private convertToObjectId(id: string): ObjectId {
@@ -173,5 +170,76 @@ export class BaseController<
       throw new BadRequestException(`Invalid ID format for ObjectId ${id}`);
     }
   }
-}
 
+  private handleError(error: any) {
+    return new InternalServerErrorException({
+      message: [
+        error instanceof Error ? error.message : 'Internal server error',
+      ],
+      error: 'Internal server error',
+      statusCode: 500,
+    });
+  }
+
+  abstract create(data: any, req: any): Promise<Partial<Entity>>;
+
+  /**
+   * Find all entities with filtering, sorting, and pagination.
+   * Override in child class and add @Get() decorator.
+   */
+  async findAll(@Query() query: FindAllQuery, @Req() req: any): Promise<FindManyResult<Entity>> {
+    const findManyOptions = this.handleQueryStringForFindMany(query);
+    const context = this.getContext(req);
+    try {
+      return this.service.findAll(findManyOptions, context);
+    } catch (error: unknown) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Find a single entity by ID.
+   * Override in child class and add @Get(':id') decorator.
+   */
+  async findOne(@Param('id') id: string, @Req() req: any): Promise<Entity | null> {
+    const objId = this.convertToObjectId(id);
+    const context = this.getContext(req);
+    try {
+      const result = await this.service.findById(objId, context);
+      if (!result || (result as any)?.isDeleted) {
+        throw new NotFoundException(`Resource id ${id} not found`);
+      }
+      return result;
+    } catch (error: unknown) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Update an entity by ID.
+   * Override in child class and add @Put(':id') decorator with proper DTO type.
+   */
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: Partial<Entity>,
+    @Req() req: any
+  ): Promise<Entity | null> {
+    const objId = this.convertToObjectId(id);
+    const context = this.getContext(req);
+    try {
+      return this.service.update(objId, updateDto, context);
+    } catch (error: unknown) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Soft delete an entity by ID.
+   * Override in child class and add @Delete(':id') decorator.
+   */
+  async delete(@Param('id') id: string, @Req() req: any): Promise<Entity | null> {
+    const objId = this.convertToObjectId(id);
+    const context = this.getContext(req);
+    return this.service.softDelete(objId, context);
+  }
+}

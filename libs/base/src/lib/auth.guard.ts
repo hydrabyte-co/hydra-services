@@ -4,11 +4,11 @@ import { Reflector } from '@nestjs/core';
 import { ExecutionContext } from '@nestjs/common';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard(['jwt-auth', 'basic-auth']) {
+export class JwtAuthGuard extends AuthGuard('jwt-auth') {
   constructor(private reflector: Reflector) {
     super();
   }
-  canActivate(context: ExecutionContext) {
+  override canActivate(context: ExecutionContext) {
     const isPublic = this.reflector.getAllAndOverride<boolean>('public', [
       context.getHandler(),
       context.getClass(),

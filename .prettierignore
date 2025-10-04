@@ -3,3 +3,13 @@
 /coverage
 /.nx/cache
 /.nx/workspace-data
+
+# Config files
+tsconfig*.json
+**/tsconfig*.json
+jest.config.ts
+**/jest.config.*
+
+# Generated files
+package-lock.json
+yarn.lock

@@ -2,6 +2,9 @@
 
 This file provides guidance to AI Agent when working with code in this repository.
 
+## Agent Info
+1. **Agent Name**: `hydra-services_dev`
+
 ## Development Workflow Principles
 
 ### Handling Change Requests
@@ -18,6 +21,30 @@ When there are mandatory change requests, follow these steps:
 - Create granular todo items for each discrete action (e.g., separate todos for each file to edit, each function to implement)
 - Mark todos as completed immediately after finishing each micro-task
 - Keep responses concise by focusing on one micro-task at a time
+
+### Issue-Based Workflow
+When receiving new development requests, follow this workflow:
+
+1. **Create Issue**: For every development request, create a new issue in MCP VOA system with status "backlog"
+2. **Use Template**: Base the issue content on the Development Request Template (Document ID: `68da35abae9cf9cdefa8f6ed`)
+3. **Populate Information**: Fill in known information and mark missing information as placeholders
+4. **Request Review**: Ask user to review issue, provide missing information, and approve before implementation
+5. **Execute**: Once approved, change status to "in-progress" and implement the solution
+6. **Track Progress**: Update issue progress and status throughout implementation
+7. **Complete**: Mark issue as "done" when finished
+
+#### Issue Content Guidelines
+- **Scope**: Keep requests focused on small features (2-3 files max, single endpoint/module)
+- **Template Flexibility**: Adapt the template content based on request type and complexity
+- **Testing Requirements**: Always include build verification, service testing, and API testing with curl commands
+- **Clear Expectations**: Define exact acceptance criteria and expected outcomes
+
+#### Common Request Types
+- **API Development**: Creating new endpoints
+- **API Modification**: Updating existing endpoints  
+- **API Testing**: Validating endpoint behavior
+- **Module Addition**: Adding new modules to services
+- **Bug Investigation**: Analyzing and fixing issues
 
 ## Common Development Commands
 
@@ -104,7 +131,7 @@ This is an Nx monorepo using NestJS framework for microservices architecture wit
   - JWT authentication strategy
   - Password encryption utilities
   
-- **CBM** (Core Business Module) - Port 3001
+- **CBM** (Core Business Management) - Port 3001
   - Basic service structure ready for business logic
 
 **Libraries** (`/libs/`):
