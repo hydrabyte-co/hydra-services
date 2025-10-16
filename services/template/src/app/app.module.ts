@@ -1,0 +1,32 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { HealthModule } from '@hydrabyte/base';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { CategoryModule } from '../modules/category/category.module';
+import { ProductModule } from '../modules/product/product.module';
+import { ReportModule } from '../modules/report/report.module';
+import { QueueModule } from '../queues/queue.module';
+import { ProcessorsModule } from '../queues/processors.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'services/template/.env',
+    }),
+    MongooseModule.forRoot(
+      process.env['MONGODB_URI'] || 'mongodb://localhost:27017/hydra-template'
+    ),
+    HealthModule,
+    QueueModule,
+    CategoryModule,
+    ProductModule,
+    ReportModule,
+    ProcessorsModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
