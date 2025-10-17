@@ -696,6 +696,29 @@ Error: Unexpected error occurred
     ...
 ```
 
+### Swagger Integration
+
+All error responses are fully documented in Swagger/OpenAPI with detailed schemas:
+
+**Access Swagger UI:**
+- URL: `http://localhost:3002/api-docs`
+- All endpoints display possible error responses with examples
+- Error schemas include: ValidationErrorResponseDto, UnauthorizedErrorResponseDto, ForbiddenErrorResponseDto, NotFoundErrorResponseDto, InternalServerErrorResponseDto
+
+**Error Decorators Available:**
+```typescript
+import { ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors } from '@hydrabyte/base';
+
+// In your controller
+@Post()
+@ApiCreateErrors()  // Adds 400, 401, 403, 500 to Swagger
+async create() { ... }
+
+@Get(':id')
+@ApiReadErrors()  // Adds 401, 403, 404, 500 to Swagger
+async findOne() { ... }
+```
+
 ## 📚 API Documentation
 
 ### Category Endpoints
