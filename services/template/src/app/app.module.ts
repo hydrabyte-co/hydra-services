@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { HealthModule } from '@hydrabyte/base';
+import { PassportModule } from '@nestjs/passport';
+import { HealthModule, JwtStrategy } from '@hydrabyte/base';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CategoryModule } from '../modules/category/category.module';
@@ -19,6 +20,7 @@ import { ProcessorsModule } from '../queues/processors.module';
     MongooseModule.forRoot(
       process.env['MONGODB_URI'] || 'mongodb://localhost:27017/hydra-template'
     ),
+    PassportModule,
     HealthModule,
     QueueModule,
     CategoryModule,
@@ -27,6 +29,6 @@ import { ProcessorsModule } from '../queues/processors.module';
     ProcessorsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, JwtStrategy],
 })
 export class AppModule {}

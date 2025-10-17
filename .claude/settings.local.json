@@ -16,7 +16,11 @@
       "Bash(npm install:*)",
       "Bash(find:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(/usr/workspace/repos/hydra-services/test-rbac.sh)",
+      "Bash(python3:*)",
+      "Bash(CATEGORY_ID=\"68f1d03f81d7fb554e63e4d3\")",
+      "Bash(mongosh:*)"
     ],
     "deny": [],
     "ask": []
