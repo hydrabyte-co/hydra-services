@@ -324,6 +324,121 @@ Role-Based Permissions: {
 }
 ```
 
+## 📝 Audit Trail
+
+All entities automatically track **who created** and **who last updated** each record using audit trail fields. These fields are system-managed and cannot be tampered with by clients.
+
+### Audit Fields
+
+| Field | Type | Description | Auto-populated on |
+|-------|------|-------------|-------------------|
+| `createdBy` | string | User ID who created the record | CREATE operation |
+| `updatedBy` | string | User ID who last modified the record | CREATE, UPDATE, DELETE operations |
+
+### Automatic Population
+
+Audit fields are automatically populated from the authenticated user's JWT token (`RequestContext.userId`):
+
+```typescript
+// Example: Create a category
+POST /api/categories
+Authorization: Bearer <token>  // Contains userId: "68dcf365f6a92c0d4911b619"
+Body: {
+  "name": "Electronics",
+  "description": "Electronic devices"
+}
+
+// Response includes audit fields
+{
+  "_id": "68f1e930d03816679f514824",
+  "name": "Electronics",
+  "description": "Electronic devices",
+  "createdBy": "68dcf365f6a92c0d4911b619",  // Auto-set from token
+  "updatedBy": "68dcf365f6a92c0d4911b619",  // Auto-set from token
+  "createdAt": "2025-10-17T06:58:56.526Z",
+  "updatedAt": "2025-10-17T06:58:56.526Z"
+}
+```
+
+### Field Protection
+
+Audit fields are **protected from manual tampering** through two security layers:
+
+1. **DTO Validation**: DTOs do not include `createdBy` or `updatedBy` fields, so NestJS validation will reject requests containing these fields
+
+```bash
+# Attempting to set audit fields manually
+curl -X POST http://localhost:3002/api/categories \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test",
+    "createdBy": "fake-user-id",  # Will be rejected
+    "updatedBy": "fake-user-id"   # Will be rejected
+  }'
+
+# Response: 400 Bad Request
+{
+  "message": [
+    "property createdBy should not exist",
+    "property updatedBy should not exist"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+2. **BaseService Sanitization**: Even if validation is bypassed, BaseService removes these fields before processing
+
+### Update Operations
+
+On **UPDATE**, only `updatedBy` is modified. The `createdBy` field is **immutable** and always preserves the original creator:
+
+```bash
+# Update existing category
+curl -X PUT http://localhost:3002/api/categories/68f1e930d03816679f514824 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated Name"}'
+
+# Response
+{
+  "_id": "68f1e930d03816679f514824",
+  "name": "Updated Name",
+  "createdBy": "68dcf365f6a92c0d4911b619",  // Unchanged - original creator
+  "updatedBy": "68dcf365f6a92c0d4911b619",  // Updated with current user
+  "createdAt": "2025-10-17T06:58:56.526Z",  // Unchanged
+  "updatedAt": "2025-10-17T06:59:26.131Z"   // Updated timestamp
+}
+```
+
+### Soft Delete Tracking
+
+When a record is **soft deleted**, `updatedBy` tracks who performed the deletion:
+
+```bash
+# Soft delete category
+curl -X DELETE http://localhost:3002/api/categories/68f1e930d03816679f514824 \
+  -H "Authorization: Bearer $TOKEN"
+
+# In database:
+{
+  "_id": "68f1e930d03816679f514824",
+  "isDeleted": true,
+  "deletedAt": "2025-10-17T06:59:44.763Z",
+  "createdBy": "68dcf365f6a92c0d4911b619",  // Original creator preserved
+  "updatedBy": "68dcf365f6a92c0d4911b619",  // Who deleted the record
+  "updatedAt": "2025-10-17T06:59:44.764Z"   // When it was deleted
+}
+```
+
+### Benefits
+
+- **Accountability**: Every create/update/delete operation is traceable to a specific user
+- **Audit Compliance**: Maintains a complete audit trail for regulatory requirements
+- **Debugging**: Easily identify who made changes when investigating issues
+- **Security**: Fields are system-managed and protected from client manipulation
+
 ## 📄 Pagination & Filtering
 
 All `GET` collection endpoints support **pagination**, **filtering**, and **sorting**.

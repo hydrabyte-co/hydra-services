@@ -25,4 +25,18 @@ export abstract class BaseSchema {
 
   @Prop({ type: Boolean, default: false })
   isDeleted = false;
+
+  /**
+   * User ID who created this record
+   * Automatically populated from RequestContext.userId on create
+   */
+  @Prop({ type: String, default: '' })
+  createdBy = '';
+
+  /**
+   * User ID who last updated this record
+   * Automatically populated from RequestContext.userId on create/update/delete
+   */
+  @Prop({ type: String, default: '' })
+  updatedBy = '';
 }

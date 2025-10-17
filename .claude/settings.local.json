@@ -20,7 +20,13 @@
       "Bash(/usr/workspace/repos/hydra-services/test-rbac.sh)",
       "Bash(python3:*)",
       "Bash(CATEGORY_ID=\"68f1d03f81d7fb554e63e4d3\")",
-      "Bash(mongosh:*)"
+      "Bash(mongosh:*)",
+      "Bash(npx nx build:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNjc2Mjg2LCJleHAiOjE3NjA2Nzk4ODZ9.TW575RMvSNKUEykXj9Oh9UkPjfKxjm7_SjeteLDJU5Y\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNjgzMTY0LCJleHAiOjE3NjA2ODY3NjR9.hKBVuFtbQ-CpGy3USPMl3rCMAOqa7SY95SwMuh-0B5s\")",
+      "Bash(echo:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNjgzODIwLCJleHAiOjE3NjA2ODc0MjB9.8yzZvyWESV-f0_MS_sBCJ4eIURIdoEICqs4PeOZZqCw\")",
+      "Bash(npx nx reset)"
     ],
     "deny": [],
     "ask": []

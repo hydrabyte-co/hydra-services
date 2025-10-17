@@ -43,6 +43,17 @@ export class BaseService<Entity> {
     };
   }
 
+  /**
+   * Sanitize audit fields to prevent manual tampering
+   * Removes createdBy and updatedBy from input data
+   */
+  private sanitizeAuditFields(data: any): any {
+    const sanitized = { ...data };
+    delete sanitized.createdBy;
+    delete sanitized.updatedBy;
+    return sanitized;
+  }
+
   async create(data: any, context: RequestContext): Promise<Partial<Entity>> {
     this.logger.debug('Creating entity', { userId: context.userId });
 
@@ -52,9 +63,18 @@ export class BaseService<Entity> {
       throw new ForbiddenException('You do not have permission to create.');
     }
 
-    // Enforce ownership
-    const dataWithOwner = this.enforceOwnership(data, context);
-    const created = new this.model(dataWithOwner);
+    // Sanitize audit fields (prevent manual setting)
+    const sanitized = this.sanitizeAuditFields(data);
+
+    // Enforce ownership and audit trail
+    const dataWithOwner = this.enforceOwnership(sanitized, context);
+    const dataWithAudit = {
+      ...dataWithOwner,
+      createdBy: context.userId || '',
+      updatedBy: context.userId || '',
+    };
+
+    const created = new this.model(dataWithAudit);
     const saved = await created.save();
 
     this.logger.info('Entity created', { id: (saved as any)._id, userId: context.userId });
@@ -142,13 +162,21 @@ export class BaseService<Entity> {
 
     const condition = { _id: id, ...permissions.filter, isDeleted: false };
 
-    // Prevent updating owner fields and password
+    // Prevent updating owner fields, password, and audit fields
     const sanitizedData = { ...updateData };
     delete (sanitizedData as any).owner;
     delete (sanitizedData as any).password;
+    delete (sanitizedData as any).createdBy; // Protect createdBy from tampering
+    delete (sanitizedData as any).updatedBy; // Will be set automatically below
+
+    // Add audit trail - who updated this record
+    const dataWithAudit = {
+      ...sanitizedData,
+      updatedBy: context.userId || '',
+    };
 
     const updated = await this.model
-      .findOneAndUpdate(condition, sanitizedData, { new: true })
+      .findOneAndUpdate(condition, dataWithAudit, { new: true })
       .select('-isDeleted -deletedAt -password')
       .exec();
 
@@ -195,10 +223,16 @@ export class BaseService<Entity> {
     }
 
     const condition = { _id: id, ...permissions.filter, isDeleted: false };
+
+    // Add audit trail - who deleted this record
     const updated = await this.model
       .findOneAndUpdate(
         condition,
-        { isDeleted: true, deletedAt: new Date() },
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          updatedBy: context.userId || '', // Track who deleted
+        },
         { new: true }
       )
       .exec();
