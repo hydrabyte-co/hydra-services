@@ -41,10 +41,11 @@ When receiving new development requests, follow this workflow:
 
 #### Common Request Types
 - **API Development**: Creating new endpoints
-- **API Modification**: Updating existing endpoints  
+- **API Modification**: Updating existing endpoints
 - **API Testing**: Validating endpoint behavior
 - **Module Addition**: Adding new modules to services
 - **Bug Investigation**: Analyzing and fixing issues
+- **New Service Creation**: Creating new microservices (see prompt templates below)
 
 ## Common Development Commands
 
@@ -169,3 +170,124 @@ This is an Nx monorepo using NestJS framework for microservices architecture wit
 - Service-specific configurations in `shared` library
 - Global configuration accessible across all services
 - MongoDB URI and other secrets via environment variables
+
+---
+
+## 🚀 Creating New Services
+
+### Quick Reference
+When creating new microservices, use these prompt templates:
+
+**📋 Detailed Guide:**
+- File: `docs/PROMPT-NEW-SERVICE-CREATION.md`
+- Use for: Complex services with multiple entities and special requirements
+
+**⚡ Quick Template:**
+- File: `docs/QUICK-PROMPT-NEW-SERVICE.md`
+- Use for: Simple services with standard CRUD operations
+
+### Standard Service Template
+All new services MUST follow the **Template Service** pattern (`services/template/`):
+
+**✅ Required Features (All Mandatory):**
+1. **Health Check** - `/health` endpoint with database monitoring
+2. **Error Standardization** - GlobalExceptionFilter with correlation IDs
+3. **RBAC Integration** - BaseService with permission checks
+4. **Audit Trail** - createdBy/updatedBy tracking
+5. **Modern Controllers** - @CurrentUser decorator, no BaseController
+6. **Swagger Documentation** - Full OpenAPI specs with error decorators
+7. **JWT Authentication** - JwtStrategy + PassportModule
+8. **Pagination Support** - PaginationQueryDto for list endpoints
+9. **Soft Delete** - All entities support soft delete
+10. **Correlation ID** - CorrelationIdMiddleware for request tracking
+
+**📚 Reference Implementation:**
+- **Primary Reference:** `services/template/` - Production-ready example
+- **Upgraded Service:** `services/iam/` - Recently upgraded to new pattern
+- **Documentation:** `docs/TEMPLATE-SERVICE-UPGRADE.md` - Feature details
+- **Test Results:** `docs/TEST-RESULTS-PHASE2.md` - Example test scenarios
+
+### Service Creation Workflow
+1. **Read Prompt Templates** - Review `docs/QUICK-PROMPT-NEW-SERVICE.md`
+2. **Customize Prompt** - Replace placeholders with service details
+3. **Submit to Agent** - Paste prompt to Claude Code
+4. **Confirm Understanding** - Wait for Agent to outline structure
+5. **Incremental Development** - Agent creates service step-by-step
+6. **Verify Build** - Run `npx nx build [SERVICE_NAME]`
+7. **Test Endpoints** - Verify health check and APIs
+8. **Review Documentation** - Check README has curl examples
+
+### Common Patterns
+
+**Schema Pattern:**
+```typescript
+import { BaseSchema } from '@hydrabyte/base';
+
+@Schema({ timestamps: true })
+export class MyEntity extends BaseSchema {
+  @Prop({ required: true })
+  name: string;
+  // ... entity-specific fields
+}
+```
+
+**Service Pattern:**
+```typescript
+import { BaseService } from '@hydrabyte/base';
+
+@Injectable()
+export class MyEntityService extends BaseService<MyEntity> {
+  constructor(@InjectModel(MyEntity.name) model: Model<MyEntity>) {
+    super(model);
+  }
+  // Override methods if needed
+}
+```
+
+**Controller Pattern (Modern - NO BaseController):**
+```typescript
+import { JwtAuthGuard, CurrentUser, PaginationQueryDto,
+         ApiCreateErrors, ApiReadErrors } from '@hydrabyte/base';
+
+@Controller('my-entities')
+export class MyEntityController {
+  constructor(private readonly service: MyEntityService) {}
+
+  @Get()
+  @ApiReadErrors({ notFound: false })
+  @UseGuards(JwtAuthGuard)
+  async findAll(
+    @Query() query: PaginationQueryDto,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.service.findAll(query, context);
+  }
+}
+```
+
+### Port Allocation
+Current services:
+- IAM: 3000
+- CBM: 3001
+- Template: 3002
+
+**Next available ports:** 3003, 3004, 3005, etc.
+
+### Verification Checklist
+After service creation:
+```bash
+# Build without errors
+npx nx build [SERVICE_NAME]
+
+# TypeScript compilation check
+npx tsc --noEmit -p services/[SERVICE_NAME]/tsconfig.app.json
+
+# Start service
+npx nx serve [SERVICE_NAME]
+
+# Test health endpoint
+curl http://localhost:[PORT]/health
+
+# View API documentation
+open http://localhost:[PORT]/api-docs
+```
