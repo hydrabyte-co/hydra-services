@@ -541,6 +541,161 @@ Soft-deleted records are **automatically hidden** from all `GET` queries (findAl
 
 To view deleted records, administrators would need a separate endpoint (not currently implemented).
 
+## ⚠️ Error Handling & Standardization
+
+All API endpoints return **standardized error responses** using the GlobalExceptionFilter. Every error response follows a consistent format with correlation ID for request tracking.
+
+### Standard Error Response Format
+
+All errors return a JSON response with the following structure:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "timestamp": "2025-10-17T07:50:57.249Z",
+  "path": "/api/categories",
+  "correlationId": "550ecd9e-022e-4f92-8943-0a5a23eb7512",
+  "errors": [
+    "name must be a string",
+    "description must be a string"
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `statusCode` | number | HTTP status code (400, 401, 403, 404, 500, etc.) |
+| `message` | string | Human-readable error message |
+| `timestamp` | string | ISO 8601 timestamp when error occurred |
+| `path` | string | API path that caused the error |
+| `correlationId` | string | Unique ID for tracking this request across services |
+| `errors` | string[] | Detailed validation errors (only for 400 Bad Request) |
+
+### Correlation ID
+
+Every request and response includes an `x-correlation-id` header for end-to-end tracking:
+
+**Client provides correlation ID:**
+```bash
+curl -i -H "x-correlation-id: my-custom-id" http://localhost:3002/api/categories
+# Response header: x-correlation-id: my-custom-id
+```
+
+**Server generates correlation ID:**
+```bash
+curl -i http://localhost:3002/api/categories
+# Response header: x-correlation-id: 76da91e5-9fc1-4f33-b096-1f1296bbd042
+```
+
+### Error Types
+
+#### 400 Bad Request - Validation Errors
+
+Returned when request data fails validation (class-validator rules):
+
+```bash
+curl -X POST http://localhost:3002/api/categories \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{}'
+
+# Response
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "timestamp": "2025-10-17T07:50:57.249Z",
+  "path": "/api/categories",
+  "correlationId": "550ecd9e-022e-4f92-8943-0a5a23eb7512",
+  "errors": [
+    "name must be a string",
+    "description must be a string"
+  ]
+}
+```
+
+#### 401 Unauthorized
+
+Returned when JWT token is missing or invalid:
+
+```bash
+curl http://localhost:3002/api/categories
+
+# Response
+{
+  "statusCode": 401,
+  "message": "Unauthorized",
+  "timestamp": "2025-10-17T07:51:14.367Z",
+  "path": "/api/categories",
+  "correlationId": "591280e3-825e-4035-b13e-616c1ff46a32"
+}
+```
+
+#### 403 Forbidden
+
+Returned when user lacks required permissions (RBAC):
+
+```bash
+curl -X DELETE http://localhost:3002/api/categories/123 \
+  -H "Authorization: Bearer $TOKEN_WITHOUT_DELETE_PERMISSION"
+
+# Response
+{
+  "statusCode": 403,
+  "message": "You do not have permission to delete",
+  "timestamp": "2025-10-17T07:52:30.123Z",
+  "path": "/api/categories/123",
+  "correlationId": "7f8e9d10-3c4a-5b6c-7d8e-9f0a1b2c3d4e"
+}
+```
+
+#### 404 Not Found
+
+Returned when requested resource doesn't exist:
+
+```bash
+curl http://localhost:3002/api/categories/999999999999999999999999 \
+  -H "Authorization: Bearer $TOKEN"
+
+# Response
+{
+  "statusCode": 404,
+  "message": "Category with ID 999999999999999999999999 not found",
+  "timestamp": "2025-10-17T07:51:08.476Z",
+  "path": "/api/categories/999999999999999999999999",
+  "correlationId": "27c6330b-24cf-4db3-9a9e-c441604d9778"
+}
+```
+
+#### 500 Internal Server Error
+
+Returned for unexpected server errors (with full stack trace logged):
+
+```json
+{
+  "statusCode": 500,
+  "message": "Internal server error",
+  "timestamp": "2025-10-17T07:53:45.678Z",
+  "path": "/api/categories",
+  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+### Error Logging
+
+The GlobalExceptionFilter automatically logs errors with appropriate severity:
+
+- **500+ errors**: Logged as `ERROR` with full stack trace
+- **400-499 errors**: Logged as `WARN` with error message
+- All logs include correlation ID for tracking
+
+```
+[ERROR] [GlobalExceptionFilter] [a1b2c3d4-e5f6-7890-abcd-ef1234567890] GET /api/categories - 500
+Error: Unexpected error occurred
+    at CategoryService.findAll (/app/services/template/src/modules/category/category.service.ts:45:15)
+    ...
+```
+
 ## 📚 API Documentation
 
 ### Category Endpoints
