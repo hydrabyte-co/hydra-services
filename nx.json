@@ -41,7 +41,11 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["services/cbm-e2e/**/*", "services/iam-e2e/**/*"]
+      "exclude": [
+        "services/cbm-e2e/**/*",
+        "services/iam-e2e/**/*",
+        "services/template-e2e/**/*"
+      ]
     }
   ],
   "targetDefaults": {

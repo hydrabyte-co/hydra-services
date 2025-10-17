@@ -12,7 +12,11 @@
       "Bash(killall:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzU5MzE5OTQyLCJleHAiOjE3NTkzMjM1NDJ9.aaTFtzeUi--awKR3Qy1mvRxR1W2wigNPp4S9vNmrH4Y\")",
       "Bash(printf '{\"\"\"\"username\"\"\"\":\"\"\"\"tonyh\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"NewPass123!\"\"\"\"}')",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Put, Param, Delete, Query, UseGuards, NotF
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard, CurrentUser, PaginationQueryDto } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
+import { Types } from 'mongoose';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './product.dto';
 
@@ -54,7 +55,8 @@ export class ProductController {
     @Param('id') id: string,
     @CurrentUser() context: RequestContext,
   ) {
-    const product = await this.productService.findOne(id, context);
+    // Call BaseService.findById directly
+    const product = await this.productService.findById(new Types.ObjectId(id) as any, context);
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }

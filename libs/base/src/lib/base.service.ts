@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Model, ObjectId } from 'mongoose';
-import { RequestContext, createRoleBasedPermissions } from '@hydrabyte/shared';
+import { RequestContext, createRoleBasedPermissions, createLogger } from '@hydrabyte/shared';
 import { ForbiddenException } from '@nestjs/common';
 
 export interface FindManyResult<T> {
@@ -19,7 +19,13 @@ export interface FindManyOptions {
 }
 
 export class BaseService<Entity> {
-  constructor(protected readonly model: Model<Entity>) {}
+  protected readonly logger;
+
+  constructor(protected readonly model: Model<Entity>) {
+    // Automatically get service name from child class
+    const serviceName = this.constructor.name;
+    this.logger = createLogger(serviceName);
+  }
 
   /**
    * Enforce ownership by setting owner fields from context
@@ -38,8 +44,11 @@ export class BaseService<Entity> {
   }
 
   async create(data: any, context: RequestContext): Promise<Partial<Entity>> {
+    this.logger.debug('Creating entity', { userId: context.userId });
+
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowWrite) {
+      this.logger.warn('Create permission denied', { userId: context.userId, roles: context.roles });
       throw new ForbiddenException('You do not have permission to create.');
     }
 
@@ -47,6 +56,8 @@ export class BaseService<Entity> {
     const dataWithOwner = this.enforceOwnership(data, context);
     const created = new this.model(dataWithOwner);
     const saved = await created.save();
+
+    this.logger.info('Entity created', { id: (saved as any)._id, userId: context.userId });
 
     // Remove internal fields and password from result
     const obj = saved.toObject ? saved.toObject() : saved;
@@ -60,8 +71,11 @@ export class BaseService<Entity> {
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<Entity>> {
+    this.logger.debug('Finding entities', { page: options.page, limit: options.limit, userId: context.userId });
+
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowRead) {
+      this.logger.warn('Read permission denied', { userId: context.userId, roles: context.roles });
       throw new ForbiddenException('You do not have permission to read.');
     }
 
@@ -80,6 +94,9 @@ export class BaseService<Entity> {
         .exec(),
       this.model.countDocuments(finalFilter).exec(),
     ]);
+
+    this.logger.info('Entities retrieved', { count: data.length, total, page, userId: context.userId });
+
     return { data, pagination: { page, limit, total } };
   }
 
@@ -87,16 +104,27 @@ export class BaseService<Entity> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Entity | null> {
+    this.logger.debug('Finding entity by ID', { id: id.toString(), userId: context.userId });
+
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowRead) {
+      this.logger.warn('Read permission denied', { userId: context.userId, roles: context.roles });
       throw new ForbiddenException('You do not have permission to read.');
     }
 
     const condition = { _id: id, ...permissions.filter, isDeleted: false };
-    return this.model
+    const entity = await this.model
       .findOne(condition)
       .select('-isDeleted -deletedAt -password')
       .exec();
+
+    if (entity) {
+      this.logger.debug('Entity found', { id: id.toString() });
+    } else {
+      this.logger.debug('Entity not found', { id: id.toString() });
+    }
+
+    return entity;
   }
 
   async update(
@@ -104,8 +132,11 @@ export class BaseService<Entity> {
     updateData: Partial<Entity>,
     context: RequestContext
   ): Promise<Entity | null> {
+    this.logger.debug('Updating entity', { id: id.toString(), userId: context.userId });
+
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowWrite) {
+      this.logger.warn('Update permission denied', { userId: context.userId, roles: context.roles });
       throw new ForbiddenException('You do not have permission to update.');
     }
 
@@ -116,10 +147,18 @@ export class BaseService<Entity> {
     delete (sanitizedData as any).owner;
     delete (sanitizedData as any).password;
 
-    return this.model
+    const updated = await this.model
       .findOneAndUpdate(condition, sanitizedData, { new: true })
       .select('-isDeleted -deletedAt -password')
       .exec();
+
+    if (updated) {
+      this.logger.info('Entity updated', { id: id.toString(), userId: context.userId });
+    } else {
+      this.logger.warn('Entity not found for update', { id: id.toString() });
+    }
+
+    return updated;
   }
 
   async hardDelete(
@@ -147,8 +186,11 @@ export class BaseService<Entity> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Entity | null> {
+    this.logger.debug('Soft deleting entity', { id: id.toString(), userId: context.userId });
+
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowDelete) {
+      this.logger.warn('Delete permission denied', { userId: context.userId, roles: context.roles });
       throw new ForbiddenException('You do not have permission to delete.');
     }
 
@@ -160,6 +202,12 @@ export class BaseService<Entity> {
         { new: true }
       )
       .exec();
+
+    if (updated) {
+      this.logger.info('Entity soft deleted', { id: id.toString(), userId: context.userId });
+    } else {
+      this.logger.warn('Entity not found for deletion', { id: id.toString() });
+    }
 
     if (!updated) return null;
 

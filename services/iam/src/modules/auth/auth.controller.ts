@@ -9,23 +9,38 @@ import {
   ValidationPipe,
   Headers,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginData, ChangeUserPasswordData, RefreshTokenData } from './auth.dto';
 import { TokenData } from './auth.entity';
 import { JwtAuthGuard } from '@hydrabyte/base';
 import { User } from '../user/user.schema';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @ApiOperation({ summary: 'User login', description: 'Authenticate user and return JWT tokens' })
+  @ApiResponse({ status: 200, description: 'Login successful', type: TokenData })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async login(@Body() data: LoginData): Promise<TokenData> {
     return this.authService.login(data);
   }
 
   @Get('verify-token')
+  @ApiOperation({ summary: 'Verify JWT token', description: 'Validate if JWT token is valid' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Token is valid' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired token' })
   @UseGuards(JwtAuthGuard)
   async verifyToken(@Request() req): Promise<{
     valid: boolean;
@@ -39,6 +54,10 @@ export class AuthController {
   }
 
   @Get('profile')
+  @ApiOperation({ summary: 'Get user profile', description: 'Get current authenticated user profile' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Profile retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @UseGuards(JwtAuthGuard)
   async getProfile(@Request() req): Promise<Partial<User>> {
     const userId = req.user.sub || req.user.userId;
@@ -46,6 +65,10 @@ export class AuthController {
   }
 
   @Post('change-password')
+  @ApiOperation({ summary: 'Change password', description: 'Change password for authenticated user' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized or invalid old password' })
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async changePassword(
@@ -61,12 +84,27 @@ export class AuthController {
   }
 
   @Post('refresh-token')
+  @ApiOperation({ summary: 'Refresh access token', description: 'Get new access token using refresh token' })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully', type: TokenData })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async refreshToken(@Body() data: RefreshTokenData): Promise<TokenData> {
     return this.authService.refreshToken(data.refreshToken);
   }
 
   @Post('logout')
+  @ApiOperation({ summary: 'Logout', description: 'Invalidate access token and refresh token' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        refreshToken: { type: 'string', description: 'Optional refresh token to revoke' }
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Logged out successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @UseGuards(JwtAuthGuard)
   async logout(
     @Request() req,

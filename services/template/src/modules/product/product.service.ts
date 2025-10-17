@@ -2,14 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
-import { RequestContext, createLogger } from '@hydrabyte/shared';
+import { RequestContext } from '@hydrabyte/shared';
 import { Product } from './product.schema';
 import { CreateProductDto, UpdateProductDto } from './product.dto';
 import { ProductProducer } from '../../queues/producers/product.producer';
 
 @Injectable()
 export class ProductService extends BaseService<Product> {
-  private readonly logger = createLogger('ProductService');
 
   constructor(
     @InjectModel(Product.name) productModel: Model<Product>,
@@ -19,87 +18,70 @@ export class ProductService extends BaseService<Product> {
   }
 
   async create(createProductDto: CreateProductDto, context: RequestContext): Promise<Product> {
-    this.logger.debug('Creating product', createProductDto);
-
+    // BaseService handles permissions, ownership, save, and generic logging
     const saved = await super.create(createProductDto, context);
 
-    this.logger.info('Product created successfully', {
+    // Business-specific logging with details
+    this.logger.info('Product created with details', {
       id: (saved as any)._id,
-      name: saved.name
+      name: saved.name,
+      price: saved.price,
+      stock: saved.stock,
+      categoryId: saved.categoryId,
+      createdBy: context.userId
     });
 
+    // Emit event to queue
     await this.productProducer.emitProductCreated(saved);
 
     return saved as Product;
   }
 
-  async findAll(options: FindManyOptions, context: RequestContext): Promise<FindManyResult<Product>> {
-    this.logger.debug('Fetching products with options', options);
-
-    const result = await super.findAll(options, context);
-
-    this.logger.info('Products retrieved', {
-      count: result.data.length,
-      total: result.pagination.total,
-      page: result.pagination.page
-    });
-
-    return result;
-  }
-
-  async findOne(id: string, context: RequestContext): Promise<Product | null> {
-    this.logger.debug('Fetching product by ID', { id });
-
-    const product = await super.findById(new Types.ObjectId(id) as any, context);
-
-    if (!product) {
-      this.logger.warn('Product not found', { id });
-    }
-
-    return product;
-  }
-
   async findByCategory(categoryId: string, options: FindManyOptions, context: RequestContext): Promise<FindManyResult<Product>> {
-    this.logger.debug('Fetching products by category', { categoryId });
-
+    // Business-specific method - add category filter
     const filterOptions = {
       ...options,
       filter: { ...options.filter, categoryId }
     };
 
+    // BaseService handles the rest
     return super.findAll(filterOptions, context);
   }
 
   async updateProduct(id: string, updateProductDto: UpdateProductDto, context: RequestContext): Promise<Product | null> {
-    this.logger.debug('Updating product', { id, data: updateProductDto });
-
+    // BaseService handles permissions, update, and generic logging
     const updated = await super.update(new Types.ObjectId(id) as any, updateProductDto as any, context);
 
     if (updated) {
-      this.logger.info('Product updated successfully', {
+      // Business-specific logging with details
+      this.logger.info('Product updated with details', {
         id: (updated as any)._id,
-        name: updated.name
+        name: updated.name,
+        price: updated.price,
+        stock: updated.stock,
+        updatedBy: context.userId
       });
 
+      // Emit event to queue
       await this.productProducer.emitProductUpdated(updated);
-    } else {
-      this.logger.warn('Product not found for update', { id });
     }
 
     return updated;
   }
 
   async remove(id: string, context: RequestContext): Promise<void> {
-    this.logger.debug('Soft deleting product', { id });
-
+    // BaseService handles soft delete, permissions, and generic logging
     const result = await super.softDelete(new Types.ObjectId(id) as any, context);
 
     if (result) {
-      this.logger.info('Product soft deleted successfully', { id });
+      // Business-specific logging
+      this.logger.info('Product soft deleted with details', {
+        id,
+        deletedBy: context.userId
+      });
 
+      // Emit event to queue
       await this.productProducer.emitProductDeleted(id);
-    } else {
-      this.logger.warn('Product not found for deletion', { id });
     }
   }
 

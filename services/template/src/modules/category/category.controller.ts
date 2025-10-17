@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Query, NotF
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard, CurrentUser, PaginationQueryDto } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
+import { Types } from 'mongoose';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './category.dto';
 
@@ -35,6 +36,7 @@ export class CategoryController {
     @Query() paginationQuery: PaginationQueryDto,
     @CurrentUser() context: RequestContext,
   ) {
+    // Call BaseService.findAll directly
     return this.categoryService.findAll(paginationQuery, context);
   }
 
@@ -49,7 +51,8 @@ export class CategoryController {
     @Param('id') id: string,
     @CurrentUser() context: RequestContext,
   ) {
-    const category = await this.categoryService.findOne(id, context);
+    // Call BaseService.findById directly
+    const category = await this.categoryService.findById(new Types.ObjectId(id) as any, context);
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
