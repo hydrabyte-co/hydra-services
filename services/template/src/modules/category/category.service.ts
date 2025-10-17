@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext, createLogger } from '@hydrabyte/shared';
-import { Category, CategoryDocument } from './category.schema';
+import { Category } from './category.schema';
 import { CreateCategoryDto, UpdateCategoryDto } from './category.dto';
 import { CategoryProducer } from '../../queues/producers/category.producer';
 
@@ -12,10 +12,10 @@ export class CategoryService extends BaseService<Category> {
   private readonly logger = createLogger('CategoryService');
 
   constructor(
-    @InjectModel(Category.name) categoryModel: Model<CategoryDocument>,
+    @InjectModel(Category.name) categoryModel: Model<Category>,
     private readonly categoryProducer: CategoryProducer,
   ) {
-    super(categoryModel);
+    super(categoryModel as any);
   }
 
   async create(createCategoryDto: CreateCategoryDto, context: RequestContext): Promise<Category> {
@@ -25,7 +25,7 @@ export class CategoryService extends BaseService<Category> {
     const saved = await super.create(createCategoryDto, context);
 
     this.logger.info('Category created successfully', {
-      id: saved._id,
+      id: (saved as any)._id,
       name: saved.name
     });
 
@@ -53,7 +53,7 @@ export class CategoryService extends BaseService<Category> {
   async findOne(id: string, context: RequestContext): Promise<Category | null> {
     this.logger.debug('Fetching category by ID', { id });
 
-    const category = await super.findById(new Types.ObjectId(id), context);
+    const category = await super.findById(new Types.ObjectId(id) as any, context);
 
     if (!category) {
       this.logger.warn('Category not found', { id });
@@ -62,15 +62,15 @@ export class CategoryService extends BaseService<Category> {
     return category;
   }
 
-  async update(id: string, updateCategoryDto: UpdateCategoryDto, context: RequestContext): Promise<Category | null> {
+  async updateCategory(id: string, updateCategoryDto: UpdateCategoryDto, context: RequestContext): Promise<Category | null> {
     this.logger.debug('Updating category', { id, data: updateCategoryDto });
 
     // BaseService handles permissions and update
-    const updated = await super.update(new Types.ObjectId(id), updateCategoryDto, context);
+    const updated = await super.update(new Types.ObjectId(id) as any, updateCategoryDto, context);
 
     if (updated) {
       this.logger.info('Category updated successfully', {
-        id: updated._id,
+        id: (updated as any)._id,
         name: updated.name
       });
 
@@ -87,7 +87,7 @@ export class CategoryService extends BaseService<Category> {
     this.logger.debug('Soft deleting category', { id });
 
     // BaseService handles soft delete with permissions
-    const result = await super.softDelete(new Types.ObjectId(id), context);
+    const result = await super.softDelete(new Types.ObjectId(id) as any, context);
 
     if (result) {
       this.logger.info('Category soft deleted successfully', { id });

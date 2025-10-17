@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { PredefinedRole } from '@hydrabyte/shared';
 import { QUEUE_NAMES, QUEUE_EVENTS } from '../../config/queue.config';
 import { ReportService } from '../../modules/report/report.service';
 
@@ -31,7 +32,18 @@ export class ReportProcessor extends WorkerHost {
       const reportType = data.data.reportType;
 
       if (reportType === 'product-summary') {
-        const filepath = await this.reportService.generateProductSummaryReport();
+        // Create system context for background job
+        const systemContext = {
+          userId: 'system',
+          username: 'system',
+          roles: [PredefinedRole.UniverseOwner],
+          orgId: '',
+          groupId: '',
+          agentId: '',
+          appId: ''
+        };
+
+        const filepath = await this.reportService.generateProductSummaryReport(systemContext);
         this.logger.log(`Report generated successfully: ${filepath}`);
         return {
           processed: true,

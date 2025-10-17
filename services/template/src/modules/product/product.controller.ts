@@ -73,7 +73,7 @@ export class ProductController {
     @Body() updateProductDto: UpdateProductDto,
     @CurrentUser() context: RequestContext,
   ) {
-    const updated = await this.productService.update(id, updateProductDto, context);
+    const updated = await this.productService.updateProduct(id, updateProductDto, context);
     if (!updated) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }

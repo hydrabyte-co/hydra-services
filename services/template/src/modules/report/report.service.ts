@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ProductService } from '../product/product.service';
 import { CategoryService } from '../category/category.service';
-import { createLogger, logSection } from '@hydrabyte/shared';
+import { createLogger, RequestContext } from '@hydrabyte/shared';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -14,12 +14,15 @@ export class ReportService {
     private readonly categoryService: CategoryService,
   ) {}
 
-  async generateProductSummaryReport(): Promise<string> {
+  async generateProductSummaryReport(context: RequestContext): Promise<string> {
     this.logger.info('Starting product summary report generation');
 
-    // Get all categories and products
-    const categories = await this.categoryService.findAll();
-    const products = await this.productService.findAll();
+    // Get all categories and products with large limit for report
+    const categoriesResult = await this.categoryService.findAll({ limit: 1000 }, context);
+    const productsResult = await this.productService.findAll({ limit: 10000 }, context);
+
+    const categories = categoriesResult.data;
+    const products = productsResult.data;
 
     this.logger.debug('Data collected for report', {
       categoriesCount: categories.length,
@@ -36,17 +39,21 @@ export class ReportService {
       },
       categoriesDetail: await Promise.all(
         categories.map(async (category) => {
-          const categoryProducts = await this.productService.findByCategory(
-            category['_id'].toString()
+          const categoryProductsResult = await this.productService.findByCategory(
+            (category as any)['_id'].toString(),
+            { limit: 10000 },
+            context
           );
+          const categoryProducts = categoryProductsResult.data;
+
           return {
-            categoryId: category['_id'],
+            categoryId: (category as any)['_id'],
             categoryName: category.name,
             productsCount: categoryProducts.length,
             totalStock: categoryProducts.reduce((sum, p) => sum + p.stock, 0),
             totalValue: categoryProducts.reduce((sum, p) => sum + p.price * p.stock, 0),
             products: categoryProducts.map((p) => ({
-              id: p['_id'],
+              id: (p as any)['_id'],
               name: p.name,
               price: p.price,
               stock: p.stock,

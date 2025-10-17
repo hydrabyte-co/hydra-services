@@ -68,7 +68,7 @@ export class CategoryController {
     @Body() updateCategoryDto: UpdateCategoryDto,
     @CurrentUser() context: RequestContext,
   ) {
-    const updated = await this.categoryService.update(id, updateCategoryDto, context);
+    const updated = await this.categoryService.updateCategory(id, updateCategoryDto, context);
     if (!updated) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
