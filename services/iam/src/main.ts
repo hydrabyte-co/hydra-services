@@ -6,6 +6,7 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { GlobalExceptionFilter } from '@hydrabyte/base';
 import { SERVICE_CONFIG } from '@hydrabyte/shared';
 import { AppModule } from './app.module';
 
@@ -15,10 +16,14 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
+  // Global exception filter for standardized error responses
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
   // Setup global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
+      forbidNonWhitelisted: true,
       transform: true
     })
   );

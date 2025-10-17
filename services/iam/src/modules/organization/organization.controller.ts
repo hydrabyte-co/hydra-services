@@ -7,19 +7,26 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
-  UsePipes,
-  ValidationPipe,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiParam,
 } from '@nestjs/swagger';
-import { BaseController, FindAllQuery, FindManyResult, JwtAuthGuard } from '@hydrabyte/base';
+import {
+  JwtAuthGuard,
+  CurrentUser,
+  PaginationQueryDto,
+  ApiCreateErrors,
+  ApiReadErrors,
+  ApiUpdateErrors,
+  ApiDeleteErrors,
+} from '@hydrabyte/base';
+import { RequestContext } from '@hydrabyte/shared';
+import { Types, ObjectId } from 'mongoose';
 import { OrganizationsService } from './organization.service';
 import { Organization } from './organization.schema';
 import {
@@ -30,83 +37,76 @@ import {
 @ApiTags('organizations')
 @ApiBearerAuth('JWT-auth')
 @Controller('organizations')
-export class OrganizationsController extends BaseController<Organization> {
-  constructor(private readonly organizationsService: OrganizationsService) {
-    super(organizationsService);
-  }
+export class OrganizationsController {
+  constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create organization', description: 'Create a new organization' })
   @ApiResponse({ status: 201, description: 'Organization created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request - Invalid input' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiCreateErrors()
   @UseGuards(JwtAuthGuard)
-  @UsePipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      enableDebugMessages: true,
-    })
-  )
   async create(
     @Body() createDTO: CreateOrganizationDTO,
-    @Req() req,
+    @CurrentUser() context: RequestContext
   ): Promise<Partial<Organization>> {
-    const context = this.getContext(req);
     return this.organizationsService.create(createDTO, context);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all organizations', description: 'Get list of organizations with pagination and filtering' })
   @ApiResponse({ status: 200, description: 'Organizations retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiReadErrors({ notFound: false })
   @UseGuards(JwtAuthGuard)
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async findAll(
-    @Query() query: FindAllQuery,
-    @Req() req
-  ): Promise<FindManyResult<Organization>> {
-    return super.findAll(query, req);
+    @Query() paginationQuery: PaginationQueryDto,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.organizationsService.findAll(paginationQuery, context);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get organization by ID', description: 'Get a single organization by ID' })
-  @ApiParam({ name: 'id', description: 'Organization ID' })
   @ApiResponse({ status: 200, description: 'Organization found' })
-  @ApiResponse({ status: 404, description: 'Organization not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiReadErrors()
   @UseGuards(JwtAuthGuard)
-  async findOne(@Param('id') id: string, @Req() req): Promise<Organization | null> {
-    return super.findOne(id, req);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext
+  ): Promise<Organization | null> {
+    const organization = await this.organizationsService.findById(new Types.ObjectId(id) as unknown as ObjectId, context);
+    if (!organization) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
+    return organization;
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update organization', description: 'Update organization information' })
-  @ApiParam({ name: 'id', description: 'Organization ID' })
   @ApiResponse({ status: 200, description: 'Organization updated successfully' })
-  @ApiResponse({ status: 404, description: 'Organization not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async update(
     @Param('id') id: string,
     @Body() updateDTO: UpdateOrganizationDTO,
-    @Req() req
+    @CurrentUser() context: RequestContext
   ): Promise<Organization | null> {
-    return super.update(id, updateDTO, req);
+    const updated = await this.organizationsService.update(new Types.ObjectId(id) as unknown as ObjectId, updateDTO, context);
+    if (!updated) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
+    return updated;
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete organization', description: 'Soft delete an organization' })
-  @ApiParam({ name: 'id', description: 'Organization ID' })
   @ApiResponse({ status: 200, description: 'Organization deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Organization not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiDeleteErrors()
   @UseGuards(JwtAuthGuard)
-  async delete(@Param('id') id: string, @Req() req): Promise<Organization | null> {
-    return super.delete(id, req);
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext
+  ) {
+    await this.organizationsService.softDelete(new Types.ObjectId(id) as unknown as ObjectId, context);
+    return { message: 'Organization deleted successfully' };
   }
 }
