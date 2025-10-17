@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Query, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, PaginationQueryDto } from '@hydrabyte/base';
+import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { CategoryService } from './category.service';
@@ -15,9 +15,7 @@ export class CategoryController {
   @Post()
   @ApiOperation({ summary: 'Create category', description: 'Create a new category' })
   @ApiResponse({ status: 201, description: 'Category created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request - Invalid input' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiCreateErrors()
   @UseGuards(JwtAuthGuard)
   async create(
     @Body() createCategoryDto: CreateCategoryDto,
@@ -29,8 +27,7 @@ export class CategoryController {
   @Get()
   @ApiOperation({ summary: 'Get all categories', description: 'Retrieve list of all categories with pagination' })
   @ApiResponse({ status: 200, description: 'Categories retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiReadErrors({ notFound: false })
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Query() paginationQuery: PaginationQueryDto,
@@ -43,9 +40,7 @@ export class CategoryController {
   @Get(':id')
   @ApiOperation({ summary: 'Get category by ID', description: 'Retrieve a single category by ID' })
   @ApiResponse({ status: 200, description: 'Category found' })
-  @ApiResponse({ status: 404, description: 'Category not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiReadErrors()
   @UseGuards(JwtAuthGuard)
   async findOne(
     @Param('id') id: string,
@@ -62,9 +57,7 @@ export class CategoryController {
   @Put(':id')
   @ApiOperation({ summary: 'Update category', description: 'Update category information' })
   @ApiResponse({ status: 200, description: 'Category updated successfully' })
-  @ApiResponse({ status: 404, description: 'Category not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
   async update(
     @Param('id') id: string,
@@ -81,9 +74,7 @@ export class CategoryController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete category', description: 'Soft delete a category' })
   @ApiResponse({ status: 200, description: 'Category deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Category not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiDeleteErrors()
   @UseGuards(JwtAuthGuard)
   async remove(
     @Param('id') id: string,
