@@ -6,6 +6,7 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { GlobalExceptionFilter } from '@hydrabyte/base';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
@@ -14,6 +15,9 @@ async function bootstrap() {
   // Global prefix
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
+
+  // Global exception filter for standardized error responses
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Validation pipe
   app.useGlobalPipes(new ValidationPipe({

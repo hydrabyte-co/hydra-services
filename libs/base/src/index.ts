@@ -7,3 +7,5 @@ export * from './lib/jwt.strategy';
 export * from './modules/health';
 export * from './decorators';
 export * from './dto';
+export * from './lib/filters';
+export * from './lib/middleware';

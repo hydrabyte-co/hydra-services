@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
-import { HealthModule, JwtStrategy } from '@hydrabyte/base';
+import { HealthModule, JwtStrategy, CorrelationIdMiddleware } from '@hydrabyte/base';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CategoryModule } from '../modules/category/category.module';
@@ -31,4 +31,9 @@ import { ProcessorsModule } from '../queues/processors.module';
   controllers: [AppController],
   providers: [AppService, JwtStrategy],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply correlation ID middleware to all routes
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}
