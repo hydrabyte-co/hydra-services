@@ -243,17 +243,200 @@ Requests without a valid token will receive a `401 Unauthorized` response:
 }
 ```
 
+## 🔐 Role-Based Access Control (RBAC)
+
+All API endpoints enforce **Role-Based Access Control** using the BaseService from `@hydrabyte/base`. Permissions are automatically calculated based on the user's role in the JWT token.
+
+### Permission System
+
+The RBAC system supports hierarchical roles with different scopes:
+
+| Role | Scope | Read | Write | Delete | Administrative |
+|------|-------|------|-------|--------|----------------|
+| `universe.owner` | Universe | ✅ | ✅ | ✅ | ✅ |
+| `universe.admin` | Universe | ✅ | ✅ | ✅ | ❌ |
+| `org.owner` | Organization | ✅ | ✅ | ✅ | ✅ |
+| `org.admin` | Organization | ✅ | ✅ | ✅ | ❌ |
+| `org.member` | Organization | ✅ | ✅ | ❌ | ❌ |
+| `group.owner` | Group | ✅ | ✅ | ✅ | ✅ |
+| `group.member` | Group | ✅ | ❌ | ❌ | ❌ |
+
+### Permission Enforcement
+
+**Create Operation** (POST):
+- Requires: `allowWrite: true`
+- Auto-populates: `owner.orgId`, `owner.userId`, `owner.groupId`
+
+**Read Operations** (GET):
+- Requires: `allowRead: true`
+- Auto-filters by ownership scope (org/group/user)
+
+**Update Operation** (PUT):
+- Requires: `allowWrite: true`
+- Only owner or higher scope can modify
+
+**Delete Operation** (DELETE):
+- Requires: `allowDelete: true`
+- Soft delete (sets `isDeleted: true`)
+
+### Permission Denied Response
+
+When a user lacks required permissions, the API returns `403 Forbidden`:
+
+```json
+{
+  "statusCode": 403,
+  "message": "You do not have permission to <operation>"
+}
+```
+
+### Multi-Tenant Isolation
+
+The RBAC system automatically enforces **multi-tenant data isolation**:
+
+- **Organization-scoped** roles only see data from their organization
+- **Group-scoped** roles only see data from their group
+- **Universe-scoped** roles see all data
+
+Example: User A (orgId: X) creates a category. User B (orgId: Y) **cannot see** User A's category.
+
+### RBAC Logging
+
+All permission checks are logged automatically:
+
+```
+[DEBUG] [CategoryService] Creating entity
+{
+  "userId": "68dcf365f6a92c0d4911b619"
+}
+Role-Based Permissions: {
+  role: 'universe.owner',
+  scope: 'universe',
+  roleName: 'owner',
+  permissions: {
+    allowRead: true,
+    allowWrite: true,
+    allowDelete: true,
+    allowAdministrative: true,
+    scope: 'universe',
+    filter: {}
+  }
+}
+```
+
+## 📄 Pagination & Filtering
+
+All `GET` collection endpoints support **pagination**, **filtering**, and **sorting**.
+
+### Pagination Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | number | 1 | Page number (1-indexed) |
+| `limit` | number | 10 | Items per page (max: 100) |
+| `filter[field]` | string | - | Filter by field value |
+| `sort` | string | - | Sort fields (prefix `-` for descending) |
+
+### Pagination Response Format
+
+All paginated endpoints return a consistent response structure:
+
+```json
+{
+  "data": [
+    {
+      "_id": "68f1d03f81d7fb554e63e4d3",
+      "name": "Electronics",
+      "description": "Electronic devices",
+      "isActive": true,
+      "createdAt": "2025-10-17T05:12:31.894Z",
+      "updatedAt": "2025-10-17T05:12:31.894Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 25
+  }
+}
+```
+
+### Pagination Examples
+
+**Basic pagination:**
+```bash
+# Get first page (5 items per page)
+curl "http://localhost:3002/api/categories?page=1&limit=5" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Get second page
+curl "http://localhost:3002/api/categories?page=2&limit=5" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Filtering by field:**
+```bash
+# Filter categories by name
+curl "http://localhost:3002/api/categories?filter[name]=Electronics" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Filter products by category
+curl "http://localhost:3002/api/products?filter[categoryId]=68f1d03f81d7fb554e63e4d3" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Filter active items only
+curl "http://localhost:3002/api/categories?filter[isActive]=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Sorting:**
+```bash
+# Sort by creation date (newest first)
+curl "http://localhost:3002/api/categories?sort=-createdAt" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Sort by name (ascending)
+curl "http://localhost:3002/api/categories?sort=name" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Multiple sort fields
+curl "http://localhost:3002/api/categories?sort=-createdAt,name" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Combined query:**
+```bash
+# Page 2, 10 items, active only, sorted by name
+curl "http://localhost:3002/api/categories?page=2&limit=10&filter[isActive]=true&sort=name" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Soft Delete Behavior
+
+Deleted records are **not permanently removed** from the database. Instead, they are marked with:
+
+```json
+{
+  "isDeleted": true,
+  "deletedAt": "2025-10-17T05:13:54.946Z"
+}
+```
+
+Soft-deleted records are **automatically hidden** from all `GET` queries (findAll, findById).
+
+To view deleted records, administrators would need a separate endpoint (not currently implemented).
+
 ## 📚 API Documentation
 
 ### Category Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/categories` | Create category | ✅ Yes |
-| GET | `/api/categories` | Get all categories | ✅ Yes |
-| GET | `/api/categories/:id` | Get category by ID | ✅ Yes |
-| PUT | `/api/categories/:id` | Update category | ✅ Yes |
-| DELETE | `/api/categories/:id` | Delete category | ✅ Yes |
+| Method | Endpoint | Description | Permission Required | Pagination |
+|--------|----------|-------------|---------------------|------------|
+| POST | `/api/categories` | Create category | `allowWrite: true` | ❌ |
+| GET | `/api/categories` | Get all categories | `allowRead: true` | ✅ |
+| GET | `/api/categories/:id` | Get category by ID | `allowRead: true` | ❌ |
+| PUT | `/api/categories/:id` | Update category | `allowWrite: true` | ❌ |
+| DELETE | `/api/categories/:id` | Soft delete category | `allowDelete: true` | ❌ |
 
 **Example - Create Category:**
 ```bash
@@ -267,16 +450,63 @@ curl -X POST http://localhost:3002/api/categories \
   }'
 ```
 
+**Response (201 Created):**
+```json
+{
+  "_id": "68f1d03f81d7fb554e63e4d3",
+  "owner": {
+    "orgId": "68dd05b175d9e3c17bf97f60",
+    "userId": "68dcf365f6a92c0d4911b619",
+    "groupId": "",
+    "agentId": "",
+    "appId": ""
+  },
+  "name": "Electronics",
+  "description": "Electronic devices and accessories",
+  "isActive": true,
+  "createdAt": "2025-10-17T05:12:31.894Z",
+  "updatedAt": "2025-10-17T05:12:31.894Z",
+  "__v": 0
+}
+```
+
+**Example - Get All Categories (with pagination):**
+```bash
+curl "http://localhost:3002/api/categories?page=1&limit=10&sort=-createdAt" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "_id": "68f1d03f81d7fb554e63e4d3",
+      "name": "Electronics",
+      "description": "Electronic devices and accessories",
+      "isActive": true,
+      "createdAt": "2025-10-17T05:12:31.894Z",
+      "updatedAt": "2025-10-17T05:12:31.894Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1
+  }
+}
+```
+
 ### Product Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/products` | Create product | ✅ Yes |
-| GET | `/api/products` | Get all products | ✅ Yes |
-| GET | `/api/products?categoryId=xxx` | Filter by category | ✅ Yes |
-| GET | `/api/products/:id` | Get product by ID | ✅ Yes |
-| PUT | `/api/products/:id` | Update product | ✅ Yes |
-| DELETE | `/api/products/:id` | Delete product | ✅ Yes |
+| Method | Endpoint | Description | Permission Required | Pagination |
+|--------|----------|-------------|---------------------|------------|
+| POST | `/api/products` | Create product | `allowWrite: true` | ❌ |
+| GET | `/api/products` | Get all products | `allowRead: true` | ✅ |
+| GET | `/api/products?categoryId=xxx` | Filter by category | `allowRead: true` | ✅ |
+| GET | `/api/products/:id` | Get product by ID | `allowRead: true` | ❌ |
+| PUT | `/api/products/:id` | Update product | `allowWrite: true` | ❌ |
+| DELETE | `/api/products/:id` | Soft delete product | `allowDelete: true` | ❌ |
 
 **Example - Create Product:**
 ```bash
@@ -288,9 +518,15 @@ curl -X POST http://localhost:3002/api/products \
     "description": "Latest iPhone",
     "price": 999.99,
     "stock": 50,
-    "categoryId": "68e24a9a3426b64bde3abaae",
+    "categoryId": "68f1d03f81d7fb554e63e4d3",
     "isActive": true
   }'
+```
+
+**Example - Get Products by Category (with pagination):**
+```bash
+curl "http://localhost:3002/api/products?filter[categoryId]=68f1d03f81d7fb554e63e4d3&page=1&limit=20" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Report Endpoints
