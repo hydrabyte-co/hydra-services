@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'iam-api',
+      name: 'iam-api-00',
       script: './dist/services/iam/main.js',
       instances: 1,
       exec_mode: 'cluster',
@@ -11,15 +11,15 @@ module.exports = {
       // Environment variables from .env file
       env: {
         NODE_ENV: 'production',
-        PORT: 3301,
+        PORT: 3300,
       },
 
       // Load .env file
       env_file: '.env',
 
       // Logging
-      error_file: './logs/iam-api-error.log',
-      out_file: './logs/iam-api-out.log',
+      error_file: './logs/iam-api-00-error.log',
+      out_file: './logs/iam-api-00-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
 
