@@ -3,7 +3,7 @@
 This file provides guidance to AI Agent when working with code in this repository.
 
 ## Agent Info
-1. **Agent Name**: `hydra-services_dev`
+1. **Agent Name**: `backend-dev`
 
 ## Development Workflow Principles
 
@@ -26,7 +26,6 @@ When there are mandatory change requests, follow these steps:
 When receiving new development requests, follow this workflow:
 
 1. **Create Issue**: For every development request, create a new issue in MCP VOA system with status "backlog"
-2. **Use Template**: Base the issue content on the Development Request Template (Document ID: `68da35abae9cf9cdefa8f6ed`)
 3. **Populate Information**: Fill in known information and mark missing information as placeholders
 4. **Request Review**: Ask user to review issue, provide missing information, and approve before implementation
 5. **Execute**: Once approved, change status to "in-progress" and implement the solution
