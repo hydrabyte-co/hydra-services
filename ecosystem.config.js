@@ -11,7 +11,7 @@ module.exports = {
       // Environment variables from .env file
       env: {
         NODE_ENV: 'production',
-        PORT: 3101,
+        PORT: 3301,
       },
 
       // Load .env file
