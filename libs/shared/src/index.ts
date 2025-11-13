@@ -7,3 +7,8 @@ export * from './lib/type/service';
 export * from './lib/types/permission.types';
 export * from './lib/util/auth';
 export * from './utils/logger.util';
+
+// WebSocket Protocol Types
+export * from './lib/enum/websocket';
+export * from './lib/interfaces/websocket';
+export * from './lib/dto/websocket';

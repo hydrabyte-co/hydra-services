@@ -21,4 +21,10 @@ export const SERVICE_CONFIG: Record<ServiceName, ServiceConfig> = {
     mongodbUri: '',
     name: ServiceName.NOTI,
   },
+  [ServiceName.AIWM]: {
+    port: 3003,
+    host: 'localhost',
+    mongodbUri: '',
+    name: ServiceName.AIWM,
+  },
 };

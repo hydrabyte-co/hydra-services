@@ -1,0 +1,429 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  OnGatewayInit,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+} from '@nestjs/websockets';
+import { Logger, UseGuards } from '@nestjs/common';
+import { Server, Socket } from 'socket.io';
+import { NodeService } from './node.service';
+import { NodeConnectionService } from './node-connection.service';
+import {
+  MessageType,
+  NodeRegisterDto,
+  NodeHeartbeatDto,
+  NodeMetricsDto,
+  CommandAckDto,
+  CommandResultDto,
+  DeploymentStatusDto,
+  DeploymentLogsDto,
+  ConnectionAckDto,
+  RegisterAckDto,
+  AuthErrorCode,
+} from '@hydrabyte/shared';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * WebSocket Gateway for Node (Worker) connections
+ * Namespace: /ws/node
+ */
+@WebSocketGateway({
+  namespace: '/ws/node',
+  cors: {
+    origin: '*', // TODO: Configure proper CORS in production
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
+})
+export class NodeGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
+  @WebSocketServer()
+  server: Server;
+
+  private readonly logger = new Logger(NodeGateway.name);
+
+  constructor(
+    private readonly nodeService: NodeService,
+    private readonly connectionService: NodeConnectionService
+  ) {}
+
+  /**
+   * Gateway initialization
+   */
+  afterInit(server: Server) {
+    this.logger.log('Node WebSocket Gateway initialized on /ws/node');
+  }
+
+  /**
+   * Handle new client connection
+   */
+  async handleConnection(client: Socket) {
+    const nodeId = client.data.user?.nodeId;
+    const username = client.data.user?.username;
+
+    this.logger.log(
+      `Client attempting to connect: ${client.id} - Node: ${nodeId}`
+    );
+
+    try {
+      // Validate node exists and is active
+      const node = await this.nodeService.findByNodeId(nodeId);
+
+      if (!node) {
+        this.logger.warn(`Node not found in database: ${nodeId}`);
+        this.sendConnectionAck(client, 'error', {
+          code: AuthErrorCode.NODE_NOT_FOUND,
+          message: 'Node ID not found in database',
+          timestamp: new Date().toISOString(),
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      if (node.status !== 'active') {
+        this.logger.warn(`Node is not active: ${nodeId} - status: ${node.status}`);
+        this.sendConnectionAck(client, 'error', {
+          code: AuthErrorCode.NODE_INACTIVE,
+          message: 'Node status is not active',
+          timestamp: new Date().toISOString(),
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      // Add connection to tracking
+      this.connectionService.addConnection(
+        nodeId,
+        client,
+        username,
+        client.data.user?.orgId,
+        client.data.user?.groupId
+      );
+
+      // Send success acknowledgment
+      this.sendConnectionAck(client, 'success', undefined, {
+        nodeId,
+        controllerId: 'controller-main', // TODO: Get from config
+        serverVersion: '1.0.0', // TODO: Get from package.json
+      });
+
+      // Update node status to online
+      await this.nodeService.updateStatus(nodeId, 'online');
+
+      this.logger.log(`Node ${nodeId} successfully connected (socket: ${client.id})`);
+    } catch (error) {
+      this.logger.error(`Connection error for node ${nodeId}: ${error.message}`);
+      this.sendConnectionAck(client, 'error', {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal server error during connection',
+        timestamp: new Date().toISOString(),
+      });
+      client.disconnect(true);
+    }
+  }
+
+  /**
+   * Handle client disconnection
+   */
+  async handleDisconnect(client: Socket) {
+    const nodeId = client.data.user?.nodeId;
+
+    if (nodeId) {
+      this.logger.log(`Node ${nodeId} disconnecting (socket: ${client.id})`);
+
+      // Remove from connection tracking
+      this.connectionService.removeConnection(nodeId);
+
+      // Update node status to offline
+      try {
+        await this.nodeService.updateStatus(nodeId, 'offline');
+      } catch (error) {
+        this.logger.error(
+          `Failed to update node status on disconnect: ${error.message}`
+        );
+      }
+
+      this.logger.log(`Node ${nodeId} disconnected`);
+    }
+  }
+
+  /**
+   * Handle node registration
+   */
+  @SubscribeMessage(MessageType.NODE_REGISTER)
+  async handleNodeRegister(
+    @MessageBody() data: NodeRegisterDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+    this.logger.log(`Node registration received from ${nodeId}`);
+
+    try {
+      // Update node information in database
+      const registerData = data.data;
+
+      await this.nodeService.updateNodeInfo(nodeId, {
+        hostname: registerData.hostname,
+        ipAddress: registerData.ipAddress,
+        publicIpAddress: registerData.publicIpAddress,
+        os: registerData.os,
+        cpuCores: registerData.cpuCores,
+        cpuModel: registerData.cpuModel,
+        ramTotal: registerData.ramTotal,
+        diskTotal: registerData.diskTotal,
+        gpuDevices: registerData.gpuDevices,
+        daemonVersion: registerData.daemonVersion,
+        uptimeSeconds: registerData.uptimeSeconds,
+        containerRuntime: registerData.containerRuntime,
+      });
+
+      // Send registration acknowledgment
+      this.sendRegisterAck(client, nodeId);
+
+      this.logger.log(`Node ${nodeId} registered successfully`);
+    } catch (error) {
+      this.logger.error(`Node registration failed for ${nodeId}: ${error.message}`);
+      client.emit('error', {
+        type: 'error',
+        error: {
+          code: 'REGISTRATION_FAILED',
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * Handle heartbeat
+   */
+  @SubscribeMessage(MessageType.TELEMETRY_HEARTBEAT)
+  async handleHeartbeat(
+    @MessageBody() data: NodeHeartbeatDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+
+    // Update last heartbeat time
+    this.connectionService.updateHeartbeat(nodeId);
+
+    // Update node status in database (optional - can be done periodically instead)
+    try {
+      await this.nodeService.updateHeartbeat(nodeId, {
+        status: data.data.status,
+        uptimeSeconds: data.data.uptimeSeconds,
+        cpuUsage: data.data.cpuUsage,
+        ramUsage: data.data.ramUsage,
+        activeDeployments: data.data.activeDeployments,
+        gpuStatus: data.data.gpuStatus,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to update heartbeat for ${nodeId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle metrics
+   */
+  @SubscribeMessage(MessageType.TELEMETRY_METRICS)
+  async handleMetrics(
+    @MessageBody() data: NodeMetricsDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+    this.logger.debug(`Metrics received from ${nodeId}`);
+
+    try {
+      // Store metrics in database
+      await this.nodeService.storeMetrics(nodeId, data.data);
+    } catch (error) {
+      this.logger.error(`Failed to store metrics for ${nodeId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle command acknowledgment
+   */
+  @SubscribeMessage(MessageType.COMMAND_ACK)
+  async handleCommandAck(
+    @MessageBody() data: CommandAckDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+    this.logger.log(
+      `Command ACK received from ${nodeId} for message ${data.data.originalMessageId}`
+    );
+
+    // TODO: Update command tracking status
+    // This will be implemented in Phase 2D (Execution Orchestration)
+  }
+
+  /**
+   * Handle command result
+   */
+  @SubscribeMessage(MessageType.COMMAND_RESULT)
+  async handleCommandResult(
+    @MessageBody() data: CommandResultDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+    this.logger.log(
+      `Command result received from ${nodeId} for message ${data.data.originalMessageId}: ${data.data.status}`
+    );
+
+    // TODO: Update command tracking with result
+    // This will be implemented in Phase 2D (Execution Orchestration)
+  }
+
+  /**
+   * Handle deployment status update
+   */
+  @SubscribeMessage(MessageType.DEPLOYMENT_STATUS)
+  async handleDeploymentStatus(
+    @MessageBody() data: DeploymentStatusDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+    this.logger.log(
+      `Deployment status update from ${nodeId}: ${data.data.deploymentId} -> ${data.data.status}`
+    );
+
+    // TODO: Update deployment status in database
+    // This will be implemented when Deployment entity is created
+  }
+
+  /**
+   * Handle deployment logs
+   */
+  @SubscribeMessage(MessageType.DEPLOYMENT_LOGS)
+  async handleDeploymentLogs(
+    @MessageBody() data: DeploymentLogsDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    const nodeId = client.data.user?.nodeId;
+    this.logger.debug(
+      `Deployment logs from ${nodeId}: ${data.data.deploymentId} - ${data.data.logs.length} entries`
+    );
+
+    // TODO: Store logs in database or forward to log aggregation system
+    // This will be implemented when Deployment entity is created
+  }
+
+  /**
+   * Send a command to a specific node
+   */
+  async sendCommandToNode(
+    nodeId: string,
+    messageType: MessageType,
+    resourceType: string,
+    resourceId: string,
+    data: Record<string, any>,
+    priority: 'low' | 'normal' | 'high' = 'normal'
+  ): Promise<boolean> {
+    const connection = this.connectionService.getConnection(nodeId);
+
+    if (!connection) {
+      this.logger.warn(`Cannot send command: Node ${nodeId} is not connected`);
+      return false;
+    }
+
+    const message = {
+      type: messageType,
+      messageId: uuidv4(),
+      timestamp: new Date().toISOString(),
+      resource: {
+        type: resourceType,
+        id: resourceId,
+      },
+      data,
+      metadata: {
+        priority,
+      },
+    };
+
+    connection.socket.emit(messageType, message);
+    this.logger.log(`Command sent to ${nodeId}: ${messageType} (${resourceId})`);
+
+    return true;
+  }
+
+  /**
+   * Broadcast a message to all connected nodes
+   */
+  broadcastToAllNodes(messageType: string, data: any): void {
+    const onlineCount = this.connectionService.getOnlineCount();
+    this.server.emit(messageType, data);
+    this.logger.log(`Broadcast message to ${onlineCount} nodes: ${messageType}`);
+  }
+
+  /**
+   * Send connection acknowledgment
+   */
+  private sendConnectionAck(
+    client: Socket,
+    status: 'success' | 'error',
+    error?: { code: string; message: string; timestamp: string },
+    successData?: { nodeId: string; controllerId: string; serverVersion: string }
+  ): void {
+    const ack: ConnectionAckDto = {
+      type: MessageType.CONNECTION_ACK,
+      messageId: uuidv4(),
+      timestamp: new Date().toISOString(),
+      status,
+      ...(status === 'success' ? successData : {}),
+      ...(status === 'error' ? { error } : {}),
+    };
+
+    client.emit(MessageType.CONNECTION_ACK, ack);
+  }
+
+  /**
+   * Send registration acknowledgment
+   */
+  private sendRegisterAck(client: Socket, nodeId: string): void {
+    const ack: RegisterAckDto = {
+      type: MessageType.REGISTER_ACK,
+      messageId: uuidv4(),
+      timestamp: new Date().toISOString(),
+      data: {
+        status: 'success',
+        nodeId,
+        registeredAt: new Date().toISOString(),
+        controllerInfo: {
+          controllerId: 'controller-main', // TODO: Get from config
+          heartbeatInterval: 30000, // 30 seconds
+          metricsInterval: 60000, // 60 seconds
+          timezone: 'UTC',
+        },
+        pendingCommands: [], // TODO: Fetch pending commands from database
+      },
+    };
+
+    client.emit(MessageType.REGISTER_ACK, ack);
+  }
+
+  /**
+   * Get online node IDs
+   */
+  getOnlineNodes(): string[] {
+    return this.connectionService.getOnlineNodes();
+  }
+
+  /**
+   * Check if node is online
+   */
+  isNodeOnline(nodeId: string): boolean {
+    return this.connectionService.isNodeOnline(nodeId);
+  }
+
+  /**
+   * Get online node count
+   */
+  getOnlineCount(): number {
+    return this.connectionService.getOnlineCount();
+  }
+}
