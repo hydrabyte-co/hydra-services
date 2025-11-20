@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'iam:api00',
+      name: 'core.iam.api00',
       script: './dist/services/iam/main.js',
       instances: 1,
       exec_mode: 'cluster',
@@ -34,7 +34,7 @@ module.exports = {
       listen_timeout: 10000,
     },
     {
-      name: 'aiwm:api00',
+      name: 'core.aiwm.api00',
       script: './dist/services/aiwm/main.js',
       instances: 1,
       exec_mode: 'cluster',
