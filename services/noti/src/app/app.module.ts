@@ -12,7 +12,6 @@ import { QueueModule } from '../queues/queue.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'services/noti/.env',
     }),
     MongooseModule.forRoot(
       process.env['MONGODB_URI'] || 'mongodb://localhost:27017/hydra-noti'
