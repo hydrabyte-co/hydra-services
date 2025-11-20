@@ -16,10 +16,6 @@ async function bootstrap() {
   // Use WebSocket adapter with JWT authentication
   app.useWebSocketAdapter(new WsJwtAdapter(app));
 
-  // Global prefix
-  const globalPrefix = 'api';
-  app.setGlobalPrefix(globalPrefix);
-
   // Global exception filter for standardized error responses
   app.useGlobalFilters(new GlobalExceptionFilter());
 
@@ -52,7 +48,7 @@ async function bootstrap() {
   const port = process.env['PORT'] || 3003;
   await app.listen(port);
 
-  Logger.log(`🚀 AIWM Service is running on: http://localhost:${port}/${globalPrefix}`);
+  Logger.log(`🚀 AIWM Service is running on: http://localhost:${port}`);
   Logger.log(`📚 API Documentation available at: http://localhost:${port}/api-docs`);
   Logger.log(`🔌 WebSocket Gateway: ws://localhost:${port}/ws/node`);
   Logger.log(`📊 Redis: ${process.env['REDIS_HOST']}:${process.env['REDIS_PORT']}`);

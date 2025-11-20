@@ -16,10 +16,6 @@ async function bootstrap() {
   // Enable WebSocket support with Socket.IO
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  // Global prefix
-  const globalPrefix = 'api';
-  app.setGlobalPrefix(globalPrefix);
-
   // Global exception filter for standardized error responses
   app.useGlobalFilters(new GlobalExceptionFilter());
 
