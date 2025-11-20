@@ -45,7 +45,7 @@ async function bootstrap() {
   const port = process.env['PORT'] || 3002;
   await app.listen(port);
 
-  Logger.log(`🚀 Notification Service is running on: http://localhost:${port}/${globalPrefix}`);
+  Logger.log(`🚀 Notification Service is running on: http://localhost:${port}/`);
   Logger.log(`📚 API Documentation available at: http://localhost:${port}/api-docs`);
   Logger.log(`🔌 WebSocket available at: ws://localhost:${port}/notifications`);
   Logger.log(`📊 Redis: ${process.env['REDIS_HOST']}:${process.env['REDIS_PORT']}`);
