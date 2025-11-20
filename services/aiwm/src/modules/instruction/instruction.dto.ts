@@ -3,24 +3,16 @@ import {
   IsString,
   IsOptional,
   IsArray,
-  IsBoolean,
+  IsEnum,
   MinLength,
   MaxLength,
 } from 'class-validator';
 
 /**
  * DTO for creating a new instruction
+ * MongoDB _id will be used as the primary identifier
  */
 export class CreateInstructionDto {
-  @ApiProperty({
-    description: 'Unique identifier for the instruction (UUID v4)',
-    example: 'inst-cs-agent-v1',
-  })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  instructionId!: string;
-
   @ApiProperty({
     description: 'Human-readable name for the instruction',
     example: 'Customer Support Agent v1',
@@ -71,13 +63,14 @@ export class CreateInstructionDto {
   tags?: string[];
 
   @ApiPropertyOptional({
-    description: 'Whether the instruction is active',
-    example: true,
-    default: true,
+    description: 'Instruction status',
+    enum: ['active', 'inactive'],
+    example: 'active',
+    default: 'active',
   })
   @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+  @IsEnum(['active', 'inactive'])
+  status?: string;
 }
 
 /**
@@ -132,10 +125,11 @@ export class UpdateInstructionDto {
   tags?: string[];
 
   @ApiPropertyOptional({
-    description: 'Whether the instruction is active',
-    example: true,
+    description: 'Instruction status',
+    enum: ['active', 'inactive'],
+    example: 'active',
   })
   @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+  @IsEnum(['active', 'inactive'])
+  status?: string;
 }

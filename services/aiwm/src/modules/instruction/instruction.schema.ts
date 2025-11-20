@@ -7,12 +7,10 @@ export type InstructionDocument = Instruction & Document;
 /**
  * Instruction - Defines behavior and guidelines for AI agents
  * Simple MVP version with only essential fields
+ * Uses MongoDB _id as the primary identifier
  */
 @Schema({ timestamps: true })
 export class Instruction extends BaseSchema {
-  @Prop({ required: true, unique: true })
-  instructionId!: string; // UUID v4
-
   @Prop({ required: true })
   name!: string; // e.g., "Customer Support Agent v1"
 
@@ -28,16 +26,16 @@ export class Instruction extends BaseSchema {
   @Prop({ type: [String], default: [] })
   tags!: string[]; // e.g., ['customer-service', 'polite', 'helpful']
 
-  @Prop({ default: true })
-  isActive!: boolean;
+  @Prop({ enum: ['active', 'inactive'], default: 'active' })
+  status!: string; // 'active' or 'inactive'
 
   // BaseSchema provides: owner, createdBy, updatedBy, deletedAt, metadata, timestamps
+  // _id is automatically provided by MongoDB
 }
 
 export const InstructionSchema = SchemaFactory.createForClass(Instruction);
 
 // Indexes for performance
-InstructionSchema.index({ instructionId: 1 }, { unique: true });
-InstructionSchema.index({ isActive: 1, createdAt: -1 });
+InstructionSchema.index({ status: 1, createdAt: -1 });
 InstructionSchema.index({ tags: 1 });
 InstructionSchema.index({ name: 'text', description: 'text' }); // Text search

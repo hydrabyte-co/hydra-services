@@ -507,7 +507,7 @@ Models represent AI/ML models that can be deployed on nodes.
   totalProcessingTime: number; // Total processing time (ms)
 
   tags?: string[];
-  isActive: boolean;
+  status: string;       // "active" | "inactive"
 
   // Audit fields
   owner: { orgId, userId, groupId };
@@ -562,7 +562,7 @@ Register a new AI model in the system.
   "totalTokens": 0,
   "totalProcessingTime": 0,
   "tags": ["llm", "chat", "meta"],
-  "isActive": true,
+  "status": "active",
   "createdAt": "2025-11-16T11:00:00.000Z",
   "updatedAt": "2025-11-16T11:00:00.000Z"
 }
@@ -693,14 +693,13 @@ Instructions define how AI agents should behave, providing system prompts and gu
 
 ```typescript
 {
-  _id: string;
-  instructionId: string;       // Unique identifier (UUID)
+  _id: string;                 // MongoDB ObjectId (primary identifier)
   name: string;                // e.g., "Customer Support Agent v1"
   description?: string;
   systemPrompt: string;        // Main system prompt for the agent
   guidelines?: string[];       // Step-by-step rules/guidelines
   tags?: string[];             // ["customer-service", "polite", "helpful"]
-  isActive: boolean;
+  status: string;       // "active" | "inactive"
 
   // Audit fields
   owner: { orgId, userId, groupId };
@@ -713,12 +712,11 @@ Instructions define how AI agents should behave, providing system prompts and gu
 
 ### 3.1 Create Instruction
 
-**Endpoint:** `POST /api/instructions`
+**Endpoint:** `POST /instructions`
 
 **Request Body:**
 ```json
 {
-  "instructionId": "inst-cs-agent-v1",
   "name": "Customer Support Agent v1",
   "description": "Instructions for customer support AI agent",
   "systemPrompt": "You are a helpful customer support agent. Always be polite, professional, and empathetic. Your goal is to resolve customer issues efficiently while maintaining a positive experience.",
@@ -730,7 +728,7 @@ Instructions define how AI agents should behave, providing system prompts and gu
     "End with asking if there's anything else you can help with"
   ],
   "tags": ["customer-service", "support", "polite"],
-  "isActive": true
+  "status": "active"
 }
 ```
 
@@ -738,7 +736,6 @@ Instructions define how AI agents should behave, providing system prompts and gu
 ```json
 {
   "_id": "68f3d4e5f6a7b8c9d0e1f2a3",
-  "instructionId": "inst-cs-agent-v1",
   "name": "Customer Support Agent v1",
   "description": "Instructions for customer support AI agent",
   "systemPrompt": "You are a helpful customer support agent. Always be polite, professional, and empathetic. Your goal is to resolve customer issues efficiently while maintaining a positive experience.",
@@ -750,7 +747,7 @@ Instructions define how AI agents should behave, providing system prompts and gu
     "End with asking if there's anything else you can help with"
   ],
   "tags": ["customer-service", "support", "polite"],
-  "isActive": true,
+  "status": "active",
   "owner": {
     "orgId": "68dd05b175d9e3c17bf97f60",
     "userId": "68dcf365f6a92c0d4911b619",
@@ -765,11 +762,10 @@ Instructions define how AI agents should behave, providing system prompts and gu
 
 **cURL Example:**
 ```bash
-curl -X POST http://localhost:3003/api/instructions \
+curl -X POST http://localhost:3003/instructions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "instructionId": "inst-cs-agent-v1",
     "name": "Customer Support Agent v1",
     "description": "Instructions for customer support AI agent",
     "systemPrompt": "You are a helpful customer support agent. Always be polite, professional, and empathetic. Your goal is to resolve customer issues efficiently while maintaining a positive experience.",
@@ -781,13 +777,13 @@ curl -X POST http://localhost:3003/api/instructions \
       "End with asking if there'\''s anything else you can help with"
     ],
     "tags": ["customer-service", "support", "polite"],
-    "isActive": true
+    "status": "active"
   }'
 ```
 
 ### 3.2 Get All Instructions
 
-**Endpoint:** `GET /api/instructions`
+**Endpoint:** `GET /instructions`
 
 **Query Parameters:**
 - `page` (number) - Page number (default: 1)
@@ -799,15 +795,15 @@ curl -X POST http://localhost:3003/api/instructions \
 **cURL Example:**
 ```bash
 # Get all instructions
-curl -X GET "http://localhost:3003/api/instructions?page=1&limit=10" \
+curl -X GET "http://localhost:3003/instructions?page=1&limit=10" \
   -H "Authorization: Bearer $TOKEN"
 
 # Get only active instructions
-curl -X GET "http://localhost:3003/api/instructions?filter[isActive]=true" \
+curl -X GET "http://localhost:3003/instructions?filter[isActive]=true" \
   -H "Authorization: Bearer $TOKEN"
 
 # Filter by tag
-curl -X GET "http://localhost:3003/api/instructions?filter[tags]=customer-service" \
+curl -X GET "http://localhost:3003/instructions?filter[tags]=customer-service" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -822,7 +818,7 @@ curl -X GET "http://localhost:3003/api/instructions?filter[tags]=customer-servic
       "systemPrompt": "You are a helpful customer support agent...",
       "guidelines": ["Always greet customers warmly", "..."],
       "tags": ["customer-service", "support", "polite"],
-      "isActive": true,
+      "status": "active",
       "createdAt": "2025-11-19T10:00:00.000Z",
       "updatedAt": "2025-11-19T10:00:00.000Z"
     }
@@ -837,11 +833,11 @@ curl -X GET "http://localhost:3003/api/instructions?filter[tags]=customer-servic
 
 ### 3.3 Get Single Instruction
 
-**Endpoint:** `GET /api/instructions/:id`
+**Endpoint:** `GET /instructions/:id`
 
 **cURL Example:**
 ```bash
-curl -X GET http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
+curl -X GET http://localhost:3003/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -861,7 +857,7 @@ curl -X GET http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
     "End with asking if there's anything else you can help with"
   ],
   "tags": ["customer-service", "support", "polite"],
-  "isActive": true,
+  "status": "active",
   "owner": {
     "orgId": "68dd05b175d9e3c17bf97f60",
     "userId": "68dcf365f6a92c0d4911b619",
@@ -876,7 +872,7 @@ curl -X GET http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
 
 ### 3.4 Update Instruction
 
-**Endpoint:** `PUT /api/instructions/:id`
+**Endpoint:** `PUT /instructions/:id`
 
 **Request Body:**
 ```json
@@ -887,20 +883,22 @@ curl -X GET http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
     "New guideline 1",
     "New guideline 2"
   ],
-  "tags": ["customer-service", "support", "empathetic"]
+  "tags": ["customer-service", "support", "empathetic"],
+  "status": "inactive"
 }
 ```
 
 **cURL Example:**
 ```bash
-curl -X PUT http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
+curl -X PUT http://localhost:3003/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Customer Support Agent v2",
     "systemPrompt": "Updated system prompt...",
     "guidelines": ["New guideline 1", "New guideline 2"],
-    "tags": ["customer-service", "support", "empathetic"]
+    "tags": ["customer-service", "support", "empathetic"],
+    "status": "inactive"
   }'
 ```
 
@@ -908,24 +906,49 @@ curl -X PUT http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
 ```json
 {
   "_id": "68f3d4e5f6a7b8c9d0e1f2a3",
-  "instructionId": "inst-cs-agent-v1",
   "name": "Customer Support Agent v2",
   "systemPrompt": "Updated system prompt...",
   "guidelines": ["New guideline 1", "New guideline 2"],
   "tags": ["customer-service", "support", "empathetic"],
-  "isActive": true,
+  "status": "inactive",
   "updatedBy": "68dcf365f6a92c0d4911b619",
   "updatedAt": "2025-11-19T11:00:00.000Z"
 }
 ```
 
+**Business Logic Validation:**
+
+When changing status to `inactive`, the system checks if any active agents (isDeleted=false) are using this instruction.
+
+**Error Response (409 Conflict):** Occurs when attempting to deactivate an instruction that is in use by active agents.
+```json
+{
+  "statusCode": 409,
+  "message": "Cannot deactivate instruction. It is currently being used by the following active agents: Support Bot Alpha (ID: 68f4e5d6a7b8c9d0e1f2a3b4), Assistant Beta (ID: 68f4e5d6a7b8c9d0e1f2a3b5)",
+  "error": "Conflict",
+  "details": {
+    "operation": "deactivate",
+    "activeAgents": [
+      {
+        "id": "68f4e5d6a7b8c9d0e1f2a3b4",
+        "name": "Support Bot Alpha"
+      },
+      {
+        "id": "68f4e5d6a7b8c9d0e1f2a3b5",
+        "name": "Assistant Beta"
+      }
+    ]
+  }
+}
+```
+
 ### 3.5 Delete Instruction (Soft Delete)
 
-**Endpoint:** `DELETE /api/instructions/:id`
+**Endpoint:** `DELETE /instructions/:id`
 
 **cURL Example:**
 ```bash
-curl -X DELETE http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
+curl -X DELETE http://localhost:3003/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -934,6 +957,32 @@ curl -X DELETE http://localhost:3003/api/instructions/68f3d4e5f6a7b8c9d0e1f2a3 \
 {
   "message": "Instruction deleted successfully",
   "deletedAt": "2025-11-19T12:00:00.000Z"
+}
+```
+
+**Business Logic Validation:**
+
+Before soft deleting, the system checks if any active agents (isDeleted=false) are using this instruction.
+
+**Error Response (409 Conflict):** Occurs when attempting to delete an instruction that is in use by active agents.
+```json
+{
+  "statusCode": 409,
+  "message": "Cannot delete instruction. It is currently being used by the following active agents: Support Bot Alpha (ID: 68f4e5d6a7b8c9d0e1f2a3b4), Assistant Beta (ID: 68f4e5d6a7b8c9d0e1f2a3b5)",
+  "error": "Conflict",
+  "details": {
+    "operation": "delete",
+    "activeAgents": [
+      {
+        "id": "68f4e5d6a7b8c9d0e1f2a3b4",
+        "name": "Support Bot Alpha"
+      },
+      {
+        "id": "68f4e5d6a7b8c9d0e1f2a3b5",
+        "name": "Assistant Beta"
+      }
+    ]
+  }
 }
 ```
 
@@ -968,7 +1017,7 @@ Agents represent AI agents running on nodes with specific capabilities and behav
   lastTask?: Date;
   lastHeartbeat?: Date;
 
-  isActive: boolean;
+  status: string;       // "active" | "inactive"
   permissions: string[];
   tags: string[];
 
@@ -1016,7 +1065,7 @@ Agents represent AI agents running on nodes with specific capabilities and behav
   "failedTasks": 0,
   "averageResponseTime": 0,
   "averageLatency": 0,
-  "isActive": true,
+  "status": "active",
   "permissions": ["read:tickets", "write:responses"],
   "tags": ["support", "customer-service"],
   "createdAt": "2025-11-16T11:30:00.000Z",
@@ -1785,7 +1834,7 @@ Tools represent external services/APIs that agents can use.
     expectedOutput: any;
   }>;
 
-  isActive: boolean;
+  status: string;       // "active" | "inactive"
 
   // Audit fields
   owner: { orgId, userId, groupId };
@@ -1826,7 +1875,7 @@ Conversations track multi-turn interactions with AI agents.
   totalMessages: number;
 
   tags: string[];
-  isActive: boolean;
+  status: string;       // "active" | "inactive"
 
   participants: Array<{
     userId: string;
@@ -1894,7 +1943,7 @@ Messages are individual messages within conversations.
   responseTime?: number;       // milliseconds
   error?: string;
 
-  isActive: boolean;
+  status: string;       // "active" | "inactive"
 
   // Audit fields
   owner: { orgId, userId, groupId };

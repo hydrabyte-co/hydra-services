@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { BaseService } from '@hydrabyte/base';
+import { RequestContext, InstructionInUseException } from '@hydrabyte/shared';
 import { Instruction } from './instruction.schema';
+import { Agent } from '../agent/agent.schema';
 
 /**
  * InstructionService
@@ -12,22 +14,70 @@ import { Instruction } from './instruction.schema';
 @Injectable()
 export class InstructionService extends BaseService<Instruction> {
   constructor(
-    @InjectModel(Instruction.name) private instructionModel: Model<Instruction>
+    @InjectModel(Instruction.name) private instructionModel: Model<Instruction>,
+    @InjectModel(Agent.name) private readonly agentModel: Model<Agent>,
   ) {
     super(instructionModel);
   }
 
-  // No custom methods needed - BaseService provides all CRUD operations:
-  // - create(dto, context)
-  // - findAll(query, context)
-  // - findById(id, context)
-  // - update(id, dto, context)
-  // - delete(id, context)
-  // - restore(id, context)
+  /**
+   * Helper method to check if instruction is being used by active agents
+   * @param instructionId - Instruction ID to check
+   * @returns Array of active agents using this instruction
+   */
+  private async checkActiveAgentDependencies(
+    instructionId: ObjectId
+  ): Promise<Array<{ id: string; name: string }>> {
+    const activeAgents = await this.agentModel
+      .find({
+        instructionId: instructionId.toString(),
+        isDeleted: false,
+      })
+      .select('_id name')
+      .lean()
+      .exec();
 
-  // All methods include:
-  // - RBAC permission checks
-  // - Multi-tenant isolation
-  // - Audit trail (createdBy, updatedBy)
-  // - Soft delete support
+    return activeAgents.map((agent) => ({
+      id: agent._id.toString(),
+      name: agent.name,
+    }));
+  }
+
+  /**
+   * Override update method to validate status changes
+   * Prevents deactivating instructions that are in use by active agents
+   */
+  async update(
+    id: ObjectId,
+    updateData: Partial<Instruction>,
+    context: RequestContext
+  ): Promise<Instruction | null> {
+    // Check if status is being changed to 'inactive'
+    if (updateData.status === 'inactive') {
+      const activeAgents = await this.checkActiveAgentDependencies(id);
+      if (activeAgents.length > 0) {
+        throw new InstructionInUseException(activeAgents, 'deactivate');
+      }
+    }
+
+    // Call parent update method
+    return super.update(id, updateData, context);
+  }
+
+  /**
+   * Override softDelete method to validate dependencies
+   * Prevents deleting instructions that are in use by active agents
+   */
+  async softDelete(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<Instruction | null> {
+    const activeAgents = await this.checkActiveAgentDependencies(id);
+    if (activeAgents.length > 0) {
+      throw new InstructionInUseException(activeAgents, 'delete');
+    }
+
+    // Call parent softDelete method
+    return super.softDelete(id, context);
+  }
 }

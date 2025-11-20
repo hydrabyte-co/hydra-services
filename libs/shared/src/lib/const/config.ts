@@ -1,3 +1,3 @@
 export const COMMON_CONFIG = {
-  DatabaseNamePrefix: 'stg_',
+  DatabaseNamePrefix: 'core_',
 };
