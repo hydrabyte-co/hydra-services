@@ -2,7 +2,7 @@
 
 This document describes all authentication endpoints available in the IAM (Identity & Access Management) service.
 
-**Base URL:** `http://localhost:3000`
+**Base URL:** `http://localhost:3000` (tùy theo môi trường sẽ load config từ cấu hính)
 **API Prefix:** `/auth`
 
 ---
@@ -94,7 +94,7 @@ The access token contains the following claims:
 ```bash
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"tonyh","password":"123zXc_-"}'
+  -d '{"username":"xoradmin","password":"123zXc_-"}'
 ```
 
 ---

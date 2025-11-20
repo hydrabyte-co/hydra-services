@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, PaginationQueryDto } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Agent, AgentDocument } from './agent.schema';
 import { CreateAgentDto, UpdateAgentDto } from './agent.dto';
@@ -11,10 +11,58 @@ import { AgentProducer } from '../../queues/producers/agent.producer';
 export class AgentService extends BaseService<Agent> {
 
   constructor(
-    @InjectModel(Agent.name) agentModel: Model<AgentDocument>,
+    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private readonly agentProducer: AgentProducer,
   ) {
     super(agentModel as any);
+  }
+
+  /**
+   * Override findById to support populate
+   * If query has 'populate=instruction', populate the instructionId field
+   */
+  async findById(id: any, context: RequestContext, query?: any): Promise<Agent | null> {
+    const shouldPopulate = query?.populate === 'instruction';
+
+    if (shouldPopulate) {
+      const agent = await this.agentModel
+        .findOne({ _id: id, isDeleted: false })
+        .populate('instructionId')
+        .exec();
+      return agent as Agent;
+    }
+
+    return super.findById(id, context);
+  }
+
+  /**
+   * Override findAll to support populate
+   * If query has 'populate=instruction', populate the instructionId field
+   */
+  async findAll(query: PaginationQueryDto, context: RequestContext): Promise<any> {
+    const shouldPopulate = (query as any).populate === 'instruction';
+
+    if (shouldPopulate) {
+      const { page = 1, limit = 10, ...filters } = query;
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await Promise.all([
+        this.agentModel
+          .find({ isDeleted: false, ...filters })
+          .populate('instructionId')
+          .skip(skip)
+          .limit(limit)
+          .exec(),
+        this.agentModel.countDocuments({ isDeleted: false, ...filters }),
+      ]);
+
+      return {
+        data,
+        pagination: { page, limit, total },
+      };
+    }
+
+    return super.findAll(query, context);
   }
 
   async create(createAgentDto: CreateAgentDto, context: RequestContext): Promise<Agent> {

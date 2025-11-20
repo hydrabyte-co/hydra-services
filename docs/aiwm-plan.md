@@ -160,7 +160,70 @@ open http://localhost:3003/api-docs
 
 ## 🚀 Implementation Phases
 
-### 🟡 Phase 2: WebSocket Gateway + Worker Client + Execution Orchestration (NEXT - 5-6 days)
+### 🎯 Phase 2.5: Instruction Module (PRIORITY - 2 days)
+
+**Objective:** Implement simplified Instruction entity để agents có system prompts và guidelines
+
+**Status:** 🎯 Next Priority (Before MinIO Integration)
+
+**Rationale:**
+- Instruction Module cần thiết cho AI Agent framework
+- Agents hiện tại không có hướng dẫn rõ ràng về cách làm việc
+- Simple implementation (chỉ 2 days) nhưng high value
+- Không phụ thuộc vào MinIO hay NOTI, có thể làm độc lập
+
+---
+
+#### Tasks:
+
+**Day 1:**
+- [ ] Create `Instruction` schema (simplified: instructionId, name, description, systemPrompt, guidelines[], tags[], isActive)
+- [ ] Create `InstructionService` (extends BaseService - no custom logic needed)
+- [ ] Create `InstructionController` (standard CRUD)
+- [ ] Create DTOs (CreateInstructionDto, UpdateInstructionDto)
+- [ ] Update `Agent` schema - add `instructionId` field
+- [ ] Update `Agent` DTOs
+
+**Day 2:**
+- [ ] Add populate support in AgentController
+- [ ] Test CRUD operations with Swagger
+- [ ] Test assign instruction to agent
+- [ ] Update API documentation
+- [ ] Update architecture docs
+
+**Files to Create/Modify:**
+```
+services/aiwm/src/modules/instruction/
+├── instruction.schema.ts          ✅ New (50 lines)
+├── instruction.service.ts         ✅ New (30 lines)
+├── instruction.controller.ts      ✅ New (80 lines)
+├── instruction.dto.ts             ✅ New (40 lines)
+├── instruction.module.ts          ✅ New (20 lines)
+
+services/aiwm/src/modules/agent/
+├── agent.schema.ts                📝 Modified (add 1 field)
+├── agent.dto.ts                   📝 Modified (add to DTOs)
+└── agent.controller.ts            📝 Modified (add populate)
+```
+
+**API Endpoints:**
+```typescript
+POST   /api/instructions           ✅ Create instruction
+GET    /api/instructions           ✅ List with pagination
+GET    /api/instructions/:id       ✅ Get by ID
+PUT    /api/instructions/:id       ✅ Update
+DELETE /api/instructions/:id       ✅ Soft delete
+
+// Agent integration
+PUT    /api/agents/:id             📝 Updated - can set instructionId
+GET    /api/agents/:id?populate=instruction  📝 Get with instruction
+```
+
+**Total:** ~220 lines of new code + 10 lines modified
+
+---
+
+### 🟡 Phase 2: WebSocket Gateway + Worker Client + Execution Orchestration (COMPLETED - 5-6 days)
 
 **Objective:** Implement WebSocket communication với nodes, worker client, và pure event-based orchestration
 
@@ -1014,16 +1077,18 @@ EXECUTION_TIMEOUT_CHECK_INTERVAL=30000
 | Phase | Description | Days | Status |
 |-------|-------------|------|--------|
 | **Phase 1** | Foundation Setup | 2 | ✅ COMPLETED |
-| **Phase 2** | WebSocket + Worker + Execution | 5-6 | 🎯 NEXT (Design Approved, TypeScript) |
+| **Phase 2** | WebSocket + Worker + Execution | 5-6 | ✅ COMPLETED |
+| **Phase 2.5** | Instruction Module (Simplified) | 2 | 🎯 NEXT (HIGH PRIORITY) |
 | **Phase 3** | Node Token + Enhanced APIs | 2 | ⏳ Planned |
 | **Phase 4** | NOTI Integration | 1-2 | ⏳ Planned |
 | **Phase 5** | MinIO Integration | 2-3 | ⏳ Planned |
-| **Phase 6** | Additional Entities | 2-3 | ⏳ Planned |
+| **Phase 6** | Additional Entities (Tool, Conversation, Message) | 2-3 | ⏳ Planned |
 | **Phase 7** | Testing & QA | 3-4 | ⏳ Planned |
 | **Phase 8** | Documentation & Production | 2-3 | ⏳ Planned |
-| **Total** | | **19-26 days** | |
+| **Total** | | **21-28 days** | |
 
-**Current Progress:** Phase 1 completed + Design approved (3 days), ~12% overall completion
+**Current Progress:** Phase 1 & 2 completed (7-8 days), ~65% overall completion
+**Next:** Phase 2.5 - Instruction Module (2 days)
 
 **Phase 2 Breakdown:**
 - Part A: Shared Protocol Types (0.5 day)
@@ -1206,39 +1271,35 @@ hydra-services/
 
 **Immediate Next Steps (Priority Order):**
 
-1. ⭐ **START Phase 2A**: Shared Protocol Types (0.5 day)
-   - Create WebSocket DTOs in `@hydrabyte/shared`
-   - Create interfaces and enums
-   - Export from shared library
-   - Update shared library index.ts
+1. ⭐ **START Phase 2.5**: Instruction Module (2 days) - HIGH PRIORITY
 
-2. ⭐ **START Phase 2B**: NodeGateway - Controller Side (2 days)
-   - Create gateway class with `/ws/node` namespace
-   - Implement JWT authentication for WebSocket
-   - Implement connection handlers
-   - Implement message handlers (register, heartbeat, metrics, command results)
-   - Use shared types from `@hydrabyte/shared`
+   **Day 1 Tasks:**
+   - Create `instruction.schema.ts` with simplified fields
+   - Create `instruction.service.ts` (extends BaseService)
+   - Create `instruction.controller.ts` (standard CRUD)
+   - Create `instruction.dto.ts` (Create, Update DTOs)
+   - Create `instruction.module.ts`
+   - Update `agent.schema.ts` - add instructionId field
+   - Update `agent.dto.ts` - add to DTOs
 
-3. ⭐ **START Phase 2C**: Worker Client (2 days, parallel with 2B)
-   - Create `aiwm-worker` service in monorepo
-   - Setup project configuration (Nx)
-   - Implement WebSocket client
-   - Implement command handlers
-   - Implement Docker operations
-   - Implement GPU monitoring
-   - Use shared types from `@hydrabyte/shared`
+   **Day 2 Tasks:**
+   - Update `agent.controller.ts` - add populate support
+   - Test all CRUD operations via Swagger
+   - Test assign/remove instruction from agent
+   - Test populate instruction in agent GET
+   - Update AIWM-API-DOCUMENTATION.md
+   - Create example instructions (customer-support, code-review)
 
-4. ⭐ **START Phase 2D**: Execution Orchestration (2 days)
-   - Create Execution schema
-   - Create ExecutionService
-   - Create ExecutionOrchestrator
-   - Create ExecutionTimeoutMonitor
-   - Integrate with NodeGateway
+2. ⏭️ **Phase 3**: Node Token + Enhanced APIs (after Instruction)
+   - Add JWT signing for node tokens
+   - Create `/api/nodes/:nodeId/token` endpoint
 
-5. ⭐ **START Phase 2E**: Integration & Testing (1 day)
-   - Test controller ↔ worker communication
-   - Test full deployment workflow
-   - Write integration tests
+3. ⏭️ **Phase 5**: MinIO Integration (high priority for model storage)
+   - Setup MinIO client
+   - Implement model upload/download
+
+4. ⏭️ **Phase 4**: NOTI Integration
+   - Emit deployment/execution events
 
 **Before Starting Development:**
 - [x] Architecture decisions finalized

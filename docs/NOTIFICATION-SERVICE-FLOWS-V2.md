@@ -238,7 +238,7 @@ interface ServiceEventQueueEvent {
 **Event Naming Convention:** `{service}.{entity}.{action}`
 - `iam.user.created`
 - `iam.user.updated`
-- `iam.org.created`
+- `iam.organization.created`
 - `template.category.created`
 - `template.product.updated`
 - `cbm.order.completed`

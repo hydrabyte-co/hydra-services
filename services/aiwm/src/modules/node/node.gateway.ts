@@ -8,7 +8,7 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger, UseGuards, Inject, forwardRef, Optional } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { NodeService } from './node.service';
 import { NodeConnectionService } from './node-connection.service';
@@ -26,6 +26,7 @@ import {
   AuthErrorCode,
 } from '@hydrabyte/shared';
 import { v4 as uuidv4 } from 'uuid';
+import type { ExecutionOrchestrator } from '../execution/execution.orchestrator';
 
 /**
  * WebSocket Gateway for Node (Worker) connections
@@ -51,6 +52,13 @@ export class NodeGateway
     private readonly nodeService: NodeService,
     private readonly connectionService: NodeConnectionService
   ) {}
+
+  // ExecutionOrchestrator injected via setter to avoid circular dependency
+  private executionOrchestrator?: ExecutionOrchestrator;
+
+  setExecutionOrchestrator(orchestrator: ExecutionOrchestrator) {
+    this.executionOrchestrator = orchestrator;
+  }
 
   /**
    * Gateway initialization
@@ -258,8 +266,21 @@ export class NodeGateway
       `Command ACK received from ${nodeId} for message ${data.data.originalMessageId}`
     );
 
-    // TODO: Update command tracking status
-    // This will be implemented in Phase 2D (Execution Orchestration)
+    // Update execution tracking if executionId is present
+    const metadata = (data as any).metadata;
+    if (this.executionOrchestrator && metadata?.executionId !== undefined) {
+      try {
+        await this.executionOrchestrator.handleCommandAck(
+          metadata.executionId,
+          metadata.stepIndex,
+          data.messageId
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to update execution tracking for ACK: ${error.message}`
+        );
+      }
+    }
   }
 
   /**
@@ -275,8 +296,26 @@ export class NodeGateway
       `Command result received from ${nodeId} for message ${data.data.originalMessageId}: ${data.data.status}`
     );
 
-    // TODO: Update command tracking with result
-    // This will be implemented in Phase 2D (Execution Orchestration)
+    // Update execution tracking if executionId is present
+    const metadata = (data as any).metadata;
+    if (this.executionOrchestrator && metadata?.executionId !== undefined) {
+      try {
+        await this.executionOrchestrator.handleCommandResult(
+          metadata.executionId,
+          metadata.stepIndex,
+          {
+            success: data.data.status === 'success',
+            data: data.data.result,
+            error: data.data.error,
+            progress: data.data.progress,
+          }
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to update execution tracking for result: ${error.message}`
+        );
+      }
+    }
   }
 
   /**
@@ -318,37 +357,44 @@ export class NodeGateway
    */
   async sendCommandToNode(
     nodeId: string,
-    messageType: MessageType,
-    resourceType: string,
-    resourceId: string,
+    commandType: string,
+    resource: { type: string; id: string },
     data: Record<string, any>,
-    priority: 'low' | 'normal' | 'high' = 'normal'
-  ): Promise<boolean> {
+    metadata?: {
+      executionId?: string;
+      stepIndex?: number;
+      timeout?: number;
+      priority?: 'low' | 'normal' | 'high';
+    }
+  ): Promise<string> {
     const connection = this.connectionService.getConnection(nodeId);
 
     if (!connection) {
       this.logger.warn(`Cannot send command: Node ${nodeId} is not connected`);
-      return false;
+      throw new Error(`Node ${nodeId} is not connected`);
     }
 
+    const messageId = uuidv4();
     const message = {
-      type: messageType,
-      messageId: uuidv4(),
+      type: commandType,
+      messageId,
       timestamp: new Date().toISOString(),
-      resource: {
-        type: resourceType,
-        id: resourceId,
-      },
+      resource,
       data,
       metadata: {
-        priority,
+        priority: metadata?.priority || 'normal',
+        ...(metadata?.executionId && { executionId: metadata.executionId }),
+        ...(metadata?.stepIndex !== undefined && { stepIndex: metadata.stepIndex }),
+        ...(metadata?.timeout && { timeout: metadata.timeout }),
       },
     };
 
-    connection.socket.emit(messageType, message);
-    this.logger.log(`Command sent to ${nodeId}: ${messageType} (${resourceId})`);
+    connection.socket.emit(commandType, message);
+    this.logger.log(
+      `Command sent to ${nodeId}: ${commandType} (${resource.id}) - messageId: ${messageId}`
+    );
 
-    return true;
+    return messageId;
   }
 
   /**

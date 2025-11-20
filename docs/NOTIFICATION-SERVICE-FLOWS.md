@@ -767,14 +767,14 @@ IAM Service → Update User → Emit to iam-events
 
 ---
 
-### 2.4. `iam.org.created`
+### 2.4. `iam.organization.created`
 
 **Use Case:** New organization created, notify system admins and org owner
 
 **Sample Notification:**
 ```json
 {
-  "category": "iam.org.created",
+  "category": "iam.organization.created",
   "title": "Organization Created",
   "message": "Organization 'Acme Corp' has been created successfully.",
 
@@ -805,14 +805,14 @@ IAM Service → Update User → Emit to iam-events
 
 ---
 
-### 2.5. `iam.org.updated`
+### 2.5. `iam.organization.updated`
 
 **Use Case:** Organization settings updated, notify org admins
 
 **Sample Notification:**
 ```json
 {
-  "category": "iam.org.updated",
+  "category": "iam.organization.updated",
   "title": "Organization Settings Updated",
   "message": "Organization settings have been modified.",
 
@@ -1885,7 +1885,7 @@ async handleClientMessage(
 
 **Use Cases:**
 - Template: category.created, product.updated
-- IAM: user.created, org.updated
+- IAM: user.created, organization.updated
 - Any service event that should notify users
 
 ---
@@ -2029,7 +2029,7 @@ async create(dto: CreateNotificationDto) {
 | Domain | Count | Categories |
 |--------|-------|------------|
 | **System** | 3 | announcement, maintenance, update |
-| **IAM** | 5 | user.created/updated/deleted, org.created/updated |
+| **IAM** | 5 | user.created/updated/deleted, organization.created/updated |
 | **Template** | 6 | category/product created/updated, report completed/failed |
 | **CBM** | 2+ | order.created/updated, ... |
 | **Notification** | 2 | delivered, failed |

@@ -7,8 +7,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NodeModule } from '../modules/node/node.module';
 import { ModelModule } from '../modules/model/model.module';
+import { InstructionModule } from '../modules/instruction/instruction.module';
 import { DeploymentModule } from '../modules/deployment/deployment.module';
 import { AgentModule } from '../modules/agent/agent.module';
+import { ExecutionModule } from '../modules/execution/execution.module';
 import { QueueModule } from '../queues/queue.module';
 import { ProcessorsModule } from '../queues/processors.module';
 
@@ -26,8 +28,10 @@ import { ProcessorsModule } from '../queues/processors.module';
     QueueModule,
     NodeModule,
     ModelModule,
+    InstructionModule,
     DeploymentModule,
     AgentModule,
+    ExecutionModule,
     ProcessorsModule,
   ],
   controllers: [AppController],

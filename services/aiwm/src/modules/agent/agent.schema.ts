@@ -25,6 +25,9 @@ export class Agent extends BaseSchema {
   @Prop({ required: true })
   capabilities: string[];
 
+  @Prop({ type: String, ref: 'Instruction' })
+  instructionId?: string; // Optional reference to Instruction entity
+
   @Prop({ required: true, type: String, ref: 'Node' })
   nodeId: string;
 

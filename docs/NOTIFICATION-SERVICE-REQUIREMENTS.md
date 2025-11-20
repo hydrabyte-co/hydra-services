@@ -301,11 +301,11 @@ async findOne(@Param('id') id: string) {
 ```typescript
 // Notification permissions
 const permissions = {
-  'notification.create': ['universe.owner', 'org.admin'],
-  'notification.read': ['universe.owner', 'org.admin', 'org.member'],
-  'notification.update': ['universe.owner', 'org.admin'],
-  'notification.delete': ['universe.owner', 'org.admin'],
-  'notification.send': ['universe.owner', 'org.admin'], // Internal API
+  'notification.create': ['universe.owner', 'organization.admin'],
+  'notification.read': ['universe.owner', 'organization.admin', 'organization.member'],
+  'notification.update': ['universe.owner', 'organization.admin'],
+  'notification.delete': ['universe.owner', 'organization.admin'],
+  'notification.send': ['universe.owner', 'organization.admin'], // Internal API
 };
 ```
 
@@ -557,7 +557,7 @@ export class NotificationGateway {
 
 **Other Services:**
 - `template-events` - Template Service emits events (category.created, product.created, etc.)
-- `iam-events` - IAM Service emits events (user.created, org.updated, etc.)
+- `iam-events` - IAM Service emits events (user.created, organization.updated, etc.)
 - `cbm-events` - CBM Service events (future)
 
 ### Event Flow
@@ -626,8 +626,8 @@ export class TemplateEventsProcessor {
 - `iam.user.created` - New user created
 - `iam.user.updated` - User profile updated
 - `iam.user.deleted` - User deleted
-- `iam.org.created` - Organization created
-- `iam.org.updated` - Organization updated
+- `iam.organization.created` - Organization created
+- `iam.organization.updated` - Organization updated
 
 #### Template Service Events
 - `template.category.created` - Category created
@@ -1012,8 +1012,8 @@ async handleClientMessage(...) {}
 - `iam.user.created`
 - `iam.user.updated`
 - `iam.user.deleted`
-- `iam.org.created`
-- `iam.org.updated`
+- `iam.organization.created`
+- `iam.organization.updated`
 
 **Authentication:**
 - Notification Service uses IAM's JWT tokens

@@ -58,6 +58,11 @@ export class CreateAgentDto {
   @ValidateNested()
   configuration: AgentConfiguration;
 
+  @ApiProperty({ description: 'Instruction ID (optional)', required: false })
+  @IsOptional()
+  @IsString()
+  instructionId?: string;
+
   @ApiProperty({ description: 'Node ID where agent runs' })
   @IsString()
   nodeId: string;
@@ -107,6 +112,11 @@ export class UpdateAgentDto {
   @IsObject()
   @ValidateNested()
   configuration?: AgentConfiguration;
+
+  @ApiProperty({ description: 'Instruction ID', required: false })
+  @IsOptional()
+  @IsString()
+  instructionId?: string;
 
   @ApiProperty({ description: 'Node ID', required: false })
   @IsOptional()

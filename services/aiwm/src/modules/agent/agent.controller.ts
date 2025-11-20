@@ -25,7 +25,7 @@ export class AgentController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all agents', description: 'Retrieve list of all agents with pagination' })
+  @ApiOperation({ summary: 'Get all agents', description: 'Retrieve list of all agents with pagination. Use ?populate=instruction to include instruction details.' })
   @ApiResponse({ status: 200, description: 'Agents retrieved successfully' })
   @ApiReadErrors({ notFound: false })
   @UseGuards(JwtAuthGuard)
@@ -37,15 +37,16 @@ export class AgentController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get agent by ID', description: 'Retrieve a single agent by ID' })
+  @ApiOperation({ summary: 'Get agent by ID', description: 'Retrieve a single agent by ID. Use ?populate=instruction to include instruction details.' })
   @ApiResponse({ status: 200, description: 'Agent found' })
   @ApiReadErrors()
   @UseGuards(JwtAuthGuard)
   async findOne(
     @Param('id') id: string,
+    @Query() query: any,
     @CurrentUser() context: RequestContext,
   ) {
-    const agent = await this.agentService.findById(new Types.ObjectId(id) as any, context);
+    const agent = await this.agentService.findById(new Types.ObjectId(id) as any, context, query);
     if (!agent) {
       throw new NotFoundException(`Agent with ID ${id} not found`);
     }

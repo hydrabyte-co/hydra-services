@@ -32,7 +32,10 @@
       "Bash(cat:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNzMyMDkzLCJleHAiOjE3NjA3MzU2OTN9.VmOZMOvRSUWSk5DmhNvSGn0U5WD_LkpcJ5ZJmowKQ1E\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNzU1ODYxLCJleHAiOjE3NjA3NTk0NjF9.rCgel96kW0t9FBqnhO3MGrZVjHGPg6Flh-FtdA-u3xg\")",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNzU2ODUyLCJleHAiOjE3NjA3NjA0NTJ9.HlPiTlhVCl9f9emf8JxuJKK6CGzf9CxMqa_-5iLKIu8\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGRjZjM2NWY2YTkyYzBkNDkxMWI2MTkiLCJ1c2VybmFtZSI6InRvbnloIiwic3RhdHVzIjoiYWN0aXZlIiwicm9sZXMiOlsidW5pdmVyc2Uub3duZXIiXSwib3JnSWQiOiI2OGRkMDViMTc1ZDllM2MxN2JmOTdmNjAiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYwNzU2ODUyLCJleHAiOjE3NjA3NjA0NTJ9.HlPiTlhVCl9f9emf8JxuJKK6CGzf9CxMqa_-5iLKIu8\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTE1YTI1M2YzYzNlZjQxYzc0NzMzZjIiLCJ1c2VybmFtZSI6ImFkbWluQHgtb3IuY2xvdWQiLCJzdGF0dXMiOiJhY3RpdmUiLCJyb2xlcyI6WyJvcmdhbml6YXRpb24ub3duZXIiXSwib3JnSWQiOiI2OTE1YTIzZGYzYzNlZjQxYzc0NzMzZWUiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYzNTk1MzI4LCJleHAiOjE3NjM1OTg5Mjh9.UVZJZ8BLKRjT9wCur13vyk4r7mg6GWnTCtBu2fzOvwo\")",
+      "Bash(__NEW_LINE__ curl -X POST http://localhost:3003/api/instructions )",
+      "Bash(__NEW_LINE__ curl -X GET \"http://localhost:3003/api/instructions?page=1&limit=10\" )"
     ],
     "deny": [],
     "ask": []

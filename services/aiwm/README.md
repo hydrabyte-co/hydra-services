@@ -255,9 +255,9 @@ The RBAC system supports hierarchical roles with different scopes:
 |------|-------|------|-------|--------|----------------|
 | `universe.owner` | Universe | ✅ | ✅ | ✅ | ✅ |
 | `universe.admin` | Universe | ✅ | ✅ | ✅ | ❌ |
-| `org.owner` | Organization | ✅ | ✅ | ✅ | ✅ |
-| `org.admin` | Organization | ✅ | ✅ | ✅ | ❌ |
-| `org.member` | Organization | ✅ | ✅ | ❌ | ❌ |
+| `organization.owner` | Organization | ✅ | ✅ | ✅ | ✅ |
+| `organization.admin` | Organization | ✅ | ✅ | ✅ | ❌ |
+| `organization.member` | Organization | ✅ | ✅ | ❌ | ❌ |
 | `group.owner` | Group | ✅ | ✅ | ✅ | ✅ |
 | `group.member` | Group | ✅ | ❌ | ❌ | ❌ |
 

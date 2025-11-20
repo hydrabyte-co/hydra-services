@@ -30,7 +30,8 @@ AI Ops Platform MVP v2.0 là hệ thống quản lý và triển khai AI/ML work
 
 4. **AI Agent Framework**
    - Container-based agents với WebSocket communication
-   - Agent configuration: LLM model, instruction, tools
+   - Agent configuration: LLM model, instruction templates, tools
+   - Reusable instruction templates (system prompts + guidelines)
    - MCP tool integration (SSE/HTTP transports)
    - Room-based messaging (agent ↔ users ↔ system)
 
@@ -74,24 +75,24 @@ AI Ops Platform MVP v2.0 là hệ thống quản lý và triển khai AI/ML work
 ### Role Structure
 
 **Universal Scope (toàn bộ organizations):**
-- `uni.owner`: Full system admin
-- `uni.editor`: Manage resources across orgs
-- `uni.viewer`: Read-only access to all orgs
+- `universe.owner`: Full system admin
+- `universe.editor`: Manage resources across orgs
+- `universe.viewer`: Read-only access to all orgs
 
 **Organization Scope (trong org cụ thể):**
-- `org.owner`: Full control within org
-- `org.editor`: Manage org resources
-- `org.viewer`: Read-only within org
+- `organization.owner`: Full control within org
+- `organization.editor`: Manage org resources
+- `organization.viewer`: Read-only within org
 
 ### Permission Matrix
 
 | Action | Required Roles |
 |--------|----------------|
-| Deploy models | uni.owner, uni.editor, org.owner, org.editor |
-| Register GPU nodes | uni.owner, uni.editor, org.owner, org.editor |
-| Create agents | uni.owner, uni.editor, org.owner, org.editor |
+| Deploy models | universe.owner, universe.editor, organization.owner, organization.editor |
+| Register GPU nodes | universe.owner, universe.editor, organization.owner, organization.editor |
+| Create agents | universe.owner, universe.editor, organization.owner, organization.editor |
 | View metrics | All roles |
-| Deploy MCP tools | uni.owner, uni.editor, org.owner, org.editor |
+| Deploy MCP tools | universe.owner, universe.editor, organization.owner, organization.editor |
 | Chat with agents | All roles |
 
 ---
@@ -318,7 +319,7 @@ AI Ops Platform MVP v2.0 là hệ thống quản lý và triển khai AI/ML work
 
 ### 1. Model Deployment Workflow
 
-**Actors:** User (org.editor), Backend, GPU Node
+**Actors:** User (organization.editor), Backend, GPU Node
 
 **Steps:**
 1. User submits model deployment request via UI/API
@@ -563,8 +564,13 @@ AI Ops Platform MVP v2.0 là hệ thống quản lý và triển khai AI/ML work
 15. **`guardrails`** - Content filtering and safety rules
 16. **`guardrailViolations`** - Guardrail violation logs
 
+**Key Changes from v2.5 (Simplified MVP):**
+- Simplified `instructions` collection - Reduced from 6 fields (role, context, task, examples, toolsGuidance, outputFormat) to 2 core fields (systemPrompt, guidelines[])
+- Removed version tracking, usageCount, and category from Instruction entity (can add later if needed)
+- Focus on MVP: Simple, reusable system prompts for agents
+
 **Key Changes from v2.4:**
-- Added `instructions` collection - Reusable instruction templates with structured format (role, context, task, examples, tools, output_format)
+- Added `instructions` collection - Reusable instruction templates (simplified from original complex structure)
 - Added `connections` collection - Connection endpoints for agents (web-sdk, discord, telegram, webhook)
 - Updated `agents` schema to reference `instructionId` instead of inline instruction string
 
@@ -820,40 +826,25 @@ AI Ops Platform MVP v2.0 là hệ thống quản lý và triển khai AI/ML work
 // - getTaskDetails: Get task information
 ```
 
-#### 6. `instructions` - Reusable Instruction Templates
+#### 6. `instructions` - Reusable Instruction Templates (SIMPLIFIED MVP)
 ```typescript
 {
   _id: ObjectId,                    // MongoDB primary key
-  instructionId: string,            // Unique instruction identifier | required | indexed
+  instructionId: string,            // Unique instruction identifier | required | indexed | e.g., "inst-1731744000"
   name: string,                     // Template name | required | max 255 chars | e.g., "Customer Support Agent"
-  description: string,              // Template description | required | max 500 chars
+  description?: string,             // Template description | optional | max 500 chars
 
-  // Instruction Structure (Best Practices)
-  role: string,                     // Agent role definition | required | max 1000 chars
-                                    // Example: "You are a professional customer support agent for XYZ company"
+  // Core Content (MVP - Simplified from v2.4)
+  systemPrompt: string,             // Complete system prompt | required | max 10000 chars
+                                    // Combines role, context, task, examples into single prompt
+                                    // Example: "You are a professional customer support agent. Your goal is to..."
 
-  context: string,                  // Background knowledge, constraints, policies | required | max 3000 chars
-                                    // Example: "Company sells SaaS products. Support hours: 9AM-6PM UTC. Refund policy: 30 days..."
+  guidelines?: string[],            // Simple bullet-point guidelines | optional | array of strings
+                                    // Example: ["Greet warmly", "Listen actively", "Provide clear solutions"]
 
-  task: string,                     // Main tasks and objectives | required | max 2000 chars
-                                    // Example: "Help customers with: 1) Account issues, 2) Billing questions, 3) Technical troubleshooting..."
-
-  examples?: string,                // Few-shot examples | optional | max 5000 chars
-                                    // Format: "Q: <question>\nA: <answer>\n\n..."
-
-  toolsGuidance?: string,           // Tool usage guidelines | optional | max 2000 chars
-                                    // Example: "Use 'searchKnowledgeBase' for product questions. Use 'createTicket' for bugs..."
-
-  outputFormat?: string,            // Response format requirements | optional | max 1000 chars
-                                    // Example: "Always respond in friendly tone. Use bullet points. Include references..."
-
-  // Metadata
-  category?: string,                // Template category | optional | enum: ["support", "sales", "technical", "general"]
-  tags?: string[],                  // Tags for filtering | optional | array of strings
-  version: string,                  // Template version | required | semantic version | default: "1.0.0"
-
-  // Usage tracking
-  usageCount: number,               // Number of agents using this template | required | default: 0
+  // Metadata (Minimal)
+  tags?: string[],                  // Tags for filtering | optional | array of strings | e.g., ["support", "customer-service"]
+  isActive: boolean,                // Enable/disable instruction | required | default: true
 
   // Ownership & Audit
   owner: {
@@ -1672,7 +1663,7 @@ interface BaseMessage {
 
 ### Authorization
 - Role-based middleware on all protected routes
-- Check JWT claims: `roles: ["org.editor", ...]`
+- Check JWT claims: `roles: ["organization.editor", ...]`
 - Deployment actions require owner/editor roles
 
 ### Network Security

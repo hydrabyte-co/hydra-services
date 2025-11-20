@@ -5,6 +5,9 @@ import {
   ValidateNested,
   IsEnum,
   IsOptional,
+  IsNumber,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MessageType, CommandStatus } from '../../enum/websocket';
@@ -32,6 +35,12 @@ export class CommandResultDataDto {
   @IsObject()
   @IsOptional()
   error?: IErrorDetails; // Error details if status is ERROR
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  progress?: number; // Progress percentage (0-100) for partial results
 }
 
 /**
