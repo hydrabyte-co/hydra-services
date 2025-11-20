@@ -2,11 +2,16 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
-import { HealthModule, JwtStrategy, CorrelationIdMiddleware } from '@hydrabyte/base';
+import {
+  HealthModule,
+  JwtStrategy,
+  CorrelationIdMiddleware,
+} from '@hydrabyte/base';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NotificationModule } from '../modules/notification/notification.module';
 import { QueueModule } from '../queues/queue.module';
+import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
 
 @Module({
   imports: [
@@ -14,7 +19,7 @@ import { QueueModule } from '../queues/queue.module';
       isGlobal: true,
     }),
     MongooseModule.forRoot(
-      process.env['MONGODB_URI'] || 'mongodb://localhost:27017/hydra-noti'
+      `${process.env.MONGODB_URI}/${COMMON_CONFIG.DatabaseNamePrefix}${SERVICE_CONFIG.noti.name}`
     ),
     PassportModule,
     HealthModule,

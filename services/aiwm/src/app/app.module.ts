@@ -17,15 +17,14 @@ import { AgentModule } from '../modules/agent/agent.module';
 import { ExecutionModule } from '../modules/execution/execution.module';
 import { QueueModule } from '../queues/queue.module';
 import { ProcessorsModule } from '../queues/processors.module';
+import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    MongooseModule.forRoot(
-      process.env['MONGODB_URI'] || 'mongodb://localhost:27017/hydra-aiwm'
-    ),
+    MongooseModule.forRoot(`${process.env.MONGODB_URI}/${COMMON_CONFIG.DatabaseNamePrefix}${SERVICE_CONFIG.aiwm.name}`),
     PassportModule,
     HealthModule,
     QueueModule,
