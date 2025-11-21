@@ -43,7 +43,12 @@ export class ModelController {
     @Body() createDto: CreateModelDto,
     @CurrentUser() context: RequestContext
   ) {
-    return this.modelService.create(createDto, context);
+    // Convert nodeId string to ObjectId if present
+    const createData: any = { ...createDto };
+    if (createDto.nodeId) {
+      createData.nodeId = new Types.ObjectId(createDto.nodeId);
+    }
+    return this.modelService.create(createData, context);
   }
 
   @Get()
@@ -85,5 +90,25 @@ export class ModelController {
     @CurrentUser() context: RequestContext
   ) {
     return this.modelService.softDelete(new Types.ObjectId(id) as any, context);
+  }
+
+  @Post(':id/activate')
+  @ApiOperation({ summary: 'Activate a model (change status to active)' })
+  @ApiUpdateErrors()
+  async activate(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.modelService.activateModel(new Types.ObjectId(id) as any, context);
+  }
+
+  @Post(':id/deactivate')
+  @ApiOperation({ summary: 'Deactivate a model (change status to inactive)' })
+  @ApiUpdateErrors()
+  async deactivate(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.modelService.deactivateModel(new Types.ObjectId(id) as any, context);
   }
 }

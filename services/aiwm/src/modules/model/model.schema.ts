@@ -13,34 +13,50 @@ export type ModelDocument = Model & Document;
 export class Model extends BaseSchema {
   // Core fields (both deployment types)
   @Prop({ required: true, maxlength: 100 })
-  name!: string; // e.g., "GPT-4 Turbo", "Llama-3-8B"
+  name!: string; // e.g., "GPT-4.1-2024-11-20", "Llama-3.1-8B", "Whisper-Large-v3" (version included in name)
 
-  @Prop({ required: true, enum: ['llm', 'embedding', 'diffusion', 'classifier'] })
-  type!: string;
+  @Prop({ required: true, enum: ['llm', 'vision', 'embedding', 'voice'] })
+  type!: string; // llm: text models, vision: image/OCR/generation, embedding: embeddings, voice: ASR/TTS
 
   @Prop({ required: true, maxlength: 500 })
   description!: string;
 
-  @Prop({ required: true })
-  version!: string; // e.g., "1.0", "2024-11-20"
-
   @Prop({ required: true, enum: ['self-hosted', 'api-based'] })
   deploymentType!: string; // Distinguishes between self-hosted GPU models and API-forwarded models
 
-  // Status lifecycle
+  // Status lifecycle - auto-initialized based on deploymentType in service layer
   @Prop({
     required: true,
-    enum: ['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'],
-    default: 'queued',
+    enum: [
+      'queued', 'downloading', 'downloaded', 'deploying', 'active', 'inactive',
+      'download-failed', 'deploy-failed', 'validating', 'invalid-credentials', 'error'
+    ],
   })
-  status!: string; // active: ready for inference, inactive: disabled, queued: waiting, downloading: from HF, deploying: to node, error: failed
+  status!: string;
+  /**
+   * Status transitions:
+   *
+   * Self-hosted models (initial: queued):
+   *   queued → downloading → downloaded → deploying → active
+   *      ↓          ↓            ↓
+   *   download-failed  deploy-failed  error
+   *
+   *   active ↔ inactive (user toggle via activate/deactivate APIs)
+   *
+   * API-based models (initial: validating):
+   *   validating → active
+   *       ↓
+   *   invalid-credentials
+   *
+   *   active ↔ inactive (user toggle via activate/deactivate APIs)
+   */
 
   // Self-hosted model fields (required if deploymentType = 'self-hosted')
   @Prop()
   repository?: string; // HuggingFace repo, e.g., "meta-llama/Llama-3-8B"
 
-  @Prop({ enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'] })
-  framework?: string; // Model framework
+  @Prop({ enum: ['vllm', 'triton'] })
+  framework?: string; // vllm: optimized for LLM inference, triton: multi-purpose (vision, voice, embedding)
 
   @Prop()
   fileName?: string; // Model file name
@@ -63,9 +79,6 @@ export class Model extends BaseSchema {
 
   @Prop()
   modelIdentifier?: string; // API model name, e.g., "gpt-4-turbo", "claude-3-sonnet-20240229"
-
-  @Prop({ default: true })
-  requiresApiKey?: boolean; // Does this model need API key?
 
   @Prop({ type: Object })
   apiConfig?: Record<string, string>; // API authentication and configuration

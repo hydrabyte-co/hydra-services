@@ -8,7 +8,6 @@ import {
   MaxLength,
   Min,
   ValidateIf,
-  IsBoolean,
   IsObject,
 } from 'class-validator';
 
@@ -19,8 +18,8 @@ import {
 export class CreateModelDto {
   // Core fields (both deployment types)
   @ApiProperty({
-    description: 'Model name',
-    example: 'GPT-4 Turbo',
+    description: 'Model name (include version in name)',
+    example: 'GPT-4.1-2024-11-20',
     maxLength: 100,
   })
   @IsString()
@@ -30,28 +29,21 @@ export class CreateModelDto {
 
   @ApiProperty({
     description: 'Model type',
-    enum: ['llm', 'embedding', 'diffusion', 'classifier'],
+    enum: ['llm', 'vision', 'embedding', 'voice'],
     example: 'llm',
   })
-  @IsEnum(['llm', 'embedding', 'diffusion', 'classifier'])
+  @IsEnum(['llm', 'vision', 'embedding', 'voice'])
   type!: string;
 
   @ApiProperty({
     description: 'Model description',
-    example: 'OpenAI GPT-4 Turbo with 128K context',
+    example: 'OpenAI GPT-4.1 with 128K context and vision capabilities',
     maxLength: 500,
   })
   @IsString()
   @MinLength(1)
   @MaxLength(500)
   description!: string;
-
-  @ApiProperty({
-    description: 'Model version',
-    example: '2024-11-20',
-  })
-  @IsString()
-  version!: string;
 
   @ApiProperty({
     description: 'Deployment type',
@@ -72,11 +64,11 @@ export class CreateModelDto {
 
   @ApiPropertyOptional({
     description: 'Model framework (required if deploymentType=self-hosted)',
-    enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'],
-    example: 'pytorch',
+    enum: ['vllm', 'triton'],
+    example: 'vllm',
   })
   @ValidateIf((o) => o.deploymentType === 'self-hosted')
-  @IsEnum(['pytorch', 'tensorflow', 'onnx', 'huggingface'])
+  @IsEnum(['vllm', 'triton'])
   framework?: string;
 
   @ApiPropertyOptional({
@@ -138,16 +130,7 @@ export class CreateModelDto {
   modelIdentifier?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether API key is required',
-    example: true,
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  requiresApiKey?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'API authentication and configuration (required if deploymentType=api-based and requiresApiKey=true)',
+    description: 'API authentication and configuration (required if deploymentType=api-based)',
     example: {
       apiKey: 'sk-...',
       organization: 'org-...',
@@ -159,16 +142,8 @@ export class CreateModelDto {
   @IsObject()
   apiConfig?: Record<string, string>;
 
+  // Status is auto-initialized: self-hosted → 'queued', api-based → 'validating'
   // Common optional fields
-  @ApiPropertyOptional({
-    description: 'Model status',
-    enum: ['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'],
-    example: 'queued',
-    default: 'queued',
-  })
-  @IsOptional()
-  @IsEnum(['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'])
-  status?: string;
 
   @ApiPropertyOptional({
     description: 'Access scope',
@@ -187,8 +162,8 @@ export class CreateModelDto {
  */
 export class UpdateModelDto {
   @ApiPropertyOptional({
-    description: 'Model name',
-    example: 'GPT-4 Turbo Updated',
+    description: 'Model name (include version in name)',
+    example: 'GPT-4.1-2024-12-01',
     maxLength: 100,
   })
   @IsOptional()
@@ -209,20 +184,12 @@ export class UpdateModelDto {
   description?: string;
 
   @ApiPropertyOptional({
-    description: 'Model version',
-    example: '2024-12-01',
-  })
-  @IsOptional()
-  @IsString()
-  version?: string;
-
-  @ApiPropertyOptional({
     description: 'Model type',
-    enum: ['llm', 'embedding', 'diffusion', 'classifier'],
+    enum: ['llm', 'vision', 'embedding', 'voice'],
     example: 'llm',
   })
   @IsOptional()
-  @IsEnum(['llm', 'embedding', 'diffusion', 'classifier'])
+  @IsEnum(['llm', 'vision', 'embedding', 'voice'])
   type?: string;
 
   @ApiPropertyOptional({
@@ -235,11 +202,11 @@ export class UpdateModelDto {
 
   @ApiPropertyOptional({
     description: 'Model framework',
-    enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'],
-    example: 'pytorch',
+    enum: ['vllm', 'triton'],
+    example: 'vllm',
   })
   @IsOptional()
-  @IsEnum(['pytorch', 'tensorflow', 'onnx', 'huggingface'])
+  @IsEnum(['vllm', 'triton'])
   framework?: string;
 
   @ApiPropertyOptional({
@@ -300,14 +267,6 @@ export class UpdateModelDto {
   modelIdentifier?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether API key is required',
-    example: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  requiresApiKey?: boolean;
-
-  @ApiPropertyOptional({
     description: 'API authentication and configuration',
     example: {
       apiKey: 'sk-updated...',
@@ -320,12 +279,18 @@ export class UpdateModelDto {
   apiConfig?: Record<string, string>;
 
   @ApiPropertyOptional({
-    description: 'Model status',
-    enum: ['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'],
+    description: 'Model status (use activate/deactivate APIs instead of direct update)',
+    enum: [
+      'queued', 'downloading', 'downloaded', 'deploying', 'active', 'inactive',
+      'download-failed', 'deploy-failed', 'validating', 'invalid-credentials', 'error'
+    ],
     example: 'active',
   })
   @IsOptional()
-  @IsEnum(['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'])
+  @IsEnum([
+    'queued', 'downloading', 'downloaded', 'deploying', 'active', 'inactive',
+    'download-failed', 'deploy-failed', 'validating', 'invalid-credentials', 'error'
+  ])
   status?: string;
 
   @ApiPropertyOptional({

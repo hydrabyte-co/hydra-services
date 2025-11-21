@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { BaseService } from '@hydrabyte/base';
@@ -18,6 +18,28 @@ export class ModelService extends BaseService<ModelEntity> {
     @InjectModel(Deployment.name) private readonly deploymentModel: Model<Deployment>,
   ) {
     super(modelModel);
+  }
+
+  /**
+   * Override create method to set initial status based on deploymentType
+   * - self-hosted models start with 'queued'
+   * - api-based models start with 'validating'
+   */
+  async create(
+    createData: Partial<ModelEntity>,
+    context: RequestContext
+  ): Promise<ModelEntity | null> {
+    // Set initial status based on deploymentType
+    if (!createData.status) {
+      if (createData.deploymentType === 'self-hosted') {
+        createData.status = 'queued';
+      } else if (createData.deploymentType === 'api-based') {
+        createData.status = 'validating';
+      }
+    }
+
+    // Call parent create method
+    return super.create(createData, context) as Promise<ModelEntity | null>;
   }
 
   /**
@@ -81,5 +103,66 @@ export class ModelService extends BaseService<ModelEntity> {
 
     // Call parent softDelete method
     return super.softDelete(id, context);
+  }
+
+  /**
+   * Activate a model (change status to 'active')
+   * Only allowed from specific statuses depending on deploymentType
+   */
+  async activateModel(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<ModelEntity | null> {
+    const model = await this.modelModel.findOne({
+      _id: id,
+      deletedAt: null,
+    }).lean().exec();
+
+    if (!model) {
+      throw new BadRequestException(`Model with ID ${id} not found`);
+    }
+
+    // Validate current status allows activation
+    const allowedStatuses = ['inactive', 'validating', 'downloaded', 'deploying'];
+    if (!allowedStatuses.includes(model.status)) {
+      throw new BadRequestException(
+        `Cannot activate model "${model.name}" from status '${model.status}'. Current status must be one of: ${allowedStatuses.join(', ')}`
+      );
+    }
+
+    // Update status to active
+    return this.update(id, { status: 'active' }, context);
+  }
+
+  /**
+   * Deactivate a model (change status to 'inactive')
+   * Prevents deactivating if model is in use by active deployments
+   */
+  async deactivateModel(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<ModelEntity | null> {
+    const model = await this.modelModel.findOne({
+      _id: id,
+      deletedAt: null,
+    }).lean().exec();
+
+    if (!model) {
+      throw new BadRequestException(`Model with ID ${id} not found`);
+    }
+
+    // Check if already inactive
+    if (model.status === 'inactive') {
+      throw new BadRequestException(`Model "${model.name}" is already inactive`);
+    }
+
+    // Validate model is not in use
+    const activeDeployments = await this.checkActiveDeploymentDependencies(id);
+    if (activeDeployments.length > 0) {
+      throw new ModelInUseException(activeDeployments, 'deactivate');
+    }
+
+    // Update status to inactive
+    return this.update(id, { status: 'inactive' }, context);
   }
 }
