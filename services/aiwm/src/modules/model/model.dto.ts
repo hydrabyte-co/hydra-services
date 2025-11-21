@@ -1,182 +1,339 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsNumber, IsArray, IsObject, Min, Max } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  MinLength,
+  MaxLength,
+  Min,
+  ValidateIf,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 
-export class ModelConfig {
-  @ApiProperty({ description: 'Maximum input size', example: 512 })
-  @IsNumber()
-  @Min(1)
-  inputSize: number;
-
-  @ApiProperty({ description: 'Maximum output size', example: 256 })
-  @IsNumber()
-  @Min(1)
-  outputSize: number;
-
-  @ApiProperty({ description: 'Required memory in GB', example: 4 })
-  @IsNumber()
-  @Min(1)
-  memoryRequired: number;
-
-  @ApiProperty({ description: 'Batch size', example: 1 })
-  @IsNumber()
-  @Min(1)
-  batchSize: number;
-
-  @ApiProperty({ description: 'Temperature for generation', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  temperature?: number;
-
-  @ApiProperty({ description: 'Top-k sampling parameter', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  topK?: number;
-
-  @ApiProperty({ description: 'Top-p sampling parameter', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  topP?: number;
-}
-
+/**
+ * DTO for creating a new model
+ * MongoDB _id will be used as the primary identifier
+ */
 export class CreateModelDto {
-  @ApiProperty({ description: 'Unique model identifier' })
+  // Core fields (both deployment types)
+  @ApiProperty({
+    description: 'Model name',
+    example: 'GPT-4 Turbo',
+    maxLength: 100,
+  })
   @IsString()
-  modelId: string;
+  @MinLength(1)
+  @MaxLength(100)
+  name!: string;
 
-  @ApiProperty({ description: 'Model name' })
+  @ApiProperty({
+    description: 'Model type',
+    enum: ['llm', 'embedding', 'diffusion', 'classifier'],
+    example: 'llm',
+  })
+  @IsEnum(['llm', 'embedding', 'diffusion', 'classifier'])
+  type!: string;
+
+  @ApiProperty({
+    description: 'Model description',
+    example: 'OpenAI GPT-4 Turbo with 128K context',
+    maxLength: 500,
+  })
   @IsString()
-  name: string;
+  @MinLength(1)
+  @MaxLength(500)
+  description!: string;
 
-  @ApiProperty({ description: 'Model description' })
+  @ApiProperty({
+    description: 'Model version',
+    example: '2024-11-20',
+  })
   @IsString()
-  description: string;
+  version!: string;
 
-  @ApiProperty({ description: 'Model version', example: '1.0.0' })
+  @ApiProperty({
+    description: 'Deployment type',
+    enum: ['self-hosted', 'api-based'],
+    example: 'api-based',
+  })
+  @IsEnum(['self-hosted', 'api-based'])
+  deploymentType!: string;
+
+  // Self-hosted specific fields (conditional validation)
+  @ApiPropertyOptional({
+    description: 'HuggingFace repository (required if deploymentType=self-hosted)',
+    example: 'meta-llama/Llama-3-8B',
+  })
+  @ValidateIf((o) => o.deploymentType === 'self-hosted')
   @IsString()
-  version: string;
+  repository?: string;
 
-  @ApiProperty({ description: 'Model type', enum: ['llm', 'diffusion', 'embedding', 'classifier'] })
-  @IsEnum(['llm', 'diffusion', 'embedding', 'classifier'])
-  type: string;
-
-  @ApiProperty({ description: 'Model framework', enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'] })
+  @ApiPropertyOptional({
+    description: 'Model framework (required if deploymentType=self-hosted)',
+    enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'],
+    example: 'pytorch',
+  })
+  @ValidateIf((o) => o.deploymentType === 'self-hosted')
   @IsEnum(['pytorch', 'tensorflow', 'onnx', 'huggingface'])
-  framework: string;
+  framework?: string;
 
-  @ApiProperty({ description: 'Repository URL' })
+  @ApiPropertyOptional({
+    description: 'Model file name (required if deploymentType=self-hosted)',
+    example: 'model.safetensors',
+  })
+  @ValidateIf((o) => o.deploymentType === 'self-hosted')
   @IsString()
-  repository: string;
+  fileName?: string;
 
-  @ApiProperty({ description: 'Model file name' })
-  @IsString()
-  fileName: string;
-
-  @ApiProperty({ description: 'File size in bytes' })
+  @ApiPropertyOptional({
+    description: 'File size in bytes (required if deploymentType=self-hosted)',
+    example: 8589934592,
+  })
+  @ValidateIf((o) => o.deploymentType === 'self-hosted')
   @IsNumber()
   @Min(1)
-  fileSize: number;
+  fileSize?: number;
 
-  @ApiProperty({ description: 'Node ID where model is stored' })
-  @IsString()
-  nodeId: string;
-
-  @ApiProperty({ description: 'Model tags', required: false, type: [String] })
+  @ApiPropertyOptional({
+    description: 'Download path for model files',
+    example: '/models/llama-3-8b',
+  })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
+  @IsString()
+  downloadPath?: string;
 
-  @ApiProperty({ description: 'Model configuration', required: true, type: ModelConfig })
+  @ApiPropertyOptional({
+    description: 'GPU node ID for deployment',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @IsOptional()
+  @IsString()
+  nodeId?: string;
+
+  // API-based specific fields (conditional validation)
+  @ApiPropertyOptional({
+    description: 'AI provider (required if deploymentType=api-based)',
+    example: 'openai',
+  })
+  @ValidateIf((o) => o.deploymentType === 'api-based')
+  @IsString()
+  provider?: string;
+
+  @ApiPropertyOptional({
+    description: 'API endpoint URL (required if deploymentType=api-based)',
+    example: 'https://api.openai.com/v1',
+  })
+  @ValidateIf((o) => o.deploymentType === 'api-based')
+  @IsString()
+  apiEndpoint?: string;
+
+  @ApiPropertyOptional({
+    description: 'Model identifier in provider API (required if deploymentType=api-based)',
+    example: 'gpt-4-turbo-2024-11-20',
+  })
+  @ValidateIf((o) => o.deploymentType === 'api-based')
+  @IsString()
+  modelIdentifier?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether API key is required',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  requiresApiKey?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'API authentication and configuration (required if deploymentType=api-based and requiresApiKey=true)',
+    example: {
+      apiKey: 'sk-...',
+      organization: 'org-...',
+      customHeader: 'value',
+      rateLimit: '100'
+    },
+  })
+  @IsOptional()
   @IsObject()
-  config: ModelConfig;
+  apiConfig?: Record<string, string>;
+
+  // Common optional fields
+  @ApiPropertyOptional({
+    description: 'Model status',
+    enum: ['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'],
+    example: 'queued',
+    default: 'queued',
+  })
+  @IsOptional()
+  @IsEnum(['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'])
+  status?: string;
+
+  @ApiPropertyOptional({
+    description: 'Access scope',
+    enum: ['public', 'org', 'private'],
+    example: 'public',
+    default: 'public',
+  })
+  @IsOptional()
+  @IsEnum(['public', 'org', 'private'])
+  scope?: string;
 }
 
+/**
+ * DTO for updating an existing model
+ * All fields are optional
+ */
 export class UpdateModelDto {
-  @ApiProperty({ description: 'Model name', required: false })
+  @ApiPropertyOptional({
+    description: 'Model name',
+    example: 'GPT-4 Turbo Updated',
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
+  @MinLength(1)
+  @MaxLength(100)
   name?: string;
 
-  @ApiProperty({ description: 'Model description', required: false })
+  @ApiPropertyOptional({
+    description: 'Model description',
+    example: 'Updated description',
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
+  @MinLength(1)
+  @MaxLength(500)
   description?: string;
 
-  @ApiProperty({ description: 'Model version', required: false })
+  @ApiPropertyOptional({
+    description: 'Model version',
+    example: '2024-12-01',
+  })
   @IsOptional()
   @IsString()
   version?: string;
 
-  @ApiProperty({ description: 'Model type', enum: ['llm', 'diffusion', 'embedding', 'classifier'], required: false })
+  @ApiPropertyOptional({
+    description: 'Model type',
+    enum: ['llm', 'embedding', 'diffusion', 'classifier'],
+    example: 'llm',
+  })
   @IsOptional()
-  @IsEnum(['llm', 'diffusion', 'embedding', 'classifier'])
+  @IsEnum(['llm', 'embedding', 'diffusion', 'classifier'])
   type?: string;
 
-  @ApiProperty({ description: 'Model framework', enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'], required: false })
-  @IsOptional()
-  @IsEnum(['pytorch', 'tensorflow', 'onnx', 'huggingface'])
-  framework?: string;
-
-  @ApiProperty({ description: 'Repository URL', required: false })
+  @ApiPropertyOptional({
+    description: 'HuggingFace repository',
+    example: 'meta-llama/Llama-3.1-8B-Instruct',
+  })
   @IsOptional()
   @IsString()
   repository?: string;
 
-  @ApiProperty({ description: 'Model file name', required: false })
+  @ApiPropertyOptional({
+    description: 'Model framework',
+    enum: ['pytorch', 'tensorflow', 'onnx', 'huggingface'],
+    example: 'pytorch',
+  })
+  @IsOptional()
+  @IsEnum(['pytorch', 'tensorflow', 'onnx', 'huggingface'])
+  framework?: string;
+
+  @ApiPropertyOptional({
+    description: 'Model file name',
+    example: 'model.safetensors',
+  })
   @IsOptional()
   @IsString()
   fileName?: string;
 
-  @ApiProperty({ description: 'File size in bytes', required: false })
+  @ApiPropertyOptional({
+    description: 'File size in bytes',
+    example: 8589934592,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
   fileSize?: number;
 
-  @ApiProperty({ description: 'Download status', required: false })
-  @IsOptional()
-  @IsBoolean()
-  isDownloaded?: boolean;
-
-  @ApiProperty({ description: 'Download path', required: false })
+  @ApiPropertyOptional({
+    description: 'Download path',
+    example: '/models/llama-3-8b-updated',
+  })
   @IsOptional()
   @IsString()
   downloadPath?: string;
 
-  @ApiProperty({ description: 'Active status', required: false })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-
-  @ApiProperty({ description: 'Model status', enum: ['queued', 'downloading', 'downloaded', 'failed'], required: false })
-  @IsOptional()
-  @IsEnum(['queued', 'downloading', 'downloaded', 'failed'])
-  status?: string;
-
-  @ApiProperty({ description: 'Download progress percentage', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  downloadProgress?: number;
-
-  @ApiProperty({ description: 'Node ID', required: false })
+  @ApiPropertyOptional({
+    description: 'GPU node ID',
+    example: '507f1f77bcf86cd799439011',
+  })
   @IsOptional()
   @IsString()
   nodeId?: string;
 
-  @ApiProperty({ description: 'Model tags', required: false, type: [String] })
+  @ApiPropertyOptional({
+    description: 'AI provider',
+    example: 'openai',
+  })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
+  @IsString()
+  provider?: string;
 
-  @ApiProperty({ description: 'Model configuration', required: false, type: ModelConfig })
+  @ApiPropertyOptional({
+    description: 'API endpoint URL',
+    example: 'https://api.openai.com/v2',
+  })
+  @IsOptional()
+  @IsString()
+  apiEndpoint?: string;
+
+  @ApiPropertyOptional({
+    description: 'Model identifier in provider API',
+    example: 'gpt-4-turbo-2024-12-01',
+  })
+  @IsOptional()
+  @IsString()
+  modelIdentifier?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether API key is required',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  requiresApiKey?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'API authentication and configuration',
+    example: {
+      apiKey: 'sk-updated...',
+      organization: 'org-updated...',
+      customHeader: 'new-value'
+    },
+  })
   @IsOptional()
   @IsObject()
-  config?: ModelConfig;
+  apiConfig?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: 'Model status',
+    enum: ['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'],
+    example: 'active',
+  })
+  @IsOptional()
+  @IsEnum(['active', 'inactive', 'queued', 'downloading', 'deploying', 'error'])
+  status?: string;
+
+  @ApiPropertyOptional({
+    description: 'Access scope',
+    enum: ['public', 'org', 'private'],
+    example: 'org',
+  })
+  @IsOptional()
+  @IsEnum(['public', 'org', 'private'])
+  scope?: string;
 }

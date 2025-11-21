@@ -1,200 +1,192 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsNumber, IsObject, IsArray, Min, ValidateNested, IsDate } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  MinLength,
+  MaxLength,
+  Min,
+  Max,
+  IsDateString,
+} from 'class-validator';
 
-export class ResourceRequirements {
-  @ApiProperty({ description: 'CPU cores required', example: 2 })
-  @IsNumber()
-  @Min(1)
-  cpu: number;
-
-  @ApiProperty({ description: 'Memory in GB required', example: 4 })
-  @IsNumber()
-  @Min(1)
-  memory: number;
-
-  @ApiProperty({ description: 'GPU count required', example: 1 })
-  @IsNumber()
-  @Min(0)
-  gpu: number;
-
-  @ApiProperty({ description: 'Storage in GB required', example: 10 })
-  @IsNumber()
-  @Min(1)
-  storage: number;
-}
-
-export class DeploymentConfig {
-  @ApiProperty({ description: 'Maximum tokens for generation', example: 1000 })
-  @IsNumber()
-  @Min(1)
-  maxTokens: number;
-
-  @ApiProperty({ description: 'Temperature for generation', example: 0.7 })
-  @IsNumber()
-  @Min(0)
-  temperature: number;
-
-  @ApiProperty({ description: 'Timeout in seconds', example: 30 })
-  @IsNumber()
-  @Min(1)
-  timeout: number;
-
-  @ApiProperty({ description: 'Concurrent requests', example: 5 })
-  @IsNumber()
-  @Min(1)
-  concurrency: number;
-}
-
-export class DeploymentEvent {
-  @ApiProperty({ description: 'Event timestamp' })
-  @IsDate()
-  timestamp: Date;
-
-  @ApiProperty({ description: 'Event type', enum: ['info', 'warning', 'error'] })
-  @IsEnum(['info', 'warning', 'error'])
-  event: string;
-
-  @ApiProperty({ description: 'Event message' })
-  @IsString()
-  message: string;
-
-  @ApiProperty({ description: 'Event severity', enum: ['info', 'warning', 'error'] })
-  @IsEnum(['info', 'warning', 'error'])
-  severity: string;
-}
-
+/**
+ * DTO for creating a new deployment
+ * MongoDB _id will be used as the primary identifier
+ */
 export class CreateDeploymentDto {
-  @ApiProperty({ description: 'Unique deployment identifier' })
+  @ApiProperty({
+    description: 'Deployment name',
+    example: 'Llama 3.1 8B - Production',
+    maxLength: 100,
+  })
   @IsString()
-  deploymentId: string;
+  @MinLength(1)
+  @MaxLength(100)
+  name!: string;
 
-  @ApiProperty({ description: 'Deployment name' })
+  @ApiProperty({
+    description: 'Deployment description',
+    example: 'Production deployment of Llama 3.1 8B model on GPU node 1',
+    maxLength: 500,
+  })
   @IsString()
-  name: string;
+  @MinLength(1)
+  @MaxLength(500)
+  description!: string;
 
-  @ApiProperty({ description: 'Deployment description' })
+  @ApiProperty({
+    description: 'Model ID to deploy (MongoDB ObjectId)',
+    example: '507f1f77bcf86cd799439011',
+  })
   @IsString()
-  description: string;
+  modelId!: string;
 
-  @ApiProperty({ description: 'Environment', enum: ['development', 'staging', 'production'] })
-  @IsEnum(['development', 'staging', 'production'])
-  environment: string;
-
-  @ApiProperty({ description: 'Model ID to deploy' })
+  @ApiProperty({
+    description: 'Node ID to deploy on (MongoDB ObjectId)',
+    example: '507f1f77bcf86cd799439012',
+  })
   @IsString()
-  modelId: string;
+  nodeId!: string;
 
-  @ApiProperty({ description: 'Node ID to deploy on' })
-  @IsString()
-  nodeId: string;
-
-  @ApiProperty({ description: 'Deployment type', enum: ['single', 'distributed', 'batch'] })
-  @IsEnum(['single', 'distributed', 'batch'])
-  deploymentType: string;
-
-  @ApiProperty({ description: 'Number of replicas', default: 1 })
-  @IsNumber()
-  @Min(1)
-  replicas?: number;
-
-  @ApiProperty({ description: 'Hardware profile', enum: ['cpu', 'gpu', 'multi-gpu'], default: 'cpu' })
-  @IsEnum(['cpu', 'gpu', 'multi-gpu'])
-  hardwareProfile?: string;
-}
-
-export class UpdateDeploymentDto {
-  @ApiProperty({ description: 'Deployment name', required: false })
+  // Optional fields for advanced configuration
+  @ApiPropertyOptional({
+    description: 'GPU device IDs to use',
+    example: '0',
+  })
   @IsOptional()
   @IsString()
+  gpuDevice?: string;
+
+  @ApiPropertyOptional({
+    description: 'Docker image to use for deployment',
+    example: 'nvcr.io/nvidia/tritonserver:24.01',
+  })
+  @IsOptional()
+  @IsString()
+  dockerImage?: string;
+
+  @ApiPropertyOptional({
+    description: 'Container port (1024-65535)',
+    example: 8000,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1024)
+  @Max(65535)
+  containerPort?: number;
+
+  @ApiPropertyOptional({
+    description: 'Deployment status',
+    enum: ['queued', 'deploying', 'running', 'stopping', 'stopped', 'failed', 'error'],
+    example: 'queued',
+    default: 'queued',
+  })
+  @IsOptional()
+  @IsEnum(['queued', 'deploying', 'running', 'stopping', 'stopped', 'failed', 'error'])
+  status?: string;
+}
+
+/**
+ * DTO for updating an existing deployment
+ * All fields are optional
+ */
+export class UpdateDeploymentDto {
+  @ApiPropertyOptional({
+    description: 'Deployment name',
+    example: 'Llama 3.1 8B - Production Updated',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
   name?: string;
 
-  @ApiProperty({ description: 'Deployment description', required: false })
+  @ApiPropertyOptional({
+    description: 'Deployment description',
+    example: 'Updated description',
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
+  @MinLength(1)
+  @MaxLength(500)
   description?: string;
 
-  @ApiProperty({ description: 'Environment', enum: ['development', 'staging', 'production'], required: false })
+  @ApiPropertyOptional({
+    description: 'Deployment status',
+    enum: ['queued', 'deploying', 'running', 'stopping', 'stopped', 'failed', 'error'],
+    example: 'running',
+  })
   @IsOptional()
-  @IsEnum(['development', 'staging', 'production'])
-  environment?: string;
-
-  @ApiProperty({ description: 'Status', enum: ['queued', 'deploying', 'running', 'stopped', 'failed'], required: false })
-  @IsOptional()
-  @IsEnum(['queued', 'deploying', 'running', 'stopped', 'failed'])
+  @IsEnum(['queued', 'deploying', 'running', 'stopping', 'stopped', 'failed', 'error'])
   status?: string;
 
-  @ApiProperty({ description: 'Model ID to deploy', required: false })
+  @ApiPropertyOptional({
+    description: 'Container ID',
+    example: 'abc123def456',
+  })
   @IsOptional()
   @IsString()
-  modelId?: string;
+  containerId?: string;
 
-  @ApiProperty({ description: 'Node ID to deploy on', required: false })
-  @IsOptional()
-  @IsString()
-  nodeId?: string;
-
-  @ApiProperty({ description: 'Deployment type', enum: ['single', 'distributed', 'batch'], required: false })
-  @IsOptional()
-  @IsEnum(['single', 'distributed', 'batch'])
-  deploymentType?: string;
-
-  @ApiProperty({ description: 'Number of replicas', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  replicas?: number;
-
-  @ApiProperty({ description: 'Hardware profile', enum: ['cpu', 'gpu', 'multi-gpu'], required: false })
-  @IsOptional()
-  @IsEnum(['cpu', 'gpu', 'multi-gpu'])
-  hardwareProfile?: string;
-
-  @ApiProperty({ description: 'Running status', required: false })
-  @IsOptional()
-  @IsBoolean()
-  isRunning?: boolean;
-
-  @ApiProperty({ description: 'Container name', required: false })
+  @ApiPropertyOptional({
+    description: 'Container name',
+    example: 'deployment-507f1f77bcf86cd799439011',
+  })
   @IsOptional()
   @IsString()
   containerName?: string;
 
-  @ApiProperty({ description: 'Container port', required: false })
+  @ApiPropertyOptional({
+    description: 'Docker image used',
+    example: 'nvcr.io/nvidia/tritonserver:24.01',
+  })
+  @IsOptional()
+  @IsString()
+  dockerImage?: string;
+
+  @ApiPropertyOptional({
+    description: 'Container port',
+    example: 8000,
+  })
   @IsOptional()
   @IsNumber()
+  @Min(1024)
+  @Max(65535)
   containerPort?: number;
 
-  @ApiProperty({ description: 'Endpoint URL', required: false })
+  @ApiPropertyOptional({
+    description: 'GPU device IDs',
+    example: '0,1',
+  })
+  @IsOptional()
+  @IsString()
+  gpuDevice?: string;
+
+  @ApiPropertyOptional({
+    description: 'API endpoint URL',
+    example: 'http://192.168.1.100:8000/v1/models/llama-3.1-8b',
+  })
   @IsOptional()
   @IsString()
   endpoint?: string;
 
-  @ApiProperty({ description: 'Total inferences', required: false })
+  @ApiPropertyOptional({
+    description: 'Error message',
+    example: 'Failed to allocate GPU memory',
+  })
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  totalInferences?: number;
+  @IsString()
+  errorMessage?: string;
 
-  @ApiProperty({ description: 'Average latency in ms', required: false })
+  @ApiPropertyOptional({
+    description: 'Last health check timestamp',
+    example: '2025-01-20T10:30:00.000Z',
+  })
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  averageLatency?: number;
-
-  @ApiProperty({ description: 'Uptime in seconds', required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  uptime?: number;
-
-  @ApiProperty({ description: 'Last health check', required: false })
-  @IsOptional()
-  @IsDate()
+  @IsDateString()
   lastHealthCheck?: Date;
-
-  @ApiProperty({ description: 'Deployment events', required: false, type: [DeploymentEvent] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  events?: DeploymentEvent[];
 }

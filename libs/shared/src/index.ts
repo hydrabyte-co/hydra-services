@@ -15,3 +15,5 @@ export * from './lib/dto/websocket';
 
 // Exceptions
 export * from './lib/exceptions/instruction-in-use.exception';
+export * from './lib/exceptions/tool-in-use.exception';
+export * from './lib/exceptions/model-in-use.exception';

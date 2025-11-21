@@ -12,6 +12,7 @@ import { AppService } from './app.service';
 import { NodeModule } from '../modules/node/node.module';
 import { ModelModule } from '../modules/model/model.module';
 import { InstructionModule } from '../modules/instruction/instruction.module';
+import { ToolModule } from '../modules/tool/tool.module';
 import { DeploymentModule } from '../modules/deployment/deployment.module';
 import { AgentModule } from '../modules/agent/agent.module';
 import { ExecutionModule } from '../modules/execution/execution.module';
@@ -31,6 +32,7 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
     NodeModule,
     ModelModule,
     InstructionModule,
+    ToolModule,
     DeploymentModule,
     AgentModule,
     ExecutionModule,

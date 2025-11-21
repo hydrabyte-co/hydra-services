@@ -10,6 +10,10 @@ export interface FindManyResult<T> {
     limit: number;
     total: number;
   };
+  statistics: {
+    total: number;
+    [key: string]: number;
+  };
 }
 export interface FindManyOptions {
   filter?: Record<string, unknown>;
@@ -117,7 +121,7 @@ export class BaseService<Entity> {
 
     this.logger.info('Entities retrieved', { count: data.length, total, page, userId: context.userId });
 
-    return { data, pagination: { page, limit, total } };
+    return { data, pagination: { page, limit, total }, statistics: { total } };
   }
 
   async findById(

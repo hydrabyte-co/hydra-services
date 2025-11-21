@@ -1,82 +1,82 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { BaseSchema } from '@hydrabyte/base';
-import { Model, ModelDocument } from '../model/model.schema';
-import { Node, NodeDocument } from '../node/node.schema';
 
 export type DeploymentDocument = Deployment & Document;
 
+/**
+ * Deployment - Model Deployment Records
+ * Simplified MVP version for deploying self-hosted models on GPU nodes
+ * Uses MongoDB _id as the primary identifier
+ */
 @Schema({ timestamps: true })
 export class Deployment extends BaseSchema {
-  @Prop({ required: true, unique: true })
-  deploymentId: string;
+  // Core fields
+  @Prop({ required: true, maxlength: 100 })
+  name!: string; // e.g., "Llama 3.1 8B - Production"
 
-  @Prop({ required: true })
-  name: string;
+  @Prop({ required: true, maxlength: 500 })
+  description!: string;
 
-  @Prop({ required: true })
-  description: string;
+  // References
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Model', required: true })
+  modelId!: MongooseSchema.Types.ObjectId; // Model to deploy
 
-  @Prop({ required: true })
-  environment: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Node', required: true })
+  nodeId!: MongooseSchema.Types.ObjectId; // GPU node for deployment
 
-  @Prop({ required: true })
-  status: string;
+  // Status lifecycle
+  @Prop({
+    required: true,
+    enum: ['queued', 'deploying', 'running', 'stopping', 'stopped', 'failed', 'error'],
+    default: 'queued',
+  })
+  status!: string;
+  // 'queued': Waiting for deployment
+  // 'deploying': Currently being deployed to node
+  // 'running': Successfully deployed and running
+  // 'stopping': Being stopped
+  // 'stopped': Stopped by user
+  // 'failed': Deployment failed
+  // 'error': Runtime error
 
-  @Prop({ required: true })
-  modelId: string;
-
-  @Prop({ required: true })
-  nodeId: string;
-
-  @Prop({ required: true })
-  deploymentType: string;
-
-  @Prop({ default: 0 })
-  replicas: number;
-
-  @Prop({ default: 'cpu' })
-  hardwareProfile: string;
-
-  
-  @Prop({ default: false })
-  isRunning: boolean;
+  // Container info (set after deployment)
+  @Prop()
+  containerId?: string; // Docker container ID
 
   @Prop()
-  containerName?: string;
+  containerName?: string; // Container name, e.g., "deployment-{_id}"
 
   @Prop()
-  containerPort?: number;
+  dockerImage?: string; // Docker image used, e.g., "nvcr.io/nvidia/tritonserver:24.01"
 
   @Prop()
-    endpoint?: string;
+  containerPort?: number; // Container port (1024-65535)
 
-  
-  @Prop({ default: 0 })
-  totalInferences: number;
-
-  @Prop({ default: 0 })
-  averageLatency: number;
-
-  @Prop({ default: 0 })
-  uptime: number;
-
+  // GPU allocation
   @Prop()
-  lastHealthCheck?: Date;
+  gpuDevice?: string; // GPU device IDs, e.g., "0" or "0,1" for multi-GPU
 
-  @Prop({ default: [] })
-  events: Array<{
-    timestamp: Date;
-    event: string;
-    message: string;
-    severity: 'info' | 'warning' | 'error';
-  }>;
+  // Networking
+  @Prop()
+  endpoint?: string; // API endpoint URL, e.g., "http://node-ip:port/v1/models/{model}"
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Model' })
-  model: ModelDocument;
+  // Error handling
+  @Prop()
+  errorMessage?: string; // Error details if status = 'failed' or 'error'
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Node' })
-  node: NodeDocument;
+  // Health monitoring
+  @Prop()
+  lastHealthCheck?: Date; // Last successful health check
+
+  // BaseSchema provides: owner, createdBy, updatedBy, deletedAt, metadata, timestamps
+  // _id is automatically provided by MongoDB
 }
 
 export const DeploymentSchema = SchemaFactory.createForClass(Deployment);
+
+// Indexes for performance
+DeploymentSchema.index({ status: 1 });
+DeploymentSchema.index({ modelId: 1 });
+DeploymentSchema.index({ nodeId: 1 });
+DeploymentSchema.index({ name: 'text', description: 'text' }); // Text search

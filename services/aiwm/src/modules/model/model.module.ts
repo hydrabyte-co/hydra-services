@@ -3,12 +3,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ModelController } from './model.controller';
 import { ModelService } from './model.service';
 import { Model, ModelSchema } from './model.schema';
-import { QueueModule } from '../../queues/queue.module';
+import { Deployment, DeploymentSchema } from '../deployment/deployment.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Model.name, schema: ModelSchema }]),
-    QueueModule,
+    MongooseModule.forFeature([
+      { name: Model.name, schema: ModelSchema },
+      { name: Deployment.name, schema: DeploymentSchema },
+    ]),
   ],
   controllers: [ModelController],
   providers: [ModelService],

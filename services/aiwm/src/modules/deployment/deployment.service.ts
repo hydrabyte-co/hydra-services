@@ -1,196 +1,240 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { BaseService } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
-import { Deployment, DeploymentDocument } from './deployment.schema';
-import { CreateDeploymentDto, UpdateDeploymentDto } from './deployment.dto';
-import { ModelService } from '../model/model.service';
-import { NodeService } from '../node/node.service';
-import { DeploymentProducer } from '../../queues/producers/deployment.producer';
+import { Deployment } from './deployment.schema';
+import { Model as ModelEntity } from '../model/model.schema';
+import { Node } from '../node/node.schema';
 
+/**
+ * DeploymentService
+ * Manages deployment entities for deploying models on GPU nodes
+ * Extends BaseService for automatic CRUD operations
+ */
 @Injectable()
 export class DeploymentService extends BaseService<Deployment> {
-
   constructor(
-    @InjectModel(Deployment.name) deploymentModel: Model<DeploymentDocument>,
-    private readonly modelService: ModelService,
-    private readonly nodeService: NodeService,
-    private readonly deploymentProducer: DeploymentProducer,
+    @InjectModel(Deployment.name) private deploymentModel: Model<Deployment>,
+    @InjectModel(ModelEntity.name) private readonly modelModel: Model<ModelEntity>,
+    @InjectModel(Node.name) private readonly nodeModel: Model<Node>,
   ) {
-    super(deploymentModel as any);
+    super(deploymentModel);
   }
 
-  async create(createDeploymentDto: CreateDeploymentDto, context: RequestContext): Promise<Deployment> {
-    // Validate model exists
-    const model = await this.modelService.findById(new Types.ObjectId(createDeploymentDto.modelId) as any, context);
+  /**
+   * Override create method to validate model and node before deployment
+   * - Model must exist and status = 'active'
+   * - Node must exist and status = 'online'
+   */
+  async create(
+    createData: Partial<Deployment>,
+    context: RequestContext
+  ): Promise<Deployment | null> {
+    const { modelId, nodeId } = createData;
+
+    if (!modelId || !nodeId) {
+      throw new BadRequestException('modelId and nodeId are required');
+    }
+
+    // Validate Model exists and is active
+    const model = await this.modelModel.findOne({
+      _id: modelId,
+      deletedAt: null,
+    }).lean().exec();
+
     if (!model) {
-      throw new Error(`Model with ID ${createDeploymentDto.modelId} not found`);
+      throw new BadRequestException(`Model with ID ${modelId} not found`);
     }
 
-    // Validate node exists
-    const node = await this.nodeService.findById(new Types.ObjectId(createDeploymentDto.nodeId) as any, context);
+    if (model.status !== 'active') {
+      throw new BadRequestException(
+        `Model "${model.name}" must be in 'active' status to create deployment. Current status: ${model.status}`
+      );
+    }
+
+    // Validate Node exists and is online
+    const node = await this.nodeModel.findOne({
+      _id: nodeId,
+      deletedAt: null,
+    }).lean().exec();
+
     if (!node) {
-      throw new Error(`Node with ID ${createDeploymentDto.nodeId} not found`);
+      throw new BadRequestException(`Node with ID ${nodeId} not found`);
     }
 
-    // Check node capacity
     if (node.status !== 'online') {
-      throw new Error(`Node ${createDeploymentDto.nodeId} is not online`);
+      throw new BadRequestException(
+        `Node "${node.name}" must be 'online' to create deployment. Current status: ${node.status}`
+      );
     }
 
-    // BaseService handles permissions, ownership, save, and generic logging
-    const saved = await super.create(createDeploymentDto, context);
-
-    // Business-specific logging with details
-    this.logger.info('Deployment created with details', {
-      id: (saved as any)._id,
-      deploymentId: saved.deploymentId,
-      name: saved.name,
-      environment: saved.environment,
-      deploymentType: saved.deploymentType,
-      modelId: saved.modelId,
-      nodeId: saved.nodeId,
-      replicas: saved.replicas,
-      createdBy: context.userId
-    });
-
-    // Emit event to queue for deployment process
-    await this.deploymentProducer.emitDeploymentCreated(saved);
-
-    return saved as Deployment;
-  }
-
-  async updateDeployment(id: string, updateDeploymentDto: UpdateDeploymentDto, context: RequestContext): Promise<Deployment | null> {
-    // Convert string to ObjectId for BaseService
-    const objectId = new Types.ObjectId(id);
-    const updated = await super.update(objectId as any, updateDeploymentDto as any, context);
-
-    if (updated) {
-      // Business-specific logging with details
-      this.logger.info('Deployment updated with details', {
-        id: (updated as any)._id,
-        deploymentId: updated.deploymentId,
-        name: updated.name,
-        environment: updated.environment,
-        status: updated.status,
-        deploymentType: updated.deploymentType,
-        modelId: updated.modelId,
-        nodeId: updated.nodeId,
-        replicas: updated.replicas,
-        isRunning: updated.isRunning,
-        totalInferences: updated.totalInferences,
-        updatedBy: context.userId
-      });
-
-      // Emit event to queue
-      await this.deploymentProducer.emitDeploymentUpdated(updated);
+    // Set default status to 'queued' if not provided
+    if (!createData.status) {
+      createData.status = 'queued';
     }
 
-    return updated as Deployment;
+    // Call parent create method
+    const deployment = await super.create(createData, context);
+
+    // TODO: Emit event to queue for deployment process
+    // await this.deploymentProducer.emitDeploymentCreated(deployment);
+
+    return deployment as Deployment;
   }
 
-  async remove(id: string, context: RequestContext): Promise<void> {
+  /**
+   * Override update method to validate status transitions
+   * Prevents invalid status changes
+   */
+  async update(
+    id: ObjectId,
+    updateData: Partial<Deployment>,
+    context: RequestContext
+  ): Promise<Deployment | null> {
+    // If status is being changed, validate the transition
+    if (updateData.status) {
+      const currentDeployment = await this.deploymentModel.findOne({
+        _id: id,
+        deletedAt: null,
+      }).lean().exec();
+
+      if (!currentDeployment) {
+        throw new BadRequestException(`Deployment with ID ${id} not found`);
+      }
+
+      // Validate status transition
+      this.validateStatusTransition(currentDeployment.status, updateData.status);
+    }
+
+    // Call parent update method
+    const updated = await super.update(id, updateData, context);
+
+    // TODO: Emit event to queue for status change handling
+    // if (updateData.status) {
+    //   await this.deploymentProducer.emitDeploymentStatusChanged(updated);
+    // }
+
+    return updated;
+  }
+
+  /**
+   * Override softDelete method to validate deployment can be deleted
+   * Prevents deleting deployments that are currently running
+   */
+  async softDelete(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<Deployment | null> {
+    const deployment = await this.deploymentModel.findOne({
+      _id: id,
+      deletedAt: null,
+    }).lean().exec();
+
+    if (!deployment) {
+      throw new BadRequestException(`Deployment with ID ${id} not found`);
+    }
+
     // Check if deployment is running
-    const deployment = await this.findById(new Types.ObjectId(id) as any, context);
-    if (deployment && deployment.isRunning) {
-      throw new Error(`Cannot remove running deployment ${deployment.deploymentId}. Please stop it first.`);
+    if (deployment.status === 'running' || deployment.status === 'deploying') {
+      throw new ConflictException(
+        `Cannot delete deployment "${deployment.name}". It is currently in '${deployment.status}' status. Please stop it first.`
+      );
     }
 
-    // BaseService handles soft delete, permissions, and generic logging
-    const result = await super.softDelete(new Types.ObjectId(id) as any, context);
+    // Call parent softDelete method
+    const deleted = await super.softDelete(id, context);
 
-    if (result) {
-      // Business-specific logging
-      this.logger.info('Deployment soft deleted with details', {
-        id,
-        deletedBy: context.userId
-      });
+    // TODO: Emit event to queue for cleanup
+    // await this.deploymentProducer.emitDeploymentDeleted(id);
 
-      // Emit event to queue
-      await this.deploymentProducer.emitDeploymentDeleted(id);
+    return deleted;
+  }
+
+  /**
+   * Validate status transition is allowed
+   * @param currentStatus - Current deployment status
+   * @param newStatus - New status to transition to
+   */
+  private validateStatusTransition(currentStatus: string, newStatus: string): void {
+    const validTransitions: Record<string, string[]> = {
+      'queued': ['deploying', 'failed', 'stopped'],
+      'deploying': ['running', 'failed', 'error'],
+      'running': ['stopping', 'error'],
+      'stopping': ['stopped', 'error'],
+      'stopped': ['deploying'], // Can redeploy
+      'failed': ['deploying'], // Can retry
+      'error': ['deploying', 'stopped'], // Can retry or stop
+    };
+
+    const allowedStatuses = validTransitions[currentStatus] || [];
+
+    if (!allowedStatuses.includes(newStatus)) {
+      throw new BadRequestException(
+        `Invalid status transition from '${currentStatus}' to '${newStatus}'. Allowed transitions: ${allowedStatuses.join(', ')}`
+      );
     }
   }
 
-  async startDeployment(id: string, context: RequestContext): Promise<Deployment> {
-    const deployment = await this.findById(new Types.ObjectId(id) as any, context);
+  /**
+   * Start a deployment (change status from stopped/failed to deploying)
+   * This is a placeholder for future implementation
+   */
+  async startDeployment(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<Deployment | null> {
+    const deployment = await this.deploymentModel.findOne({
+      _id: id,
+      deletedAt: null,
+    }).lean().exec();
+
     if (!deployment) {
-      throw new Error(`Deployment with ID ${id} not found`);
+      throw new BadRequestException(`Deployment with ID ${id} not found`);
     }
 
-    if (deployment.isRunning) {
-      throw new Error(`Deployment ${deployment.deploymentId} is already running`);
+    if (deployment.status === 'running') {
+      throw new BadRequestException(`Deployment "${deployment.name}" is already running`);
     }
 
-    // Update status to running
-    const updated = await this.updateDeployment(id, {
-      status: 'running',
-      isRunning: true,
-      lastHealthCheck: new Date()
-    }, context);
+    // Update status to deploying
+    const updated = await this.update(id, { status: 'deploying' }, context);
 
-    if (updated) {
-      // Add deployment event
-      const deploymentData = updated as Deployment;
-      deploymentData.events.push({
-        timestamp: new Date(),
-        event: 'deployment_started',
-        message: 'Deployment started successfully',
-        severity: 'info'
-      });
+    // TODO: Emit event to queue for deployment process
+    // await this.deploymentProducer.emitDeploymentStartRequested(id);
 
-      await super.update(new Types.ObjectId(id) as any, { events: deploymentData.events }, context);
-
-      this.logger.info('Deployment started', {
-        id,
-        deploymentId: deployment.deploymentId,
-        nodeId: deployment.nodeId
-      });
-
-      await this.deploymentProducer.emitDeploymentStarted(deployment);
-    }
-
-    return updated!;
+    return updated;
   }
 
-  async stopDeployment(id: string, context: RequestContext): Promise<Deployment> {
-    const deployment = await this.findById(new Types.ObjectId(id) as any, context);
+  /**
+   * Stop a deployment (change status from running to stopping)
+   * This is a placeholder for future implementation
+   */
+  async stopDeployment(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<Deployment | null> {
+    const deployment = await this.deploymentModel.findOne({
+      _id: id,
+      deletedAt: null,
+    }).lean().exec();
+
     if (!deployment) {
-      throw new Error(`Deployment with ID ${id} not found`);
+      throw new BadRequestException(`Deployment with ID ${id} not found`);
     }
 
-    if (!deployment.isRunning) {
-      throw new Error(`Deployment ${deployment.deploymentId} is not running`);
+    if (deployment.status !== 'running') {
+      throw new BadRequestException(
+        `Cannot stop deployment "${deployment.name}". Current status: ${deployment.status}`
+      );
     }
 
-    // Update status to stopped
-    const updated = await this.updateDeployment(id, {
-      status: 'stopped',
-      isRunning: false,
-      lastHealthCheck: new Date()
-    }, context);
+    // Update status to stopping
+    const updated = await this.update(id, { status: 'stopping' }, context);
 
-    if (updated) {
-      // Add deployment event
-      const deploymentData = updated as Deployment;
-      deploymentData.events.push({
-        timestamp: new Date(),
-        event: 'deployment_stopped',
-        message: 'Deployment stopped successfully',
-        severity: 'info'
-      });
+    // TODO: Emit event to queue for stop process
+    // await this.deploymentProducer.emitDeploymentStopRequested(id);
 
-      await super.update(new Types.ObjectId(id) as any, { events: deploymentData.events }, context);
-
-      this.logger.info('Deployment stopped', {
-        id,
-        deploymentId: deployment.deploymentId,
-        nodeId: deployment.nodeId
-      });
-
-      await this.deploymentProducer.emitDeploymentStopped(deployment);
-    }
-
-    return updated!;
+    return updated;
   }
 }

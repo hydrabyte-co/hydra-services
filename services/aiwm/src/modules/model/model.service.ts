@@ -1,86 +1,85 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { BaseService } from '@hydrabyte/base';
-import { RequestContext } from '@hydrabyte/shared';
-import { Model as ModelEntity, ModelDocument } from './model.schema';
-import { CreateModelDto, UpdateModelDto } from './model.dto';
-import { ModelProducer } from '../../queues/producers/model.producer';
+import { RequestContext, ModelInUseException } from '@hydrabyte/shared';
+import { Model as ModelEntity } from './model.schema';
+import { Deployment } from '../deployment/deployment.schema';
 
+/**
+ * ModelService
+ * Manages model entities (self-hosted and API-based models)
+ * Extends BaseService for automatic CRUD operations
+ */
 @Injectable()
 export class ModelService extends BaseService<ModelEntity> {
-
   constructor(
-    @InjectModel(ModelEntity.name) modelModel: Model<ModelEntity>,
-    private readonly modelProducer: ModelProducer,
+    @InjectModel(ModelEntity.name) private modelModel: Model<ModelEntity>,
+    @InjectModel(Deployment.name) private readonly deploymentModel: Model<Deployment>,
   ) {
-    super(modelModel as any);
+    super(modelModel);
   }
 
-  async create(createModelDto: CreateModelDto, context: RequestContext): Promise<ModelEntity> {
-    // BaseService handles permissions, ownership, save, and generic logging
-    const saved = await super.create(createModelDto, context);
+  /**
+   * Helper method to check if model is being used by active deployments
+   * @param modelId - Model ID to check
+   * @returns Array of active deployments using this model
+   */
+  private async checkActiveDeploymentDependencies(
+    modelId: ObjectId
+  ): Promise<Array<{ id: string; name: string }>> {
+    // Deployment schema has modelId: string field
+    const activeDeployments = await this.deploymentModel
+      .find({
+        modelId: modelId.toString(),
+        deletedAt: null, // Not soft-deleted
+        status: { $in: ['running', 'deploying', 'starting'] }, // Active states
+      })
+      .select('_id name')
+      .lean()
+      .exec();
 
-    // Business-specific logging with details
-    this.logger.info('Model created with details', {
-      id: (saved as any)._id,
-      modelId: saved.modelId,
-      name: saved.name,
-      version: saved.version,
-      type: saved.type,
-      framework: saved.framework,
-      repository: saved.repository,
-      fileSize: saved.fileSize,
-      nodeId: saved.nodeId,
-      createdBy: context.userId
-    });
-
-    // Emit event to queue
-    await this.modelProducer.emitModelCreated(saved);
-
-    return saved as ModelEntity;
+    return activeDeployments.map((deployment) => ({
+      id: deployment._id.toString(),
+      name: deployment.name,
+    }));
   }
 
-  async updateModel(id: string, updateModelDto: UpdateModelDto, context: RequestContext): Promise<ModelEntity | null> {
-    // Convert string to ObjectId for BaseService
-    const objectId = new Types.ObjectId(id);
-    const updated = await super.update(objectId as any, updateModelDto as any, context);
-
-    if (updated) {
-      // Business-specific logging with details
-      this.logger.info('Model updated with details', {
-        id: (updated as any)._id,
-        modelId: updated.modelId,
-        name: updated.name,
-        version: updated.version,
-        type: updated.type,
-        framework: updated.framework,
-        repository: updated.repository,
-        fileSize: updated.fileSize,
-        nodeId: updated.nodeId,
-        updatedBy: context.userId
-      });
-
-      // Emit event to queue
-      await this.modelProducer.emitModelUpdated(updated);
+  /**
+   * Override update method to validate status changes
+   * Prevents deactivating models that are in use by active deployments
+   */
+  async update(
+    id: ObjectId,
+    updateData: Partial<ModelEntity>,
+    context: RequestContext
+  ): Promise<ModelEntity | null> {
+    // Check if status is being changed to 'inactive'
+    if (updateData.status === 'inactive') {
+      const activeDeployments = await this.checkActiveDeploymentDependencies(id);
+      if (activeDeployments.length > 0) {
+        throw new ModelInUseException(activeDeployments, 'deactivate');
+      }
     }
 
-    return updated;
+    // Call parent update method
+    return super.update(id, updateData, context);
   }
 
-  async remove(id: string, context: RequestContext): Promise<void> {
-    // BaseService handles soft delete, permissions, and generic logging
-    const result = await super.softDelete(new Types.ObjectId(id) as any, context);
-
-    if (result) {
-      // Business-specific logging
-      this.logger.info('Model soft deleted with details', {
-        id,
-        deletedBy: context.userId
-      });
-
-      // Emit event to queue
-      await this.modelProducer.emitModelDeleted(id);
+  /**
+   * Override softDelete method to validate dependencies
+   * Prevents deleting models that are in use by active deployments
+   */
+  async softDelete(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<ModelEntity | null> {
+    const activeDeployments = await this.checkActiveDeploymentDependencies(id);
+    if (activeDeployments.length > 0) {
+      throw new ModelInUseException(activeDeployments, 'delete');
     }
+
+    // Call parent softDelete method
+    return super.softDelete(id, context);
   }
 }

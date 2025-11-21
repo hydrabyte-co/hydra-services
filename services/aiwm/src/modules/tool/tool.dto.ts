@@ -1,180 +1,272 @@
-import { IsString, IsEnum, IsArray, IsBoolean, IsOptional, IsObject, ValidateNested, IsNumber } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsObject,
+  IsNumber,
+  MinLength,
+  MaxLength,
+  Min,
+  Max,
+  ValidateNested,
+  ValidateIf,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class ToolParameters {
-  @ApiProperty({ description: 'Parameter type', enum: ['object', 'array'] })
-  @IsEnum(['object', 'array'])
-  type: string;
-
-  @ApiProperty({ description: 'Parameter properties schema' })
+/**
+ * Schema definition for tool input/output
+ */
+export class ToolSchemaDto {
+  @ApiProperty({
+    description: 'JSON Schema for tool input parameters',
+    example: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+      },
+      required: ['query'],
+    },
+  })
   @IsObject()
-  properties: Record<string, any>;
+  inputSchema!: object;
 
-  @ApiProperty({ description: 'Required parameter names' })
-  @IsArray()
-  @IsString({ each: true })
-  required: string[];
+  @ApiProperty({
+    description: 'JSON Schema for tool output',
+    example: {
+      type: 'object',
+      properties: {
+        results: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  })
+  @IsObject()
+  outputSchema!: object;
 }
 
-export class ToolResponseFormat {
-  @ApiProperty({ description: 'Response type', enum: ['object', 'array', 'string', 'number', 'boolean'] })
-  @IsEnum(['object', 'array', 'string', 'number', 'boolean'])
-  type: string;
-
-  @ApiProperty({ description: 'Response schema' })
-  @IsObject()
-  schema: Record<string, any>;
-}
-
-export class ToolUsage {
-  @ApiProperty({ description: 'Usage timestamp' })
-  @IsObject()
-  timestamp: Date;
-
-  @ApiProperty({ description: 'Agent ID that used the tool' })
-  @IsString()
-  agentId: string;
-
-  @ApiProperty({ description: 'Arguments used' })
-  @IsObject()
-  arguments: Record<string, any>;
-
-  @ApiProperty({ description: 'Tool result' })
-  @IsObject()
-  result: any;
-
-  @ApiProperty({ description: 'Response latency in ms' })
-  @IsNumber()
-  latency: number;
-
-  @ApiProperty({ description: 'Whether usage was successful' })
-  @IsBoolean()
-  success: boolean;
-
-  @ApiProperty({ description: 'Error message if failed', required: false })
-  @IsOptional()
-  @IsString()
-  error?: string;
-}
-
-export class ToolExample {
-  @ApiProperty({ description: 'Example title' })
-  @IsString()
-  title: string;
-
-  @ApiProperty({ description: 'Example description' })
-  @IsString()
-  description: string;
-
-  @ApiProperty({ description: 'Example arguments' })
-  @IsObject()
-  arguments: Record<string, any>;
-
-  @ApiProperty({ description: 'Expected output' })
-  @IsObject()
-  expectedOutput: any;
-}
-
+/**
+ * DTO for creating a new tool
+ * MongoDB _id will be used as the primary identifier
+ */
 export class CreateToolDto {
-  @ApiProperty({ description: 'Unique tool identifier' })
+  @ApiProperty({
+    description: 'Tool name',
+    example: 'webSearch',
+    maxLength: 100,
+  })
   @IsString()
-  toolId: string;
+  @MinLength(1)
+  @MaxLength(100)
+  name!: string;
 
-  @ApiProperty({ description: 'Tool name' })
+  @ApiProperty({
+    description: 'Tool type',
+    enum: ['mcp', 'builtin'],
+    example: 'mcp',
+  })
+  @IsEnum(['mcp', 'builtin'])
+  type!: string;
+
+  @ApiProperty({
+    description: 'Tool description',
+    example: 'Search the web using DuckDuckGo',
+    maxLength: 500,
+  })
   @IsString()
-  name: string;
+  @MinLength(1)
+  @MaxLength(500)
+  description!: string;
 
-  @ApiProperty({ description: 'Tool description' })
+  @ApiProperty({
+    description: 'Tool category',
+    enum: ['productivity', 'data', 'system', 'communication'],
+    example: 'productivity',
+  })
+  @IsEnum(['productivity', 'data', 'system', 'communication'])
+  category!: string;
+
+  // MCP-specific fields (conditional validation based on type)
+  @ApiPropertyOptional({
+    description: 'Transport protocol (required if type=mcp)',
+    enum: ['sse', 'http'],
+    example: 'sse',
+  })
+  @ValidateIf((o) => o.type === 'mcp')
+  @IsEnum(['sse', 'http'])
+  transport?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tool endpoint URL (required if type=mcp)',
+    example: 'http://localhost:3100',
+  })
+  @ValidateIf((o) => o.type === 'mcp')
   @IsString()
-  description: string;
+  endpoint?: string;
 
-  @ApiProperty({ description: 'Tool type' })
+  @ApiPropertyOptional({
+    description: 'Docker image name (required if type=mcp)',
+    example: 'aiops/mcp-web-search:latest',
+  })
+  @ValidateIf((o) => o.type === 'mcp')
   @IsString()
-  type: string;
+  dockerImage?: string;
 
-  @ApiProperty({ description: 'Tool category' })
+  @ApiPropertyOptional({
+    description: 'Container port (required if type=mcp)',
+    example: 3100,
+    minimum: 1024,
+    maximum: 65535,
+  })
+  @ValidateIf((o) => o.type === 'mcp')
+  @IsNumber()
+  @Min(1024)
+  @Max(65535)
+  port?: number;
+
+  @ApiPropertyOptional({
+    description: 'Environment variables for MCP container',
+    example: { API_KEY: 'xxx', DEBUG: 'true' },
+  })
+  @IsOptional()
+  @IsObject()
+  environment?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: 'Health check endpoint path',
+    example: '/health',
+  })
+  @IsOptional()
   @IsString()
-  category: string;
+  healthEndpoint?: string;
 
-  @ApiProperty({ description: 'Tool provider' })
-  @IsString()
-  provider: string;
-
-  @ApiProperty({ description: 'Tool endpoint URL' })
-  @IsString()
-  endpoint: string;
-
-  @ApiProperty({ description: 'Tool version' })
-  @IsString()
-  version: string;
-
-  @ApiProperty({ description: 'Tool status', enum: ['active', 'inactive', 'deprecated'] })
-  @IsEnum(['active', 'inactive', 'deprecated'])
-  status: string;
-
-  @ApiProperty({ description: 'Tool parameters', type: ToolParameters })
+  // Common fields
+  @ApiProperty({
+    description: 'Tool schema (input/output definitions)',
+    type: ToolSchemaDto,
+  })
   @IsObject()
   @ValidateNested()
-  parameters: ToolParameters;
+  @Type(() => ToolSchemaDto)
+  schema!: ToolSchemaDto;
 
-  @ApiProperty({ description: 'Response format', type: ToolResponseFormat })
-  @IsObject()
-  @ValidateNested()
-  responseFormat: ToolResponseFormat;
-
-  @ApiProperty({ description: 'Tool tags', required: false, type: [String] })
+  @ApiPropertyOptional({
+    description: 'Tool status',
+    enum: ['active', 'inactive', 'error'],
+    example: 'active',
+    default: 'active',
+  })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
-}
-
-export class UpdateToolDto {
-  @ApiProperty({ description: 'Tool name', required: false })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ description: 'Tool description', required: false })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiProperty({ description: 'Tool status', enum: ['active', 'inactive', 'deprecated'], required: false })
-  @IsOptional()
-  @IsEnum(['active', 'inactive', 'deprecated'])
+  @IsEnum(['active', 'inactive', 'error'])
   status?: string;
 
-  @ApiProperty({ description: 'Tool parameters', required: false, type: ToolParameters })
+  @ApiPropertyOptional({
+    description: 'Access scope',
+    enum: ['public', 'org', 'private'],
+    example: 'public',
+    default: 'public',
+  })
   @IsOptional()
-  @IsObject()
-  @ValidateNested()
-  parameters?: ToolParameters;
+  @IsEnum(['public', 'org', 'private'])
+  scope?: string;
+}
 
-  @ApiProperty({ description: 'Response format', required: false, type: ToolResponseFormat })
-  @IsOptional()
-  @IsObject()
-  @ValidateNested()
-  responseFormat?: ToolResponseFormat;
-
-  @ApiProperty({ description: 'Tool version', required: false })
+/**
+ * DTO for updating an existing tool
+ * All fields are optional
+ */
+export class UpdateToolDto {
+  @ApiPropertyOptional({
+    description: 'Tool name',
+    example: 'webSearchV2',
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
-  version?: string;
+  @MinLength(1)
+  @MaxLength(100)
+  name?: string;
 
-  @ApiProperty({ description: 'Tool endpoint', required: false })
+  @ApiPropertyOptional({
+    description: 'Tool description',
+    example: 'Enhanced web search with filters',
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  description?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tool category',
+    enum: ['productivity', 'data', 'system', 'communication'],
+    example: 'productivity',
+  })
+  @IsOptional()
+  @IsEnum(['productivity', 'data', 'system', 'communication'])
+  category?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tool endpoint URL',
+    example: 'http://localhost:3101',
+  })
   @IsOptional()
   @IsString()
   endpoint?: string;
 
-  @ApiProperty({ description: 'Tool tags', required: false, type: [String] })
+  @ApiPropertyOptional({
+    description: 'Container port',
+    example: 3101,
+    minimum: 1024,
+    maximum: 65535,
+  })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
+  @IsNumber()
+  @Min(1024)
+  @Max(65535)
+  port?: number;
 
-  @ApiProperty({ description: 'Documentation URL', required: false })
+  @ApiPropertyOptional({
+    description: 'Environment variables',
+    example: { API_KEY: 'new-key' },
+  })
+  @IsOptional()
+  @IsObject()
+  environment?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: 'Health check endpoint path',
+    example: '/healthz',
+  })
   @IsOptional()
   @IsString()
-  documentation?: string;
+  healthEndpoint?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tool schema (input/output definitions)',
+    type: ToolSchemaDto,
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ToolSchemaDto)
+  schema?: ToolSchemaDto;
+
+  @ApiPropertyOptional({
+    description: 'Tool status',
+    enum: ['active', 'inactive', 'error'],
+    example: 'active',
+  })
+  @IsOptional()
+  @IsEnum(['active', 'inactive', 'error'])
+  status?: string;
+
+  @ApiPropertyOptional({
+    description: 'Access scope',
+    enum: ['public', 'org', 'private'],
+    example: 'org',
+  })
+  @IsOptional()
+  @IsEnum(['public', 'org', 'private'])
+  scope?: string;
 }

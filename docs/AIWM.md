@@ -636,43 +636,57 @@ AI Ops Platform MVP v2.0 là hệ thống quản lý và triển khai AI/ML work
 #### 2. `models` - AI/ML Model Registry
 ```typescript
 {
-  _id: ObjectId,                    // MongoDB primary key
-  modelId: string,                  // Unique model identifier | required | indexed | e.g., "whisper-v3"
-  name: string,                     // Model display name | required | max 255 chars
-  description: string,              // Model description | required | max 1000 chars
-  source: string,                   // Model source | required | enum: ["huggingface", "custom"]
-  sourceUrl?: string,               // Source URL | optional | HuggingFace repo URL if source="huggingface"
+  _id: ObjectId,                    // MongoDB primary key (NO custom modelId)
 
-  // Framework info
-  framework: string,                // Inference framework | required | enum: ["triton", "vllm", "custom"]
-  modelFormat: string,              // Model file format | required | enum: ["pytorch", "onnx", "tensorrt"]
-  task: string,                     // Model task type | required | enum: ["asr", "tts", "cv", "llm", "nlp"]
+  // Core fields (both deployment types)
+  name: string,                     // Model display name | required | max 100 chars | e.g., "GPT-4 Turbo", "Llama-3-8B"
+  type: string,                     // Model type | required | enum: ["llm", "embedding", "diffusion", "classifier"]
+  description: string,              // Model description | required | max 500 chars
+  version: string,                  // Model version | required | e.g., "1.0", "2024-11-20"
+  deploymentType: string,           // Deployment type | required | enum: ["self-hosted", "api-based"]
+                                    // "self-hosted": Download from HuggingFace and deploy on GPU nodes
+                                    // "api-based": Forward requests to external AI provider APIs
 
-  // Storage
-  minioPath: string,                // MinIO storage path | required | format: "s3://bucket/path"
-  sizeMb: number,                   // Model size in MB | required | positive integer
-  version: string,                  // Model version | required | semantic version e.g., "1.0.0"
+  // Status lifecycle
+  status: string,                   // Model status | required | enum: ["active", "inactive", "queued", "downloading", "deploying", "error"]
+                                    // "active": Ready for inference
+                                    // "inactive": Disabled by user
+                                    // "queued": Waiting for processing
+                                    // "downloading": Downloading from HuggingFace (self-hosted only)
+                                    // "deploying": Deploying to GPU node (self-hosted only)
+                                    // "error": Failed deployment or error state
+                                    // Default: "queued"
 
-  // Requirements
-  minGpuMemory: number,             // Minimum GPU memory in MB | required | positive integer
-  minVram: number,                  // Minimum VRAM in MB | required | positive integer
+  // Self-hosted model fields (required if deploymentType = "self-hosted")
+  repository?: string,              // HuggingFace repository | optional | e.g., "meta-llama/Llama-3-8B"
+  framework?: string,               // Model framework | optional | enum: ["pytorch", "tensorflow", "onnx", "huggingface"]
+  fileName?: string,                // Model file name | optional | e.g., "model.safetensors"
+  fileSize?: number,                // File size in bytes | optional | positive integer
+  downloadPath?: string,            // Local/MinIO path after download | optional | e.g., "/models/llama-3-8b"
+  nodeId?: ObjectId,                // GPU node reference | optional | reference to nodes collection
 
-  // Metadata
-  metadata: {
-    parameters?: number,            // Model parameter count | optional | e.g., 7000000000 for 7B model
-    languages?: string[],           // Supported languages | optional | ISO 639-1 codes
-    license?: string                // Model license | optional | e.g., "MIT", "Apache-2.0"
-  },
+  // API-based model fields (required if deploymentType = "api-based")
+  provider?: string,                // AI provider | optional | e.g., "openai", "anthropic", "google", "azure", "cohere"
+  apiEndpoint?: string,             // API endpoint URL | optional | e.g., "https://api.openai.com/v1"
+  modelIdentifier?: string,         // API model name | optional | e.g., "gpt-4-turbo", "claude-3-sonnet-20240229"
+  requiresApiKey?: boolean,         // API key required | optional | default: true
 
-  // Ownership & Audit
+  // Access control
+  scope: string,                    // Access scope | required | enum: ["public", "org", "private"] | default: "public"
+
+  // Ownership & Audit (from BaseSchema)
   owner: {
     orgId: ObjectId,                // Organization ID | required | reference to organizations
-    userId: ObjectId                // Owner user ID | required | reference to users
+    groupId: string,                // Group ID | optional
+    userId: ObjectId,               // Owner user ID | required | reference to users
+    agentId: string,                // Agent ID | optional
+    appId: string                   // App ID | optional
   },
+  createdBy: ObjectId,              // Creator user ID | required | reference to users
+  updatedBy: ObjectId,              // Last updater user ID | required | reference to users
   createdAt: Date,                  // Record creation timestamp | auto-generated
-  changedAt: Date,                  // Last modification timestamp | auto-updated
-  deletedAt?: Date,                 // Soft delete timestamp | optional | set when isDeleted=true
-  isDeleted: boolean                // Soft delete flag | required | default: false
+  updatedAt: Date,                  // Last modification timestamp | auto-updated
+  deletedAt?: Date                  // Soft delete timestamp | optional | set when soft deleted
 }
 ```
 
@@ -1556,11 +1570,18 @@ interface BaseMessage {
 - `GET /nodes/:nodeId/containers` - List containers on node
 
 ### Models
-- `GET /models` - List models
-- `GET /models/:modelId` - Model details
-- `POST /models/download` - Download from HuggingFace
-  - Body: `{repo: "openai/whisper-large-v3", framework: "triton"}`
-- `DELETE /models/:modelId` - Delete model
+- `GET /models` - List models with pagination
+  - Query: `?page=1&limit=10`
+  - Returns: List of both self-hosted and API-based models
+- `GET /models/:id` - Get model details by MongoDB _id
+- `POST /models` - Create new model (both self-hosted and API-based)
+  - Body (self-hosted): `{name, type, description, version, deploymentType: "self-hosted", repository, framework, fileName, fileSize, downloadPath?, nodeId?, status?, scope?}`
+  - Body (API-based): `{name, type, description, version, deploymentType: "api-based", provider, apiEndpoint, modelIdentifier, requiresApiKey?, status?, scope?}`
+  - Status defaults to "queued" for both types
+- `PUT /models/:id` - Update model (partial update allowed)
+  - Body: Any updatable fields (name, description, version, status, etc.)
+- `DELETE /models/:id` - Soft delete model
+  - Sets deletedAt timestamp, excludes from queries
 
 ### Deployments
 - `GET /deployments` - List deployments
