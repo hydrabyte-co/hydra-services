@@ -54,7 +54,7 @@ export class ModelService extends BaseService<ModelEntity> {
     const activeDeployments = await this.deploymentModel
       .find({
         modelId: modelId.toString(),
-        deletedAt: null, // Not soft-deleted
+        isDeleted: false, // Not soft-deleted
         status: { $in: ['running', 'deploying', 'starting'] }, // Active states
       })
       .select('_id name')
@@ -115,7 +115,7 @@ export class ModelService extends BaseService<ModelEntity> {
   ): Promise<ModelEntity | null> {
     const model = await this.modelModel.findOne({
       _id: id,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!model) {
@@ -144,7 +144,7 @@ export class ModelService extends BaseService<ModelEntity> {
   ): Promise<ModelEntity | null> {
     const model = await this.modelModel.findOne({
       _id: id,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!model) {

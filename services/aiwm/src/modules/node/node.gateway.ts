@@ -71,7 +71,7 @@ export class NodeGateway
    * Handle new client connection
    */
   async handleConnection(client: Socket) {
-    const nodeId = client.data.user?.nodeId;
+    const nodeId = client.data.user?.nodeId; // This is the MongoDB _id from JWT token
     const username = client.data.user?.username;
 
     this.logger.log(
@@ -79,8 +79,8 @@ export class NodeGateway
     );
 
     try {
-      // Validate node exists and is active
-      const node = await this.nodeService.findByNodeId(nodeId);
+      // Validate node exists
+      const node = await this.nodeService.findByObjectId(nodeId);
 
       if (!node) {
         this.logger.warn(`Node not found in database: ${nodeId}`);
@@ -93,11 +93,12 @@ export class NodeGateway
         return;
       }
 
-      if (node.status !== 'active') {
-        this.logger.warn(`Node is not active: ${nodeId} - status: ${node.status}`);
+      // Only block explicitly disabled nodes
+      if (node.status === 'inactive' || node.status === 'banned') {
+        this.logger.warn(`Node is disabled: ${nodeId} - status: ${node.status}`);
         this.sendConnectionAck(client, 'error', {
           code: AuthErrorCode.NODE_INACTIVE,
-          message: 'Node status is not active',
+          message: 'Node is disabled',
           timestamp: new Date().toISOString(),
         });
         client.disconnect(true);
@@ -168,7 +169,7 @@ export class NodeGateway
     @MessageBody() data: NodeRegisterDto,
     @ConnectedSocket() client: Socket
   ) {
-    const nodeId = client.data.user?.nodeId;
+    const nodeId = client.data.user?.nodeId; // MongoDB _id from JWT token
     this.logger.log(`Node registration received from ${nodeId}`);
 
     try {
@@ -188,6 +189,7 @@ export class NodeGateway
         daemonVersion: registerData.daemonVersion,
         uptimeSeconds: registerData.uptimeSeconds,
         containerRuntime: registerData.containerRuntime,
+        status: 'installing', // Update status to installing during registration
       });
 
       // Send registration acknowledgment

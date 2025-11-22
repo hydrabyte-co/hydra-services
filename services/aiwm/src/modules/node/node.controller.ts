@@ -4,7 +4,7 @@ import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiRead
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { NodeService } from './node.service';
-import { CreateNodeDto, UpdateNodeDto } from './node.dto';
+import { CreateNodeDto, UpdateNodeDto, GenerateTokenDto, GenerateTokenResponseDto } from './node.dto';
 
 @ApiTags('nodes')
 @ApiBearerAuth('JWT-auth')
@@ -69,6 +69,26 @@ export class NodeController {
       throw new NotFoundException(`Node with ID ${id} not found`);
     }
     return updated;
+  }
+
+  @Post(':id/token')
+  @ApiOperation({
+    summary: 'Generate JWT token for node',
+    description: 'Generate authentication token and installation script for worker node'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token generated successfully',
+    type: GenerateTokenResponseDto
+  })
+  @ApiReadErrors()
+  @UseGuards(JwtAuthGuard)
+  async generateToken(
+    @Param('id') id: string,
+    @Body() body: GenerateTokenDto,
+    @CurrentUser() context: RequestContext,
+  ) {
+    return this.nodeService.generateToken(id, body.expiresIn, context);
   }
 
   @Delete(':id')

@@ -38,10 +38,6 @@ export class NodeConfig {
 }
 
 export class CreateNodeDto {
-  @ApiProperty({ description: 'Unique node identifier' })
-  @IsString()
-  nodeId: string;
-
   @ApiProperty({ description: 'Node name' })
   @IsString()
   name: string;
@@ -60,30 +56,6 @@ export class CreateNodeDto {
   @IsOptional()
   @IsString()
   vpnIp?: string;
-
-  @ApiProperty({ description: 'CPU cores count' })
-  @IsNumber()
-  cpuCores: number;
-
-  @ApiProperty({ description: 'Total RAM in GB' })
-  @IsNumber()
-  ramTotal: number;
-
-  @ApiProperty({ description: 'Free RAM in GB' })
-  @IsNumber()
-  ramFree: number;
-
-  @ApiProperty({ description: 'Node configuration', required: false })
-  @IsOptional()
-  @IsObject()
-  @ValidateNested()
-  config?: NodeConfig;
-
-  @ApiProperty({ description: 'GPU devices', required: false, type: [GPUDevice] })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  gpuDevices?: GPUDevice[];
 }
 
 export class UpdateNodeDto {
@@ -98,9 +70,9 @@ export class UpdateNodeDto {
   @IsEnum(['controller', 'worker', 'proxy', 'storage'], { each: true })
   role?: string[];
 
-  @ApiProperty({ description: 'Node status', enum: ['online', 'offline', 'maintenance'], required: false })
+  @ApiProperty({ description: 'Node status', enum: ['pending', 'installing', 'online', 'offline', 'maintenance'], required: false })
   @IsOptional()
-  @IsEnum(['online', 'offline', 'maintenance'])
+  @IsEnum(['pending', 'installing', 'online', 'offline', 'maintenance'])
   status?: string;
 
   @ApiProperty({ description: 'Whether node is local', required: false })
@@ -149,4 +121,22 @@ export class UpdateNodeDto {
   @IsObject()
   @ValidateNested()
   config?: NodeConfig;
+}
+
+export class GenerateTokenDto {
+  @ApiProperty({ description: 'Token expiration time in seconds', required: false, default: 31536000, example: 31536000 })
+  @IsOptional()
+  @IsNumber()
+  expiresIn?: number;
+}
+
+export class GenerateTokenResponseDto {
+  @ApiProperty({ description: 'Generated JWT token' })
+  token: string;
+
+  @ApiProperty({ description: 'Token expiration timestamp' })
+  expiresAt: Date;
+
+  @ApiProperty({ description: 'Installation script with embedded token' })
+  installScript: string;
 }

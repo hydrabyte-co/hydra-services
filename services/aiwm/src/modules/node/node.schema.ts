@@ -4,18 +4,34 @@ import { BaseSchema } from '@hydrabyte/base';
 
 export type NodeDocument = Node & Document;
 
+export interface GPUDevice {
+  deviceId: string;
+  model: string;
+  memoryTotal: number;
+  memoryFree: number;
+  utilization: number;
+  temperature: number;
+}
+
+export interface TokenMetadata {
+  tokenGeneratedAt?: Date;
+  tokenExpiresAt?: Date;
+  tokenLastUsed?: Date;
+}
+
 @Schema({ timestamps: true })
 export class Node extends BaseSchema {
-  @Prop({ required: true, unique: true })
-  nodeId: string;
-
   @Prop({ required: true })
   name: string;
 
   @Prop([{ type: String, enum: ['controller', 'worker', 'proxy', 'storage'] }])
   role: string[];
 
-  @Prop({ required: true, enum: ['online', 'offline', 'maintenance'], default: 'offline' })
+  @Prop({
+    required: true,
+    enum: ['pending', 'installing', 'online', 'offline', 'maintenance'],
+    default: 'pending'
+  })
   status: string;
 
   @Prop({ default: false })
@@ -38,15 +54,58 @@ export class Node extends BaseSchema {
     utilization: Number,
     temperature: Number,
   }])
+  gpuDevices?: GPUDevice[];
 
-  @Prop({ required: true })
-  cpuCores: number;
+  @Prop()
+  cpuCores?: number;
 
-  @Prop({ required: true })
-  ramTotal: number;
+  @Prop()
+  cpuModel?: string;
 
-  @Prop({ required: true })
-  ramFree: number;
+  @Prop()
+  ramTotal?: number;
+
+  @Prop()
+  ramFree?: number;
+
+  @Prop()
+  diskTotal?: number;
+
+  @Prop()
+  hostname?: string;
+
+  @Prop()
+  ipAddress?: string;
+
+  @Prop()
+  publicIpAddress?: string;
+
+  @Prop()
+  os?: string;
+
+  @Prop()
+  daemonVersion?: string;
+
+  @Prop()
+  containerRuntime?: string;
+
+  @Prop()
+  uptimeSeconds?: number;
+
+  @Prop({ type: Object })
+  tokenMetadata?: TokenMetadata;
+
+  @Prop()
+  lastSeenAt?: Date;
+
+  @Prop()
+  lastMetricsAt?: Date;
+
+  @Prop()
+  cpuUsage?: number;
+
+  @Prop()
+  ramUsage?: number;
 }
 
 export const NodeSchema = SchemaFactory.createForClass(Node);

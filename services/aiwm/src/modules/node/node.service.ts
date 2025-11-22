@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { JwtService } from '@nestjs/jwt';
 import { BaseService } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Node } from './node.schema';
@@ -13,6 +14,7 @@ export class NodeService extends BaseService<Node> {
   constructor(
     @InjectModel(Node.name) nodeModel: Model<Node>,
     private readonly nodeProducer: NodeProducer,
+    private readonly jwtService: JwtService,
   ) {
     super(nodeModel as any);
   }
@@ -24,12 +26,9 @@ export class NodeService extends BaseService<Node> {
     // Business-specific logging with details
     this.logger.info('Node created with details', {
       id: (saved as any)._id,
-      nodeId: saved.nodeId,
       name: saved.name,
       role: saved.role,
       status: saved.status,
-      cpuCores: saved.cpuCores,
-      ramTotal: saved.ramTotal,
       createdBy: context.userId
     });
 
@@ -48,12 +47,9 @@ export class NodeService extends BaseService<Node> {
       // Business-specific logging with details
       this.logger.info('Node updated with details', {
         id: (updated as any)._id,
-        nodeId: updated.nodeId,
         name: updated.name,
         role: updated.role,
         status: updated.status,
-        cpuCores: updated.cpuCores,
-        ramTotal: updated.ramTotal,
         updatedBy: context.userId
       });
 
@@ -81,18 +77,102 @@ export class NodeService extends BaseService<Node> {
   }
 
   /**
-   * Find node by nodeId (used by WebSocket gateway)
+   * Find node by MongoDB _id (used by WebSocket gateway)
    */
-  async findByNodeId(nodeId: string): Promise<Node | null> {
-    return await this.model.findOne({ nodeId }).exec();
+  async findByObjectId(id: Types.ObjectId): Promise<Node | null> {
+    return await this.model.findOne({ _id: id, deletedAt: null }).exec();
+  }
+
+  /**
+   * Generate JWT token for node authentication
+   */
+  async generateToken(
+    id: string,
+    expiresIn: number = 31536000, // Default: 1 year in seconds
+    context?: RequestContext
+  ): Promise<{ token: string; expiresAt: Date; installScript: string }> {
+    // Verify node exists
+    const node = await this.model.findOne({ _id: new Types.ObjectId(id), deletedAt: null }).exec();
+    if (!node) {
+      throw new NotFoundException(`Node with ID ${id} not found`);
+    }
+
+    // Generate expiration date
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+
+    // Create JWT payload with node _id
+    const payload = {
+      sub: id,
+      type: 'node',
+      nodeId: id, // Include node's MongoDB _id as nodeId in token
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(expiresAt.getTime() / 1000),
+    };
+
+    // Sign token
+    const token = this.jwtService.sign(payload);
+
+    // Update token metadata in database
+    await this.model.updateOne(
+      { _id: new Types.ObjectId(id) },
+      {
+        $set: {
+          tokenMetadata: {
+            tokenGeneratedAt: new Date(),
+            tokenExpiresAt: expiresAt,
+          },
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    // Generate installation script
+    const installScript = this.generateInstallScript(token, node);
+
+    this.logger.log(`Token generated for node ${id} (expires: ${expiresAt.toISOString()})`);
+
+    return { token, expiresAt, installScript };
+  }
+
+  /**
+   * Generate installation script with embedded token
+   */
+  private generateInstallScript(token: string, node: any): string {
+    // TODO: Replace with actual controller endpoint from config
+    const controllerEndpoint = process.env.CONTROLLER_WEBSOCKET_URL || 'ws://localhost:3305';
+
+    return `#!/bin/bash
+# Hydra Node Installation Script
+# Generated: ${new Date().toISOString()}
+# Node: ${node.name}
+# Node ID: ${node._id}
+
+echo "Installing Hydra Node Daemon..."
+
+# Configuration
+export HYDRA_NODE_TOKEN="${token}"
+export HYDRA_CONTROLLER_ENDPOINT="${controllerEndpoint}"
+export HYDRA_NODE_ID="${node._id}"
+
+# TODO: Add actual installation steps
+# 1. Download daemon binary
+# 2. Install systemd service
+# 3. Configure daemon with token
+# 4. Start service
+
+echo "Installation complete!"
+echo "Node ID: ${node._id}"
+echo "Controller: ${controllerEndpoint}"
+`;
   }
 
   /**
    * Update node status (used by WebSocket gateway)
    */
-  async updateStatus(nodeId: string, status: string): Promise<void> {
+  async updateStatus(id: string, status: string): Promise<void> {
     await this.model.updateOne(
-      { nodeId },
+      { _id: new Types.ObjectId(id) },
       {
         status,
         lastSeenAt: new Date(),
@@ -100,15 +180,15 @@ export class NodeService extends BaseService<Node> {
       }
     );
 
-    this.logger.log(`Node ${nodeId} status updated to ${status}`);
+    this.logger.log(`Node ${id} status updated to ${status}`);
   }
 
   /**
    * Update node information from registration
    */
-  async updateNodeInfo(nodeId: string, info: any): Promise<void> {
+  async updateNodeInfo(id: string, info: any): Promise<void> {
     await this.model.updateOne(
-      { nodeId },
+      { _id: new Types.ObjectId(id) },
       {
         $set: {
           ...info,
@@ -118,15 +198,15 @@ export class NodeService extends BaseService<Node> {
       }
     );
 
-    this.logger.log(`Node ${nodeId} information updated`);
+    this.logger.log(`Node ${id} information updated`);
   }
 
   /**
    * Update heartbeat data
    */
-  async updateHeartbeat(nodeId: string, heartbeatData: any): Promise<void> {
+  async updateHeartbeat(id: string, heartbeatData: any): Promise<void> {
     await this.model.updateOne(
-      { nodeId },
+      { _id: new Types.ObjectId(id) },
       {
         $set: {
           status: heartbeatData.status,
@@ -144,11 +224,11 @@ export class NodeService extends BaseService<Node> {
   /**
    * Store metrics data
    */
-  async storeMetrics(nodeId: string, metrics: any): Promise<void> {
+  async storeMetrics(id: string, metrics: any): Promise<void> {
     // TODO: Store metrics in a time-series collection or forward to monitoring system
     // For now, just update the last metrics timestamp
     await this.model.updateOne(
-      { nodeId },
+      { _id: new Types.ObjectId(id) },
       {
         $set: {
           lastMetricsAt: new Date(),
@@ -157,6 +237,6 @@ export class NodeService extends BaseService<Node> {
       }
     );
 
-    this.logger.debug(`Metrics stored for node ${nodeId}`);
+    this.logger.debug(`Metrics stored for node ${id}`);
   }
 }

@@ -64,7 +64,7 @@ export class NotificationService extends BaseService<Notification> {
           { 'recipients.broadcast': true },
         ],
         readByUserIds: { $ne: userId },
-        deletedAt: null,
+        isDeleted: false,
       })
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -83,7 +83,7 @@ export class NotificationService extends BaseService<Notification> {
           { 'recipients.broadcast': true },
         ],
         readByUserIds: { $ne: userId },
-        deletedAt: null,
+        isDeleted: false,
       })
       .exec();
   }
@@ -105,7 +105,7 @@ export class NotificationService extends BaseService<Notification> {
           { 'recipients.userIds': userId },
           { 'recipients.broadcast': true },
         ],
-        deletedAt: null,
+        isDeleted: false,
       })
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -130,7 +130,7 @@ export class NotificationService extends BaseService<Notification> {
           { 'recipients.orgIds': orgId },
           { 'recipients.broadcast': true },
         ],
-        deletedAt: null,
+        isDeleted: false,
       })
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -155,7 +155,7 @@ export class NotificationService extends BaseService<Notification> {
           { 'recipients.agentIds': agentId },
           { 'recipients.broadcast': true },
         ],
-        deletedAt: null,
+        isDeleted: false,
       })
       .sort({ createdAt: -1 })
       .limit(limit)

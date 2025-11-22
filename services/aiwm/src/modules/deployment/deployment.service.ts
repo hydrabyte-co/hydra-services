@@ -40,7 +40,7 @@ export class DeploymentService extends BaseService<Deployment> {
     // Validate Model exists and is active
     const model = await this.modelModel.findOne({
       _id: modelId,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!model) {
@@ -56,7 +56,7 @@ export class DeploymentService extends BaseService<Deployment> {
     // Validate Node exists and is online
     const node = await this.nodeModel.findOne({
       _id: nodeId,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!node) {
@@ -96,7 +96,7 @@ export class DeploymentService extends BaseService<Deployment> {
     if (updateData.status) {
       const currentDeployment = await this.deploymentModel.findOne({
         _id: id,
-        deletedAt: null,
+        isDeleted: false,
       }).lean().exec();
 
       if (!currentDeployment) {
@@ -128,7 +128,7 @@ export class DeploymentService extends BaseService<Deployment> {
   ): Promise<Deployment | null> {
     const deployment = await this.deploymentModel.findOne({
       _id: id,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!deployment) {
@@ -186,7 +186,7 @@ export class DeploymentService extends BaseService<Deployment> {
   ): Promise<Deployment | null> {
     const deployment = await this.deploymentModel.findOne({
       _id: id,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!deployment) {
@@ -216,7 +216,7 @@ export class DeploymentService extends BaseService<Deployment> {
   ): Promise<Deployment | null> {
     const deployment = await this.deploymentModel.findOne({
       _id: id,
-      deletedAt: null,
+      isDeleted: false,
     }).lean().exec();
 
     if (!deployment) {
