@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext, InstructionInUseException } from '@hydrabyte/shared';
 import { Instruction } from './instruction.schema';
 import { Agent } from '../agent/agent.schema';
@@ -15,7 +15,7 @@ import { Agent } from '../agent/agent.schema';
 export class InstructionService extends BaseService<Instruction> {
   constructor(
     @InjectModel(Instruction.name) private instructionModel: Model<Instruction>,
-    @InjectModel(Agent.name) private readonly agentModel: Model<Agent>,
+    @InjectModel(Agent.name) private readonly agentModel: Model<Agent>
   ) {
     super(instructionModel);
   }
@@ -79,5 +79,43 @@ export class InstructionService extends BaseService<Instruction> {
 
     // Call parent softDelete method
     return super.softDelete(id, context);
+  }
+
+  /**
+   * Override findAll to handle statistics aggregation
+   */
+  async findAll(
+    options: FindManyOptions,
+    context: RequestContext
+  ): Promise<FindManyResult<Instruction>> {
+    const findResult = await super.findAll(options, context);
+    // Aggregate statistics by status
+    const statusStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Build statistics object
+    const statistics: any = {
+      total: findResult.pagination.total,
+      byStatus: {},
+      byType: {},
+    };
+
+    // Map status statistics
+    statusStats.forEach((stat: any) => {
+      statistics.byStatus[stat._id] = stat.count;
+    });
+
+    findResult.statistics = statistics;
+    return findResult;
   }
 }

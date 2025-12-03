@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext, ModelInUseException } from '@hydrabyte/shared';
 import { Model as ModelEntity } from './model.schema';
 import { Deployment } from '../deployment/deployment.schema';
@@ -19,6 +19,41 @@ export class ModelService extends BaseService<ModelEntity> {
   ) {
     super(modelModel);
   }
+
+  async findAll(
+      options: FindManyOptions,
+      context: RequestContext
+    ): Promise<FindManyResult<ModelEntity>> {
+      const findResult = await super.findAll(options, context);
+      // Aggregate statistics by status
+      const statusStats = await super.aggregate(
+        [
+          { $match: { ...options.filter } },
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 },
+            },
+          },
+        ],
+        context
+      );
+
+      // Build statistics object
+      const statistics: any = {
+        total: findResult.pagination.total,
+        byStatus: {},
+        byType: {},
+      };
+
+      // Map status statistics
+      statusStats.forEach((stat: any) => {
+        statistics.byStatus[stat._id] = stat.count;
+      });
+
+      findResult.statistics = statistics;
+      return findResult;
+    }
 
   /**
    * Override create method to set initial status based on deploymentType

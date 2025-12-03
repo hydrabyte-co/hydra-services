@@ -1,7 +1,11 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Deployment } from './deployment.schema';
 import { Model as ModelEntity } from '../model/model.schema';
@@ -16,8 +20,9 @@ import { Node } from '../node/node.schema';
 export class DeploymentService extends BaseService<Deployment> {
   constructor(
     @InjectModel(Deployment.name) private deploymentModel: Model<Deployment>,
-    @InjectModel(ModelEntity.name) private readonly modelModel: Model<ModelEntity>,
-    @InjectModel(Node.name) private readonly nodeModel: Model<Node>,
+    @InjectModel(ModelEntity.name)
+    private readonly modelModel: Model<ModelEntity>,
+    @InjectModel(Node.name) private readonly nodeModel: Model<Node>
   ) {
     super(deploymentModel);
   }
@@ -38,10 +43,13 @@ export class DeploymentService extends BaseService<Deployment> {
     }
 
     // Validate Model exists and is active
-    const model = await this.modelModel.findOne({
-      _id: modelId,
-      isDeleted: false,
-    }).lean().exec();
+    const model = await this.modelModel
+      .findOne({
+        _id: modelId,
+        isDeleted: false,
+      })
+      .lean()
+      .exec();
 
     if (!model) {
       throw new BadRequestException(`Model with ID ${modelId} not found`);
@@ -54,10 +62,13 @@ export class DeploymentService extends BaseService<Deployment> {
     }
 
     // Validate Node exists and is online
-    const node = await this.nodeModel.findOne({
-      _id: nodeId,
-      isDeleted: false,
-    }).lean().exec();
+    const node = await this.nodeModel
+      .findOne({
+        _id: nodeId,
+        isDeleted: false,
+      })
+      .lean()
+      .exec();
 
     if (!node) {
       throw new BadRequestException(`Node with ID ${nodeId} not found`);
@@ -94,17 +105,23 @@ export class DeploymentService extends BaseService<Deployment> {
   ): Promise<Deployment | null> {
     // If status is being changed, validate the transition
     if (updateData.status) {
-      const currentDeployment = await this.deploymentModel.findOne({
-        _id: id,
-        isDeleted: false,
-      }).lean().exec();
+      const currentDeployment = await this.deploymentModel
+        .findOne({
+          _id: id,
+          isDeleted: false,
+        })
+        .lean()
+        .exec();
 
       if (!currentDeployment) {
         throw new BadRequestException(`Deployment with ID ${id} not found`);
       }
 
       // Validate status transition
-      this.validateStatusTransition(currentDeployment.status, updateData.status);
+      this.validateStatusTransition(
+        currentDeployment.status,
+        updateData.status
+      );
     }
 
     // Call parent update method
@@ -126,10 +143,13 @@ export class DeploymentService extends BaseService<Deployment> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Deployment | null> {
-    const deployment = await this.deploymentModel.findOne({
-      _id: id,
-      isDeleted: false,
-    }).lean().exec();
+    const deployment = await this.deploymentModel
+      .findOne({
+        _id: id,
+        isDeleted: false,
+      })
+      .lean()
+      .exec();
 
     if (!deployment) {
       throw new BadRequestException(`Deployment with ID ${id} not found`);
@@ -156,22 +176,27 @@ export class DeploymentService extends BaseService<Deployment> {
    * @param currentStatus - Current deployment status
    * @param newStatus - New status to transition to
    */
-  private validateStatusTransition(currentStatus: string, newStatus: string): void {
+  private validateStatusTransition(
+    currentStatus: string,
+    newStatus: string
+  ): void {
     const validTransitions: Record<string, string[]> = {
-      'queued': ['deploying', 'failed', 'stopped'],
-      'deploying': ['running', 'failed', 'error'],
-      'running': ['stopping', 'error'],
-      'stopping': ['stopped', 'error'],
-      'stopped': ['deploying'], // Can redeploy
-      'failed': ['deploying'], // Can retry
-      'error': ['deploying', 'stopped'], // Can retry or stop
+      queued: ['deploying', 'failed', 'stopped'],
+      deploying: ['running', 'failed', 'error'],
+      running: ['stopping', 'error'],
+      stopping: ['stopped', 'error'],
+      stopped: ['deploying'], // Can redeploy
+      failed: ['deploying'], // Can retry
+      error: ['deploying', 'stopped'], // Can retry or stop
     };
 
     const allowedStatuses = validTransitions[currentStatus] || [];
 
     if (!allowedStatuses.includes(newStatus)) {
       throw new BadRequestException(
-        `Invalid status transition from '${currentStatus}' to '${newStatus}'. Allowed transitions: ${allowedStatuses.join(', ')}`
+        `Invalid status transition from '${currentStatus}' to '${newStatus}'. Allowed transitions: ${allowedStatuses.join(
+          ', '
+        )}`
       );
     }
   }
@@ -184,17 +209,22 @@ export class DeploymentService extends BaseService<Deployment> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Deployment | null> {
-    const deployment = await this.deploymentModel.findOne({
-      _id: id,
-      isDeleted: false,
-    }).lean().exec();
+    const deployment = await this.deploymentModel
+      .findOne({
+        _id: id,
+        isDeleted: false,
+      })
+      .lean()
+      .exec();
 
     if (!deployment) {
       throw new BadRequestException(`Deployment with ID ${id} not found`);
     }
 
     if (deployment.status === 'running') {
-      throw new BadRequestException(`Deployment "${deployment.name}" is already running`);
+      throw new BadRequestException(
+        `Deployment "${deployment.name}" is already running`
+      );
     }
 
     // Update status to deploying
@@ -214,10 +244,13 @@ export class DeploymentService extends BaseService<Deployment> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Deployment | null> {
-    const deployment = await this.deploymentModel.findOne({
-      _id: id,
-      isDeleted: false,
-    }).lean().exec();
+    const deployment = await this.deploymentModel
+      .findOne({
+        _id: id,
+        isDeleted: false,
+      })
+      .lean()
+      .exec();
 
     if (!deployment) {
       throw new BadRequestException(`Deployment with ID ${id} not found`);
@@ -236,5 +269,43 @@ export class DeploymentService extends BaseService<Deployment> {
     // await this.deploymentProducer.emitDeploymentStopRequested(id);
 
     return updated;
+  }
+
+  /**
+   * Override findAll to handle statistics aggregation
+   */
+  async findAll(
+    options: FindManyOptions,
+    context: RequestContext
+  ): Promise<FindManyResult<Deployment>> {
+    const findResult = await super.findAll(options, context);
+    // Aggregate statistics by status
+    const statusStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Build statistics object
+    const statistics: any = {
+      total: findResult.pagination.total,
+      byStatus: {},
+      byType: {},
+    };
+
+    // Map status statistics
+    statusStats.forEach((stat: any) => {
+      statistics.byStatus[stat._id] = stat.count;
+    });
+
+    findResult.statistics = statistics;
+    return findResult;
   }
 }

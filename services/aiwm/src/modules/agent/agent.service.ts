@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { BaseService, PaginationQueryDto } from '@hydrabyte/base';
+import {
+  BaseService,
+  FindManyOptions,
+  FindManyResult,
+  PaginationQueryDto,
+} from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Agent, AgentDocument } from './agent.schema';
 import { CreateAgentDto, UpdateAgentDto } from './agent.dto';
@@ -9,10 +14,9 @@ import { AgentProducer } from '../../queues/producers/agent.producer';
 
 @Injectable()
 export class AgentService extends BaseService<Agent> {
-
   constructor(
     @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
-    private readonly agentProducer: AgentProducer,
+    private readonly agentProducer: AgentProducer
   ) {
     super(agentModel as any);
   }
@@ -21,7 +25,11 @@ export class AgentService extends BaseService<Agent> {
    * Override findById to support populate
    * If query has 'populate=instruction', populate the instructionId field
    */
-  async findById(id: any, context: RequestContext, query?: any): Promise<Agent | null> {
+  async findById(
+    id: any,
+    context: RequestContext,
+    query?: any
+  ): Promise<Agent | null> {
     const shouldPopulate = query?.populate === 'instruction';
 
     if (shouldPopulate) {
@@ -39,33 +47,45 @@ export class AgentService extends BaseService<Agent> {
    * Override findAll to support populate
    * If query has 'populate=instruction', populate the instructionId field
    */
-  async findAll(query: PaginationQueryDto, context: RequestContext): Promise<any> {
-    const shouldPopulate = (query as any).populate === 'instruction';
+  async findAll(
+    query: PaginationQueryDto,
+    context: RequestContext
+  ): Promise<any> {
+    const findResult = await super.findAll(query, context);
+    // Aggregate statistics by status
+    const statusStats = await super.aggregate(
+      [
+        { $match: { ...query.filter } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
 
-    if (shouldPopulate) {
-      const { page = 1, limit = 10, ...filters } = query;
-      const skip = (page - 1) * limit;
+    // Build statistics object
+    const statistics: any = {
+      total: findResult.pagination.total,
+      byStatus: {},
+      byType: {},
+    };
 
-      const [data, total] = await Promise.all([
-        this.agentModel
-          .find({ isDeleted: false, ...filters })
-          .populate('instructionId')
-          .skip(skip)
-          .limit(limit)
-          .exec(),
-        this.agentModel.countDocuments({ isDeleted: false, ...filters }),
-      ]);
+    // Map status statistics
+    statusStats.forEach((stat: any) => {
+      statistics.byStatus[stat._id] = stat.count;
+    });
 
-      return {
-        data,
-        pagination: { page, limit, total },
-      };
-    }
-
-    return super.findAll(query, context);
+    findResult.statistics = statistics;
+    return findResult;
   }
 
-  async create(createAgentDto: CreateAgentDto, context: RequestContext): Promise<Agent> {
+  async create(
+    createAgentDto: CreateAgentDto,
+    context: RequestContext
+  ): Promise<Agent> {
     // BaseService handles permissions, ownership, save, and generic logging
     const saved = await super.create(createAgentDto, context);
 
@@ -78,7 +98,7 @@ export class AgentService extends BaseService<Agent> {
       status: saved.status,
       capabilities: saved.capabilities,
       nodeId: saved.nodeId,
-      createdBy: context.userId
+      createdBy: context.userId,
     });
 
     // Emit event to queue
@@ -87,10 +107,18 @@ export class AgentService extends BaseService<Agent> {
     return saved as Agent;
   }
 
-  async updateAgent(id: string, updateAgentDto: UpdateAgentDto, context: RequestContext): Promise<Agent | null> {
+  async updateAgent(
+    id: string,
+    updateAgentDto: UpdateAgentDto,
+    context: RequestContext
+  ): Promise<Agent | null> {
     // Convert string to ObjectId for BaseService
     const objectId = new Types.ObjectId(id);
-    const updated = await super.update(objectId as any, updateAgentDto as any, context);
+    const updated = await super.update(
+      objectId as any,
+      updateAgentDto as any,
+      context
+    );
 
     if (updated) {
       // Business-specific logging with details
@@ -102,7 +130,7 @@ export class AgentService extends BaseService<Agent> {
         status: updated.status,
         capabilities: updated.capabilities,
         nodeId: updated.nodeId,
-        updatedBy: context.userId
+        updatedBy: context.userId,
       });
 
       // Emit event to queue
@@ -114,13 +142,16 @@ export class AgentService extends BaseService<Agent> {
 
   async remove(id: string, context: RequestContext): Promise<void> {
     // BaseService handles soft delete, permissions, and generic logging
-    const result = await super.softDelete(new Types.ObjectId(id) as any, context);
+    const result = await super.softDelete(
+      new Types.ObjectId(id) as any,
+      context
+    );
 
     if (result) {
       // Business-specific logging
       this.logger.info('Agent soft deleted with details', {
         id,
-        deletedBy: context.userId
+        deletedBy: context.userId,
       });
 
       // Emit event to queue

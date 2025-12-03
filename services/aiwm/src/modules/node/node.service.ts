@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Node } from './node.schema';
 import { CreateNodeDto, UpdateNodeDto } from './node.dto';
@@ -10,16 +10,53 @@ import { NodeProducer } from '../../queues/producers/node.producer';
 
 @Injectable()
 export class NodeService extends BaseService<Node> {
-
   constructor(
     @InjectModel(Node.name) nodeModel: Model<Node>,
     private readonly nodeProducer: NodeProducer,
-    private readonly jwtService: JwtService,
+    private readonly jwtService: JwtService
   ) {
     super(nodeModel as any);
   }
 
-  async create(createNodeDto: CreateNodeDto, context: RequestContext): Promise<Node> {
+  async findAll(
+    options: FindManyOptions,
+    context: RequestContext
+  ): Promise<FindManyResult<Node>> {
+    const findResult = await super.findAll(options, context);
+    // Aggregate statistics by status
+    const statusStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Build statistics object
+    const statistics: any = {
+      total: findResult.pagination.total,
+      byStatus: {},
+      byType: {},
+    };
+
+    // Map status statistics
+    statusStats.forEach((stat: any) => {
+      statistics.byStatus[stat._id] = stat.count;
+    });
+
+    findResult.statistics = statistics;
+    return findResult;
+  }
+
+  async create(
+    createNodeDto: CreateNodeDto,
+    context: RequestContext
+  ): Promise<Node> {
     // BaseService handles permissions, ownership, save, and generic logging
     const saved = await super.create(createNodeDto, context);
 
@@ -29,7 +66,7 @@ export class NodeService extends BaseService<Node> {
       name: saved.name,
       role: saved.role,
       status: saved.status,
-      createdBy: context.userId
+      createdBy: context.userId,
     });
 
     // Emit event to queue
@@ -38,10 +75,18 @@ export class NodeService extends BaseService<Node> {
     return saved as Node;
   }
 
-  async updateNode(id: string, updateNodeDto: UpdateNodeDto, context: RequestContext): Promise<Node | null> {
+  async updateNode(
+    id: string,
+    updateNodeDto: UpdateNodeDto,
+    context: RequestContext
+  ): Promise<Node | null> {
     // Convert string to ObjectId for BaseService
     const objectId = new Types.ObjectId(id);
-    const updated = await super.update(objectId as any, updateNodeDto as any, context);
+    const updated = await super.update(
+      objectId as any,
+      updateNodeDto as any,
+      context
+    );
 
     if (updated) {
       // Business-specific logging with details
@@ -50,7 +95,7 @@ export class NodeService extends BaseService<Node> {
         name: updated.name,
         role: updated.role,
         status: updated.status,
-        updatedBy: context.userId
+        updatedBy: context.userId,
       });
 
       // Emit event to queue
@@ -62,13 +107,16 @@ export class NodeService extends BaseService<Node> {
 
   async remove(id: string, context: RequestContext): Promise<void> {
     // BaseService handles soft delete, permissions, and generic logging
-    const result = await super.softDelete(new Types.ObjectId(id) as any, context);
+    const result = await super.softDelete(
+      new Types.ObjectId(id) as any,
+      context
+    );
 
     if (result) {
       // Business-specific logging
       this.logger.info('Node soft deleted with details', {
         id,
-        deletedBy: context.userId
+        deletedBy: context.userId,
       });
 
       // Emit event to queue
@@ -88,11 +136,13 @@ export class NodeService extends BaseService<Node> {
    */
   async generateToken(
     id: string,
-    expiresIn: number = 31536000, // Default: 1 year in seconds
+    expiresIn = 31536000, // Default: 1 year in seconds
     context?: RequestContext
   ): Promise<{ token: string; expiresAt: Date; installScript: string }> {
     // Verify node exists
-    const node = await this.model.findOne({ _id: new Types.ObjectId(id), deletedAt: null }).exec();
+    const node = await this.model
+      .findOne({ _id: new Types.ObjectId(id), deletedAt: null })
+      .exec();
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
     }
@@ -130,7 +180,9 @@ export class NodeService extends BaseService<Node> {
     // Generate installation script
     const installScript = this.generateInstallScript(token, node);
 
-    this.logger.log(`Token generated for node ${id} (expires: ${expiresAt.toISOString()})`);
+    this.logger.log(
+      `Token generated for node ${id} (expires: ${expiresAt.toISOString()})`
+    );
 
     return { token, expiresAt, installScript };
   }
@@ -140,7 +192,8 @@ export class NodeService extends BaseService<Node> {
    */
   private generateInstallScript(token: string, node: any): string {
     // TODO: Replace with actual controller endpoint from config
-    const controllerEndpoint = process.env.CONTROLLER_WEBSOCKET_URL || 'ws://localhost:3305';
+    const controllerEndpoint =
+      process.env.CONTROLLER_WEBSOCKET_URL || 'ws://localhost:3305';
 
     return `#!/bin/bash
 # Hydra Node Installation Script
@@ -151,9 +204,9 @@ export class NodeService extends BaseService<Node> {
 echo "Installing Hydra Node Daemon..."
 
 # Configuration
-export HYDRA_NODE_TOKEN="${token}"
-export HYDRA_CONTROLLER_ENDPOINT="${controllerEndpoint}"
-export HYDRA_NODE_ID="${node._id}"
+export AIOPS_NODE_TOKEN="${token}"
+export AIOPS_CONTROLLER_ENDPOINT="${controllerEndpoint}"
+export AIOPS_NODE_ID="${node._id}"
 
 # TODO: Add actual installation steps
 # 1. Download daemon binary
@@ -176,7 +229,7 @@ echo "Controller: ${controllerEndpoint}"
       {
         status,
         lastSeenAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
     );
 
@@ -193,8 +246,8 @@ echo "Controller: ${controllerEndpoint}"
         $set: {
           ...info,
           lastSeenAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       }
     );
 
@@ -215,8 +268,8 @@ echo "Controller: ${controllerEndpoint}"
           ramUsage: heartbeatData.ramUsage,
           lastHeartbeat: new Date(),
           lastSeenAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       }
     );
   }
@@ -232,8 +285,8 @@ echo "Controller: ${controllerEndpoint}"
       {
         $set: {
           lastMetricsAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       }
     );
 

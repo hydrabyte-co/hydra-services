@@ -14,6 +14,7 @@ import { ModelModule } from '../modules/model/model.module';
 import { InstructionModule } from '../modules/instruction/instruction.module';
 import { ToolModule } from '../modules/tool/tool.module';
 import { DeploymentModule } from '../modules/deployment/deployment.module';
+import { ResourceModule } from '../modules/resource/resource.module';
 import { AgentModule } from '../modules/agent/agent.module';
 import { ExecutionModule } from '../modules/execution/execution.module';
 import { QueueModule } from '../queues/queue.module';
@@ -34,6 +35,7 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
     InstructionModule,
     ToolModule,
     DeploymentModule,
+    ResourceModule,
     AgentModule,
     ExecutionModule,
     ProcessorsModule,

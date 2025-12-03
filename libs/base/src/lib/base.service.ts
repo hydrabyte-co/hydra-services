@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Model, ObjectId } from 'mongoose';
+import { Model, ObjectId, PipelineStage } from 'mongoose';
 import { RequestContext, createRoleBasedPermissions, createLogger } from '@hydrabyte/shared';
 import { ForbiddenException } from '@nestjs/common';
 
@@ -253,5 +252,51 @@ export class BaseService<Entity> {
       _id: updated._id,
       deletedAt: new Date(),
     } as any;
+  }
+
+  /**
+   * Execute MongoDB aggregation pipeline with RBAC and scope filtering
+   * @param pipeline - Array of aggregation stages
+   * @param context - Request context for permission checks
+   * @returns Array of aggregation results, or empty array if error occurs
+   */
+  async aggregate(
+    pipeline: PipelineStage[],
+    context: RequestContext
+  ): Promise<unknown[]> {
+    this.logger.debug('Running aggregation pipeline', {
+      stageCount: pipeline.length,
+      userId: context.userId,
+    });
+
+    try {
+      const permissions = createRoleBasedPermissions(context);
+      if (!permissions.allowRead) {
+        this.logger.warn('Read permission denied for aggregation', {
+          userId: context.userId,
+          roles: context.roles,
+        });
+        throw new ForbiddenException('You do not have permission to read.');
+      }
+
+      // Inject scope filter and soft delete check at the beginning of pipeline
+      const scopeFilter = { ...permissions.filter, isDeleted: false };
+      const finalPipeline = [{ $match: scopeFilter }, ...pipeline];
+
+      const result = await this.model.aggregate(finalPipeline).exec();
+
+      this.logger.info('Aggregation completed', {
+        resultCount: result.length,
+        userId: context.userId,
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Aggregation failed', {
+        error: (error as Error).message,
+        userId: context.userId,
+      });
+      return [];
+    }
   }
 }

@@ -4,6 +4,9 @@ import { IsOptional, IsInt, Min, IsObject } from 'class-validator';
 
 /**
  * Query parameters for pagination, filtering, and sorting
+ * Note: This DTO allows additional query parameters to pass through without validation errors.
+ * Use ValidateNested with { whitelist: true, forbidNonWhitelisted: false } in your ValidationPipe
+ * or apply @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false }))
  */
 export class PaginationQueryDto {
   @ApiProperty({
@@ -56,7 +59,7 @@ export class PaginationQueryDto {
  */
 export class PaginationResponseDto<T> {
   @ApiProperty({ description: 'Array of data items' })
-  data: T[];
+  data: T[] | undefined;
 
   @ApiProperty({
     description: 'Pagination metadata',
@@ -66,5 +69,5 @@ export class PaginationResponseDto<T> {
     page: number;
     limit: number;
     total: number;
-  };
+  } | undefined;
 }

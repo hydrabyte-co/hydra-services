@@ -13,6 +13,9 @@ export * from './lib/enum/websocket';
 export * from './lib/interfaces/websocket';
 export * from './lib/dto/websocket';
 
+// Resource Management Types
+export * from './lib/interfaces/resource-config.interface';
+
 // Exceptions
 export * from './lib/exceptions/instruction-in-use.exception';
 export * from './lib/exceptions/tool-in-use.exception';
