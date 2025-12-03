@@ -44,18 +44,17 @@ export class AgentService extends BaseService<Agent> {
   }
 
   /**
-   * Override findAll to support populate
-   * If query has 'populate=instruction', populate the instructionId field
+   * Override findAll to handle statistics aggregation
    */
   async findAll(
-    query: PaginationQueryDto,
+    options: FindManyOptions,
     context: RequestContext
-  ): Promise<any> {
-    const findResult = await super.findAll(query, context);
+  ): Promise<FindManyResult<Agent>> {
+    const findResult = await super.findAll(options, context);
     // Aggregate statistics by status
     const statusStats = await super.aggregate(
       [
-        { $match: { ...query.filter } },
+        { $match: { ...options.filter } },
         {
           $group: {
             _id: '$status',
