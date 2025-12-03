@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { PredefinedRole, RequestContext } from '@hydrabyte/shared';
 import { User } from './user.schema';
 import { PasswordHashAlgorithms } from '../../core/enums/other.enum';
@@ -14,6 +14,43 @@ import { CreateUserData } from './user.dto';
 export class UsersService extends BaseService<User> {
   constructor(@InjectModel(User.name) userModel: Model<User>) {
     super(userModel);
+  }
+
+   /**
+   * Override findAll to handle statistics aggregation
+   */
+  async findAll(
+    options: FindManyOptions,
+    context: RequestContext
+  ): Promise<FindManyResult<User>> {
+    const findResult = await super.findAll(options, context);
+    // Aggregate statistics by status
+    const statusStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Build statistics object
+    const statistics: any = {
+      total: findResult.pagination.total,
+      byStatus: {},
+    };
+
+    // Map status statistics
+    statusStats.forEach((stat: any) => {
+      statistics.byStatus[stat._id] = stat.count;
+    });
+
+    findResult.statistics = statistics;
+    return findResult;
   }
 
   async create(data: CreateUserData, context: RequestContext): Promise<Partial<User>> {
