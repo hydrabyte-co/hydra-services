@@ -15,8 +15,10 @@ import { InstructionModule } from '../modules/instruction/instruction.module';
 import { ToolModule } from '../modules/tool/tool.module';
 import { DeploymentModule } from '../modules/deployment/deployment.module';
 import { ResourceModule } from '../modules/resource/resource.module';
+import { ConfigurationModule } from '../modules/configuration/configuration.module';
 import { AgentModule } from '../modules/agent/agent.module';
 import { ExecutionModule } from '../modules/execution/execution.module';
+import { ReportsModule } from '../modules/reports/reports.module';
 import { QueueModule } from '../queues/queue.module';
 import { ProcessorsModule } from '../queues/processors.module';
 import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
@@ -36,8 +38,10 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
     ToolModule,
     DeploymentModule,
     ResourceModule,
+    ConfigurationModule,
     AgentModule,
     ExecutionModule,
+    ReportsModule,
     ProcessorsModule,
   ],
   controllers: [AppController],
