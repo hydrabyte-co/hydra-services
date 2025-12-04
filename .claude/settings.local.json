@@ -46,7 +46,10 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTFlYmEwODUxN2Y5MTc5NDNhZTFmYTEiLCJ1c2VybmFtZSI6ImFkbWluQHgtb3IuY2xvdWQiLCJzdGF0dXMiOiJhY3RpdmUiLCJyb2xlcyI6WyJvcmdhbml6YXRpb24ub3duZXIiXSwib3JnSWQiOiI2OTFlYjllNjUxN2Y5MTc5NDNhZTFmOWQiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYzNzA5MTc5LCJleHAiOjE3NjM3MTI3Nzl9.bIdvvjX_f_58t5BYlQDCqvoPqrV3mt0taa4-0Hvuqiw\")",
       "Bash(__NEW_LINE__ curl -X POST http://localhost:3305/models )",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTFlYmEwODUxN2Y5MTc5NDNhZTFmYTEiLCJ1c2VybmFtZSI6ImFkbWluQHgtb3IuY2xvdWQiLCJzdGF0dXMiOiJhY3RpdmUiLCJyb2xlcyI6WyJvcmdhbml6YXRpb24ub3duZXIiXSwib3JnSWQiOiI2OTFlYjllNjUxN2Y5MTc5NDNhZTFmOWQiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYzNzEyOTgzLCJleHAiOjE3NjM3MTY1ODN9.loIFlVcyfHrs1YRsH471r2UMX4fAYucnXGe7BRK3jAo\")",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTFlYmEwODUxN2Y5MTc5NDNhZTFmYTEiLCJ1c2VybmFtZSI6ImFkbWluQHgtb3IuY2xvdWQiLCJzdGF0dXMiOiJhY3RpdmUiLCJyb2xlcyI6WyJvcmdhbml6YXRpb24ub3duZXIiXSwib3JnSWQiOiI2OTFlYjllNjUxN2Y5MTc5NDNhZTFmOWQiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYzNzEyOTgzLCJleHAiOjE3NjM3MTY1ODN9.loIFlVcyfHrs1YRsH471r2UMX4fAYucnXGe7BRK3jAo\" curl -s \"http://localhost:3305/models?page=1&limit=10\" -H \"Authorization: Bearer $TOKEN\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTFlYmEwODUxN2Y5MTc5NDNhZTFmYTEiLCJ1c2VybmFtZSI6ImFkbWluQHgtb3IuY2xvdWQiLCJzdGF0dXMiOiJhY3RpdmUiLCJyb2xlcyI6WyJvcmdhbml6YXRpb24ub3duZXIiXSwib3JnSWQiOiI2OTFlYjllNjUxN2Y5MTc5NDNhZTFmOWQiLCJncm91cElkIjoiIiwiYWdlbnRJZCI6IiIsImFwcElkIjoiIiwiaWF0IjoxNzYzNzEyOTgzLCJleHAiOjE3NjM3MTY1ODN9.loIFlVcyfHrs1YRsH471r2UMX4fAYucnXGe7BRK3jAo\" curl -s \"http://localhost:3305/models?page=1&limit=10\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(chmod:*)",
+      "Bash(scripts/seed-models.sh:*)",
+      "Bash(./scripts/seed-nodes.sh:*)"
     ],
     "deny": [],
     "ask": []

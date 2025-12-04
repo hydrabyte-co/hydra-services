@@ -1,10 +1,33 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { PassportModule } from '@nestjs/passport';
+import {
+  HealthModule,
+  JwtStrategy,
+  CorrelationIdMiddleware,
+} from '@hydrabyte/base';
+import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DocumentModule } from '../modules/document/document.module';
 
 @Module({
-  imports: [],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRoot(`${process.env.MONGODB_URI}/${COMMON_CONFIG.DatabaseNamePrefix}${SERVICE_CONFIG.cbm.name}`),
+    PassportModule,
+    HealthModule,
+    DocumentModule,
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, JwtStrategy],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply correlation ID middleware to all routes
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

@@ -56,21 +56,38 @@ export class ResourceController {
     description: 'Query resources with filters (type, status, nodeId).',
   })
   @ApiReadErrors({ notFound: false })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number', type: Number })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page', type: Number })
   @ApiQuery({ name: 'resourceType', required: false, description: 'Filter by resource type' })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
   @ApiQuery({ name: 'nodeId', required: false, description: 'Filter by node ID' })
   @UseGuards(JwtAuthGuard)
   async findAll(
-    @Query() query: PaginationQueryDto,
+    @Query() query: any,
     @CurrentUser() context: RequestContext
   ) {
-    // Extract custom filters from query
-    const { resourceType, status, nodeId, ...paginationQuery } = query as any;
+    console.log('Controller received query:', query);
 
+    // Extract custom filters and pagination from raw query
+    const { resourceType, status, nodeId, page, limit, ...otherParams } = query;
+
+    console.log('Extracted params:', { resourceType, status, nodeId, page, limit });
+
+    // Build filter object
     const filter: any = {};
     if (resourceType) filter.resourceType = resourceType;
     if (status) filter.status = status;
     if (nodeId) filter.nodeId = new Types.ObjectId(nodeId);
+
+    console.log('Final filter to service:', filter);
+
+    // Build pagination query
+    const paginationQuery = {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 10,
+    };
+
+    console.log('Pagination query:', paginationQuery);
 
     return this.resourceService.findAll(
       { filter, ...paginationQuery },

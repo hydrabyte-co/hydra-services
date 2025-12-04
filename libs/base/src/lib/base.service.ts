@@ -1,5 +1,5 @@
 import { Model, ObjectId, PipelineStage } from 'mongoose';
-import { RequestContext, createRoleBasedPermissions, createLogger } from '@hydrabyte/shared';
+import { RequestContext, createRoleBasedPermissions, createLogger, logDebug } from '@hydrabyte/shared';
 import { ForbiddenException } from '@nestjs/common';
 
 export interface FindManyResult<T> {
@@ -104,8 +104,10 @@ export class BaseService<Entity> {
 
     const { filter = {}, sort, page = 1, limit = 10 } = options;
 
-    // Merge user filter with scope-based filter
-    const finalFilter = { ...filter, ...permissions.filter, isDeleted: false };
+    // Merge scope-based filter with user filter (user filter takes precedence)
+    const finalFilter = { ...permissions.filter, ...filter, isDeleted: false };
+
+    this.logger.debug('Final query filter', finalFilter);
 
     const [data, total] = await Promise.all([
       this.model
