@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Document } from './document.schema';
@@ -19,14 +19,48 @@ export class DocumentService extends BaseService<Document> {
   }
 
   /**
+   * Override findById to exclude content field
+   */
+  async findById(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<Document | null> {
+    return this.documentModel
+      .findOne({ _id: id, deletedAt: null })
+      .select('-content')
+      .lean()
+      .exec() as Promise<Document | null>;
+  }
+
+  /**
+   * Find document by ID with full content (for /content endpoint)
+   */
+  async findByIdWithContent(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<Document | null> {
+    return this.documentModel
+      .findOne({ _id: id, deletedAt: null })
+      .lean()
+      .exec() as Promise<Document | null>;
+  }
+
+  /**
    * Override findAll to handle statistics aggregation
    * Aggregates by type and status
+   * Excludes content field from results
    */
   async findAll(
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<Document>> {
     const findResult = await super.findAll(options, context);
+
+    // Exclude content field from results
+    findResult.data = findResult.data.map((doc: any) => {
+      const { content, ...rest } = doc;
+      return rest;
+    });
 
     // Aggregate statistics by status
     const statusStats = await super.aggregate(

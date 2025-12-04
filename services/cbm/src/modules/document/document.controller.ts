@@ -8,6 +8,8 @@ import {
   Param,
   Query,
   UseGuards,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
@@ -21,6 +23,7 @@ import {
 } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
+import { Response } from 'express';
 import { DocumentService } from './document.service';
 import { CreateDocumentDto, UpdateDocumentDto } from './document.dto';
 
@@ -50,6 +53,36 @@ export class DocumentController {
     @CurrentUser() context: RequestContext
   ) {
     return this.documentService.findAll(query, context);
+  }
+
+  @Get(':id/content')
+  @ApiOperation({ summary: 'Get document content with appropriate MIME type' })
+  @ApiReadErrors()
+  @UseGuards(JwtAuthGuard)
+  async getContent(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext,
+    @Res() res: Response
+  ) {
+    const document = await this.documentService.findByIdWithContent(new Types.ObjectId(id) as any, context);
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${id} not found`);
+    }
+
+    // Map document type to MIME type
+    const mimeTypeMap: Record<string, string> = {
+      html: 'text/html',
+      text: 'text/plain',
+      markdown: 'text/markdown',
+      json: 'application/json',
+    };
+
+    const mimeType = mimeTypeMap[document.type] || 'text/plain';
+
+    // Set content type and send content
+    res.setHeader('Content-Type', `${mimeType}; charset=utf-8`);
+    res.send(document.content);
   }
 
   @Get(':id')

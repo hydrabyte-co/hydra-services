@@ -68,7 +68,37 @@ curl -X POST http://localhost:3001/documents \
 }
 ```
 
-### 2. List All Documents (with Pagination & Statistics)
+### 2. Get Document Content (with MIME type)
+
+```bash
+curl -X GET "http://localhost:3001/documents/507f1f77bcf86cd799439011/content" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response Headers:**
+```
+Content-Type: text/markdown; charset=utf-8
+```
+
+**Response Body:** (raw content)
+```
+This guide explains how to integrate with our REST API...
+```
+
+**MIME Type Mapping:**
+- `html` → `text/html`
+- `text` → `text/plain`
+- `markdown` → `text/markdown`
+- `json` → `application/json`
+
+**Use Cases:**
+- Display document content in iframe: `<iframe src="/documents/{id}/content" />`
+- Download document: Use browser download or `Content-Disposition` header
+- Preview in browser with correct rendering
+
+---
+
+### 3. List All Documents (with Pagination & Statistics)
 
 ```bash
 curl -X GET "http://localhost:3001/documents?page=1&limit=10" \
@@ -111,14 +141,14 @@ curl -X GET "http://localhost:3001/documents?page=1&limit=10" \
 }
 ```
 
-### 3. Get Document by ID
+### 4. Get Document by ID
 
 ```bash
 curl -X GET "http://localhost:3001/documents/507f1f77bcf86cd799439011" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-### 4. Update Document
+### 5. Update Document
 
 ```bash
 curl -X PATCH "http://localhost:3001/documents/507f1f77bcf86cd799439011" \
@@ -131,7 +161,7 @@ curl -X PATCH "http://localhost:3001/documents/507f1f77bcf86cd799439011" \
   }'
 ```
 
-### 5. Delete Document (Soft Delete)
+### 6. Delete Document (Soft Delete)
 
 ```bash
 curl -X DELETE "http://localhost:3001/documents/507f1f77bcf86cd799439011" \
@@ -178,6 +208,50 @@ curl -X PATCH "http://localhost:3001/documents/$DOCUMENT_ID" \
     "status": "published",
     "scope": "org"
   }'
+```
+
+### Get HTML Document Content and Display in Browser
+
+```bash
+# Get the content with proper MIME type
+curl -X GET "http://localhost:3001/documents/$DOCUMENT_ID/content" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Frontend Example:**
+```html
+<!-- Display HTML document in iframe -->
+<iframe
+  src="http://localhost:3001/documents/507f1f77bcf86cd799439011/content"
+  width="100%"
+  height="600px"
+></iframe>
+
+<!-- Or fetch and display -->
+<script>
+async function displayDocument(docId, token) {
+  const response = await fetch(`/documents/${docId}/content`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  const contentType = response.headers.get('Content-Type');
+  const content = await response.text();
+
+  if (contentType.includes('text/html')) {
+    // Display HTML
+    document.getElementById('preview').innerHTML = content;
+  } else if (contentType.includes('text/markdown')) {
+    // Render markdown (using markdown library)
+    document.getElementById('preview').innerHTML = renderMarkdown(content);
+  } else if (contentType.includes('application/json')) {
+    // Display formatted JSON
+    document.getElementById('preview').innerHTML = `<pre>${JSON.stringify(JSON.parse(content), null, 2)}</pre>`;
+  } else {
+    // Display as plain text
+    document.getElementById('preview').textContent = content;
+  }
+}
+</script>
 ```
 
 ## Testing Steps
