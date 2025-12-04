@@ -37,45 +37,25 @@ export class CreateDeploymentDto {
   description!: string;
 
   @ApiProperty({
-    description: 'Model ID to deploy (MongoDB ObjectId)',
+    description: 'Model ID to deploy (MongoDB ObjectId as string)',
     example: '507f1f77bcf86cd799439011',
   })
   @IsString()
   modelId!: string;
 
   @ApiProperty({
-    description: 'Node ID to deploy on (MongoDB ObjectId)',
+    description: 'Node ID to deploy on (MongoDB ObjectId as string)',
     example: '507f1f77bcf86cd799439012',
   })
   @IsString()
   nodeId!: string;
 
-  // Optional fields for advanced configuration
-  @ApiPropertyOptional({
-    description: 'GPU device IDs to use',
-    example: '0',
+  @ApiProperty({
+    description: 'Resource ID of inference container (MongoDB ObjectId as string)',
+    example: '507f1f77bcf86cd799439013',
   })
-  @IsOptional()
   @IsString()
-  gpuDevice?: string;
-
-  @ApiPropertyOptional({
-    description: 'Docker image to use for deployment',
-    example: 'nvcr.io/nvidia/tritonserver:24.01',
-  })
-  @IsOptional()
-  @IsString()
-  dockerImage?: string;
-
-  @ApiPropertyOptional({
-    description: 'Container port (1024-65535)',
-    example: 8000,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(1024)
-  @Max(65535)
-  containerPort?: number;
+  resourceId!: string;
 
   @ApiPropertyOptional({
     description: 'Deployment status',
@@ -125,56 +105,6 @@ export class UpdateDeploymentDto {
   status?: string;
 
   @ApiPropertyOptional({
-    description: 'Container ID',
-    example: 'abc123def456',
-  })
-  @IsOptional()
-  @IsString()
-  containerId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Container name',
-    example: 'deployment-507f1f77bcf86cd799439011',
-  })
-  @IsOptional()
-  @IsString()
-  containerName?: string;
-
-  @ApiPropertyOptional({
-    description: 'Docker image used',
-    example: 'nvcr.io/nvidia/tritonserver:24.01',
-  })
-  @IsOptional()
-  @IsString()
-  dockerImage?: string;
-
-  @ApiPropertyOptional({
-    description: 'Container port',
-    example: 8000,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(1024)
-  @Max(65535)
-  containerPort?: number;
-
-  @ApiPropertyOptional({
-    description: 'GPU device IDs',
-    example: '0,1',
-  })
-  @IsOptional()
-  @IsString()
-  gpuDevice?: string;
-
-  @ApiPropertyOptional({
-    description: 'API endpoint URL',
-    example: 'http://192.168.1.100:8000/v1/models/llama-3.1-8b',
-  })
-  @IsOptional()
-  @IsString()
-  endpoint?: string;
-
-  @ApiPropertyOptional({
     description: 'Error message',
     example: 'Failed to allocate GPU memory',
   })
@@ -189,4 +119,7 @@ export class UpdateDeploymentDto {
   @IsOptional()
   @IsDateString()
   lastHealthCheck?: Date;
+
+  // Note: Container info (containerId, containerName, dockerImage, containerPort, endpoint, gpuDevice)
+  // are retrieved from the linked Resource via resourceId and should not be updated directly
 }

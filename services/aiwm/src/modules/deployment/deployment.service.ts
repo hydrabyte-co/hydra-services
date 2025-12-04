@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
@@ -10,6 +11,7 @@ import { RequestContext } from '@hydrabyte/shared';
 import { Deployment } from './deployment.schema';
 import { Model as ModelEntity } from '../model/model.schema';
 import { Node } from '../node/node.schema';
+import { Resource } from '../resource/resource.schema';
 
 /**
  * DeploymentService
@@ -22,32 +24,35 @@ export class DeploymentService extends BaseService<Deployment> {
     @InjectModel(Deployment.name) private deploymentModel: Model<Deployment>,
     @InjectModel(ModelEntity.name)
     private readonly modelModel: Model<ModelEntity>,
-    @InjectModel(Node.name) private readonly nodeModel: Model<Node>
+    @InjectModel(Node.name) private readonly nodeModel: Model<Node>,
+    @InjectModel(Resource.name) private readonly resourceModel: Model<Resource>
   ) {
     super(deploymentModel);
   }
 
   /**
-   * Override create method to validate model and node before deployment
+   * Override create method to validate model, node, and resource before deployment
    * - Model must exist and status = 'active'
    * - Node must exist and status = 'online'
+   * - Resource must exist and resourceType = 'inference-container'
    */
   async create(
     createData: Partial<Deployment>,
     context: RequestContext
   ): Promise<Deployment | null> {
-    const { modelId, nodeId } = createData;
+    const { modelId, nodeId, resourceId } = createData;
 
-    if (!modelId || !nodeId) {
-      throw new BadRequestException('modelId and nodeId are required');
+    if (!modelId || !nodeId || !resourceId) {
+      throw new BadRequestException(
+        'modelId, nodeId, and resourceId are required'
+      );
     }
 
     // Validate Model exists and is active
     const model = await this.modelModel
-      .findOne({
-        _id: modelId,
-        isDeleted: false,
-      })
+      .findById(modelId)
+      .where('isDeleted')
+      .equals(false)
       .lean()
       .exec();
 
@@ -63,10 +68,9 @@ export class DeploymentService extends BaseService<Deployment> {
 
     // Validate Node exists and is online
     const node = await this.nodeModel
-      .findOne({
-        _id: nodeId,
-        isDeleted: false,
-      })
+      .findById(nodeId)
+      .where('isDeleted')
+      .equals(false)
       .lean()
       .exec();
 
@@ -77,6 +81,26 @@ export class DeploymentService extends BaseService<Deployment> {
     if (node.status !== 'online') {
       throw new BadRequestException(
         `Node "${node.name}" must be 'online' to create deployment. Current status: ${node.status}`
+      );
+    }
+
+    // Validate Resource exists and is inference-container
+    const resource = await this.resourceModel
+      .findById(resourceId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!resource) {
+      throw new BadRequestException(
+        `Resource with ID ${resourceId} not found`
+      );
+    }
+
+    if (resource.resourceType !== 'inference-container') {
+      throw new BadRequestException(
+        `Resource "${resource.name}" must be of type 'inference-container'. Current type: ${resource.resourceType}`
       );
     }
 
@@ -307,5 +331,124 @@ export class DeploymentService extends BaseService<Deployment> {
 
     findResult.statistics = statistics;
     return findResult;
+  }
+
+  /**
+   * Get deployment endpoint by resolving resource and node
+   * Builds endpoint URL from node IP and resource container port
+   * @param deploymentId - Deployment ID (as string)
+   * @returns Endpoint URL (e.g., "http://172.16.3.20:10060")
+   */
+  async getDeploymentEndpoint(deploymentId: string): Promise<string> {
+    // Get deployment
+    const deployment = await this.deploymentModel
+      .findById(deploymentId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!deployment) {
+      throw new NotFoundException(
+        `Deployment with ID ${deploymentId} not found`
+      );
+    }
+
+    // Get resource
+    const resource = await this.resourceModel
+      .findById(deployment.resourceId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!resource) {
+      throw new NotFoundException(
+        `Resource with ID ${deployment.resourceId} not found`
+      );
+    }
+
+    // Get node
+    const node = await this.nodeModel
+      .findById(deployment.nodeId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!node) {
+      throw new NotFoundException(
+        `Node with ID ${deployment.nodeId} not found`
+      );
+    }
+
+    // Extract port from resource (first port mapping)
+    const containerPorts = resource.config?.containerPorts;
+    if (!containerPorts || containerPorts.length === 0) {
+      throw new BadRequestException(
+        `Resource "${resource.name}" has no container ports configured`
+      );
+    }
+
+    const hostPort = containerPorts[0].hostPort;
+
+    // Build endpoint URL
+    const endpoint = `http://${node.ipAddress}:${hostPort}`;
+
+    return endpoint;
+  }
+
+  /**
+   * Get resource and node info for a deployment
+   * Used by controllers to get container details
+   */
+  async getDeploymentDetails(deploymentId: string): Promise<{
+    deployment: any;
+    resource: any;
+    node: any;
+    endpoint: string;
+  }> {
+    const deployment = await this.deploymentModel
+      .findById(deploymentId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!deployment) {
+      throw new NotFoundException(
+        `Deployment with ID ${deploymentId} not found`
+      );
+    }
+
+    const resource = await this.resourceModel
+      .findById(deployment.resourceId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!resource) {
+      throw new NotFoundException(
+        `Resource with ID ${deployment.resourceId} not found`
+      );
+    }
+
+    const node = await this.nodeModel
+      .findById(deployment.nodeId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!node) {
+      throw new NotFoundException(
+        `Node with ID ${deployment.nodeId} not found`
+      );
+    }
+
+    const endpoint = await this.getDeploymentEndpoint(deploymentId);
+
+    return { deployment, resource, node, endpoint };
   }
 }

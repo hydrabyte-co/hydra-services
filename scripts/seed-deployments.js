@@ -1,11 +1,12 @@
 /**
  * Seed Deployments for Inference Containers
- * Creates deployment records linking Models -> Nodes -> Containers
+ * Creates deployment records linking Models -> Nodes -> Resources (Containers)
+ * IDs are now stored as strings instead of ObjectId
  */
 
 const ORG_ID = '692ff5fa3371dad36b287ec5';
-const USER_ID = ObjectId('692ff5fa3371dad36b287ec4');
-const NODE_ID = ObjectId('6931711bd436a16167c4c5f1'); // Multi-GPU-Controller-001
+const USER_ID = '692ff5fa3371dad36b287ec4';
+const NODE_ID = '6931711bd436a16167c4c5f1'; // Multi-GPU-Controller-001
 
 print('========================================');
 print('Seeding Deployments');
@@ -49,8 +50,9 @@ resources.forEach((resource, idx) => {
     // Check if deployment already exists
     const existing = db.deployments.findOne({
       'owner.orgId': ORG_ID,
-      modelId: model._id,
-      nodeId: NODE_ID
+      modelId: model._id.toString(),
+      nodeId: NODE_ID,
+      resourceId: resource._id.toString()
     });
 
     if (existing) {
@@ -58,40 +60,27 @@ resources.forEach((resource, idx) => {
       return;
     }
 
-    // Extract container port
+    // Extract container port (for display/verification only)
     const containerPort = resource.config.containerPorts && resource.config.containerPorts[0]
       ? resource.config.containerPorts[0].hostPort
       : null;
 
-    // Extract GPU device
+    // Extract GPU device (for display/verification only)
     const gpuDevice = resource.runtime && resource.runtime.allocatedGPU && resource.runtime.allocatedGPU.length > 0
       ? resource.runtime.allocatedGPU.join(',')
       : null;
 
-    // Build endpoint
-    const endpoint = resource.runtime && resource.runtime.endpoint
-      ? resource.runtime.endpoint
-      : (containerPort ? 'http://localhost:' + containerPort : null);
-
-    // Create deployment document
+    // Create deployment document (IDs as strings, no container fields)
     const deployment = {
       name: deploymentName,
       description: 'Production deployment of ' + model.name + ' on ' + resource.name + ' container',
-      modelId: model._id,
+
+      // Reference IDs (stored as strings)
+      modelId: model._id.toString(),
       nodeId: NODE_ID,
+      resourceId: resource._id.toString(),
+
       status: 'running', // Container is already running
-
-      // Container info
-      containerId: resource.runtime.id,
-      containerName: resource.name,
-      dockerImage: resource.config.imageName + ':' + resource.config.imageTag,
-      containerPort: containerPort,
-
-      // GPU allocation
-      gpuDevice: gpuDevice,
-
-      // Networking
-      endpoint: endpoint,
 
       // Health
       lastHealthCheck: new Date(),
@@ -105,9 +94,7 @@ resources.forEach((resource, idx) => {
       createdBy: USER_ID,
       updatedBy: USER_ID,
       deletedAt: null,
-      metadata: {
-        resourceId: resource._id.toString() // Link back to resource
-      },
+      metadata: {},
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -118,11 +105,13 @@ resources.forEach((resource, idx) => {
     if (result.acknowledged) {
       print('✅ [' + (idx+1) + '/' + resources.length + '] Created: ' + deploymentName);
       print('   Deployment ID: ' + result.insertedId);
+      print('   Model ID: ' + deployment.modelId);
+      print('   Node ID: ' + deployment.nodeId);
+      print('   Resource ID: ' + deployment.resourceId);
       print('   Model: ' + model.name + ' (' + model.type + ')');
       print('   Container: ' + resource.name);
       print('   Port: ' + (containerPort || 'N/A'));
       print('   GPU: ' + (gpuDevice || 'none'));
-      print('   Endpoint: ' + (endpoint || 'N/A'));
       print('');
       successCount++;
     } else {
@@ -159,12 +148,10 @@ print('Deployments List:');
 deployments.forEach((d, i) => {
   print((i+1) + '. ' + d.name);
   print('   ID: ' + d._id);
-  print('   Model: ' + d.modelId);
-  print('   Node: ' + d.nodeId);
+  print('   Model ID: ' + d.modelId);
+  print('   Node ID: ' + d.nodeId);
+  print('   Resource ID: ' + d.resourceId);
   print('   Status: ' + d.status);
-  print('   Container: ' + d.containerName + ' [' + d.containerId.substring(0, 12) + ']');
-  print('   Endpoint: ' + (d.endpoint || 'N/A'));
-  print('   GPU: ' + (d.gpuDevice || 'none'));
   print('');
 });
 
