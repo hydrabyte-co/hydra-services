@@ -1,1224 +1,809 @@
-# AIWM Service - Microservices Pattern Reference
+# AIWM Service - AI Workload Manager
 
-A comprehensive NestJS microservice aiwm demonstrating modern architecture patterns including CRUD operations, Event-Driven Architecture with BullMQ, and async report generation.
+## Tổng Quan
 
-## 🎯 Purpose
+**AIWM (AI Workload Manager)** là dịch vụ cốt lõi của nền tảng Kaisar AI Ops, chịu trách nhiệm quản lý và điều phối toàn bộ workload AI bao gồm models, agents, resources, deployments và execution tracking.
 
-This aiwm service serves as a **reference implementation** for creating new microservices in the Hydra Services ecosystem. It demonstrates:
+**Port:** 3003
+**Database:** `core_aiwm` (MongoDB)
+**Service Name:** `aiwm`
 
-- ✅ Complete CRUD operations with MongoDB/Mongoose
-- ✅ Event-Driven Architecture using BullMQ + Redis
-- ✅ Queue-based async processing (Publisher/Subscriber pattern)
-- ✅ Module organization and dependency management
-- ✅ Swagger/OpenAPI documentation
-- ✅ TypeScript best practices
-- ✅ Validation with class-validator
+---
 
-## 📁 Service Architecture
+## Kiến Trúc và Modules
 
-### Modules
+AIWM được tổ chức theo kiến trúc modular với 12 modules chính:
 
+### 1. **Model Module** (`/modules/model`)
+Quản lý AI models metadata và lifecycle.
+
+**Chức năng:**
+- CRUD operations cho models
+- Hỗ trợ nhiều loại: LLM, Vision, Voice, Embedding
+- Tracking provider, capabilities, pricing
+- Status management (active, inactive, deprecated)
+
+**Schema chính:**
+- `name`: Tên model
+- `type`: Loại model (llm, vision, voice, embedding)
+- `provider`: Nhà cung cấp (OpenAI, Anthropic, Google, Local...)
+- `modelId`: ID của model từ provider
+- `capabilities`: Các khả năng của model
+- `pricing`: Thông tin giá cả
+- `status`: Trạng thái (active, inactive, deprecated)
+
+**API Documentation:** [`docs/aiwm/API-MODEL.md`](../../docs/aiwm/API-MODEL.md)
+
+---
+
+### 2. **Agent Module** (`/modules/agent`)
+Quản lý AI agents - các thực thể thực thi tasks với instructions và guardrails.
+
+**Chức năng:**
+- CRUD operations cho agents
+- Link agents với instructions và guardrails
+- Assign agents to nodes
+- Track agent status (active, inactive, busy)
+- Tagging và categorization
+
+**Schema chính:**
+- `name`: Tên agent
+- `description`: Mô tả
+- `status`: Trạng thái (active, inactive, busy)
+- `instructionId`: Link đến instruction
+- `guardrailId`: Link đến guardrail
+- `nodeId`: Node chạy agent
+- `tags`: Tags để phân loại
+
+**API Documentation:** [`docs/aiwm/API-AGENT.md`](../../docs/aiwm/API-AGENT.md)
+
+---
+
+### 3. **Node Module** (`/modules/node`)
+Quản lý compute nodes (servers) chạy AI workloads.
+
+**Chức năng:**
+- CRUD operations cho nodes
+- Monitor capacity và load
+- Health checks
+- Resource allocation tracking
+- Node status management
+
+**Schema chính:**
+- `name`: Tên node
+- `host`: Hostname/IP
+- `capacity`: Khả năng xử lý
+- `currentLoad`: Load hiện tại
+- `status`: Trạng thái (active, inactive, maintenance)
+- `resources`: Tài nguyên khả dụng
+
+**API Documentation:** [`docs/aiwm/API-NODE.md`](../../docs/aiwm/API-NODE.md)
+
+---
+
+### 4. **Resource Module** (`/modules/resource`)
+Quản lý phân bổ tài nguyên compute cho models.
+
+**Chức năng:**
+- CRUD operations cho resources
+- Link resources với models và nodes
+- Configure GPU, memory, replicas
+- Track resource utilization
+- Status management
+
+**Schema chính:**
+- `name`: Tên resource
+- `modelId`: Model sử dụng resource
+- `nodeId`: Node chạy resource
+- `config`: Cấu hình (gpu, memory, replicas)
+- `status`: Trạng thái (active, inactive, error)
+
+**API Documentation:** [`docs/aiwm/API-RESOURCE.md`](../../docs/aiwm/API-RESOURCE.md)
+
+---
+
+### 5. **Deployment Module** (`/modules/deployment`)
+Quản lý deployment của models lên production environment.
+
+**Chức năng:**
+- CRUD operations cho deployments
+- Link deployments với resources
+- Manage endpoints và routing
+- Version control
+- Health monitoring
+- Auto-scaling configuration
+- Blue-green deployment support
+
+**Schema chính:**
+- `name`: Tên deployment
+- `modelId`: Model được deploy
+- `resourceId`: Resource sử dụng
+- `endpoint`: URL endpoint
+- `version`: Version của deployment
+- `config`: Cấu hình scaling, routing
+- `status`: Trạng thái (pending, running, stopped, error)
+
+**API Documentation:** [`docs/aiwm/API-DEPLOYMENT.md`](../../docs/aiwm/API-DEPLOYMENT.md)
+
+---
+
+### 6. **Instruction Module** (`/modules/instruction`)
+Quản lý system prompts và instructions cho agents.
+
+**Chức năng:**
+- CRUD operations cho instructions
+- Template library cho use cases phổ biến
+- Version control
+- Status management
+- Tagging và categorization
+
+**Schema chính:**
+- `name`: Tên instruction
+- `content`: Nội dung system prompt
+- `description`: Mô tả
+- `status`: Trạng thái (active, inactive, draft)
+- `tags`: Tags để phân loại
+- `version`: Version tracking
+
+**API Documentation:** [`docs/aiwm/API-INSTRUCTION.md`](../../docs/aiwm/API-INSTRUCTION.md)
+
+---
+
+### 7. **PII Module** (`/modules/pii`)
+Quản lý patterns phát hiện và bảo vệ thông tin cá nhân (Personally Identifiable Information).
+
+**Chức năng:**
+- CRUD operations cho PII patterns
+- Hỗ trợ nhiều loại: email, phone, credit card, SSN, API keys...
+- Locale-specific patterns (global, VN, US...)
+- Enable/disable patterns
+- Custom replacement strings
+
+**Schema chính:**
+- `name`: Tên pattern
+- `type`: Loại PII (email, phone, creditCard, ssn...)
+- `pattern`: Regex pattern
+- `replacement`: String thay thế
+- `locale`: Locale áp dụng (global, VN, US...)
+- `enabled`: Bật/tắt pattern
+
+**Features:**
+- Automatic PII detection in input/output
+- Redaction before sending to models
+- Compliance với GDPR, HIPAA, PCI-DSS
+
+**API Documentation:** [`docs/aiwm/API-PII-GUARDRAILS.md`](../../docs/aiwm/API-PII-GUARDRAILS.md)
+
+---
+
+### 8. **Guardrail Module** (`/modules/guardrail`)
+Quản lý content filtering và safety guardrails cho agents.
+
+**Chức năng:**
+- CRUD operations cho guardrails
+- Keyword và topic blocking
+- Custom violation messages
+- Reusable configs cho nhiều agents
+- Multi-level filtering (strict, moderate, minimal)
+- Dependency validation (check agents sử dụng guardrail)
+
+**Schema chính:**
+- `name`: Tên guardrail
+- `description`: Mô tả
+- `enabled`: Bật/tắt
+- `blockedKeywords`: Danh sách keywords bị chặn
+- `blockedTopics`: Danh sách topics bị chặn
+- `customMessage`: Message hiển thị khi vi phạm
+- `status`: Trạng thái (active, inactive)
+- `tags`: Tags để phân loại
+
+**Features:**
+- Input validation (chặn trước khi gửi model)
+- Output validation (chặn kết quả không phù hợp)
+- Audit trails cho violations
+
+**API Documentation:** [`docs/aiwm/API-PII-GUARDRAILS.md`](../../docs/aiwm/API-PII-GUARDRAILS.md)
+
+---
+
+### 9. **Tool Module** (`/modules/tool`)
+Quản lý tools và functions mà agents có thể sử dụng.
+
+**Chức năng:**
+- CRUD operations cho tools
+- Function definitions và parameters
+- Tool execution tracking
+- Integration với external APIs
+
+**Schema chính:**
+- `name`: Tên tool
+- `description`: Mô tả
+- `type`: Loại tool
+- `config`: Cấu hình tool
+- `status`: Trạng thái
+
+**API Documentation:** [`docs/aiwm/API-TOOL.md`](../../docs/aiwm/API-TOOL.md)
+
+---
+
+### 10. **Configuration Module** (`/modules/configuration`)
+Quản lý system configurations và settings.
+
+**Chức năng:**
+- CRUD operations cho configurations
+- Environment-specific settings
+- Feature flags
+- Dynamic configuration updates
+
+---
+
+### 11. **Execution Module** (`/modules/execution`)
+Tracking và logging mọi agent execution.
+
+**Chức năng:**
+- Log mọi request/response
+- Track tokens, latency, cost
+- Store execution metadata
+- Query execution history
+- Performance analytics
+
+**Schema chính:**
+- `agentId`: Agent thực thi
+- `input`: Input data (after PII redaction)
+- `output`: Output data (after PII redaction)
+- `tokens`: Số tokens sử dụng
+- `cost`: Chi phí
+- `latency`: Thời gian xử lý
+- `status`: Trạng thái (success, failed)
+- `error`: Thông tin lỗi nếu có
+
+**API Documentation:** [`docs/aiwm/API-EXECUTION.md`](../../docs/aiwm/API-EXECUTION.md)
+
+---
+
+### 12. **Reports Module** (`/modules/reports`)
+Generate reports và analytics cho hệ thống.
+
+**Chức năng:**
+- System overview dashboard
+- Model/Agent/Node statistics
+- Cost analysis
+- Usage patterns
+- Performance metrics
+- Custom reports
+
+**API Documentation:** [`docs/aiwm/API-REPORTS.md`](../../docs/aiwm/API-REPORTS.md)
+
+---
+
+## Queue System
+
+AIWM sử dụng message queue (Bull + Redis) để xử lý async tasks:
+
+**Queues:**
+- Job processing queue (`/queues/queue.module.ts`)
+- Processors cho background jobs (`/queues/processors.module.ts`)
+
+**Use cases:**
+- Model deployment tasks
+- Batch execution
+- Report generation
+- Cleanup tasks
+
+---
+
+## Database Configuration
+
+**Connection String:**
 ```
-services/aiwm/
-├── src/
-│   ├── modules/
-│   │   ├── category/          # Category CRUD + Events
-│   │   ├── product/           # Product CRUD + Events (references Category)
-│   │   └── report/            # Report generation (uses Category & Product)
-│   ├── queues/
-│   │   ├── producers/         # Event publishers
-│   │   ├── processors/        # Event consumers
-│   │   ├── queue.module.ts    # BullMQ configuration
-│   │   └── processors.module.ts
-│   ├── config/
-│   │   ├── redis.config.ts    # Redis connection settings
-│   │   └── queue.config.ts    # Queue names and event types
-│   └── app.module.ts
-├── reports/                   # Generated report files
-└── .env                       # Environment configuration
+mongodb://{MONGODB_URI}/core_aiwm
 ```
 
-### Key Design Patterns
+**Collections:**
+- `models` - AI models metadata
+- `agents` - AI agents
+- `nodes` - Compute nodes
+- `resources` - Resource allocations
+- `deployments` - Production deployments
+- `instructions` - System prompts
+- `pii_patterns` - PII detection patterns
+- `guardrails` - Content filtering configs
+- `tools` - Available tools
+- `configurations` - System settings
+- `executions` - Execution logs
+- `reports` - Generated reports
 
-1. **Entity Modules** (`category`, `product`):
-   - Full CRUD with Mongoose schemas
-   - Emit events to queues after DB operations
-   - Controller → Service → Repository → Queue Producer
+**Base Schema Pattern:**
+All collections extend `BaseSchema` với các fields:
+- `createdBy` - User tạo record
+- `updatedBy` - User update record
+- `orgId` - Organization owner
+- `groupId` - Group (optional)
+- `isDeleted` - Soft delete flag
+- `createdAt` - Timestamp
+- `updatedAt` - Timestamp
 
-2. **Utility Module** (`report`):
-   - No entity/schema
-   - Uses services from other modules
-   - Triggers async jobs via queue
+---
 
-3. **Queue System**:
-   - 3 separate queues: `categories.queue`, `products.queue`, `reports.queue`
-   - Publisher/Subscriber pattern
-   - Processors handle async business logic
+## Development Guide
 
-## 🚀 Quick Start
-
-### 1. Prerequisites
-
+### Prerequisites
 - Node.js 18+
-- MongoDB running on `10.10.0.100:27017` (or update `.env`)
-- Redis running on `127.0.0.1:6379` (or update `.env`)
+- MongoDB running on configured host
+- Redis (for queue system)
+- Nx CLI installed globally
 
-### 2. Install Dependencies
-
-Already installed at monorepo root level.
-
-### 3. Configure Environment
-
-Edit `services/aiwm/.env`:
-
-```env
-# MongoDB Configuration
-MONGODB_URI=mongodb://10.10.0.100:27017/hydra-aiwm
-
-# Redis Configuration (for BullMQ)
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Service Configuration
-PORT=3003
-NODE_ENV=development
+### Installation
+```bash
+# Install dependencies
+npm install
 ```
 
-### 4. Start Service
+### Running the Service
 
+#### Development Mode (with hot reload)
 ```bash
 npx nx serve aiwm
 ```
 
-Service will be available at:
-- **API**: http://localhost:3003/api
-- **Swagger Docs**: http://localhost:3003/api-docs
-- **Health Check**: http://localhost:3003/api/health
-
-## 🏥 Health Check
-
-The service provides a `/health` endpoint for monitoring service health, suitable for deployment health checks, load balancers, and monitoring systems.
-
-### Endpoint
-
-```
-GET /api/health
-```
-
-**No authentication required** - This endpoint is public for monitoring purposes.
-
-### Response Format
-
-```json
-{
-  "status": "ok",
-  "info": {
-    "version": "1.0.0",
-    "gitCommit": "1acbbb8",
-    "uptime": 143.69,
-    "environment": "development"
-  },
-  "details": {
-    "database": {
-      "status": "up"
-    }
-  }
-}
-```
-
-### Status Codes
-
-| Code | Description |
-|------|-------------|
-| 200 | Service is healthy - all systems operational |
-| 503 | Service is unhealthy - one or more critical systems down |
-
-### Health Indicators
-
-- **database**: MongoDB connection status
-- **info.version**: Application version from package.json
-- **info.gitCommit**: Git commit SHA (from `GIT_COMMIT_SHA` env variable)
-- **info.uptime**: Process uptime in seconds
-- **info.environment**: Current environment (development/production)
-
-### Example Usage
-
+#### Production Mode
 ```bash
-# Check service health
-curl http://localhost:3003/api/health
+# Build first
+npx nx build aiwm --configuration=production
 
-# Check with detailed HTTP status
-curl -i http://localhost:3003/api/health
-
-# Use in Docker health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:3003/api/health || exit 1
+# Then run
+node dist/services/aiwm/main.js
 ```
 
-### Configuration
-
-Set the `GIT_COMMIT_SHA` environment variable to display the current deployment version:
-
-```env
-# In .env file
-GIT_COMMIT_SHA=1acbbb8
-
-# Or via CI/CD
-export GIT_COMMIT_SHA=$(git rev-parse --short HEAD)
-```
-
-## 🔐 Authentication
-
-All API endpoints (Category, Product) are **protected** with JWT authentication using `@UseGuards(JwtAuthGuard)`.
-
-### Getting a Token
-
-First, authenticate with the IAM service to obtain a JWT token:
-
+### Building
 ```bash
-# Login to IAM service
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "tonyh",
-    "password": "123zXc_-"
-  }'
+# Development build
+npx nx build aiwm
+
+# Production build
+npx nx build aiwm --configuration=production
 ```
 
-Response:
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "68dcf365f6a92c0d4911b619",
-    "username": "tonyh"
-  }
-}
-```
-
-### Using the Token
-
-Include the token in the `Authorization` header for all API requests:
-
+### Testing
 ```bash
-# Set token as environment variable
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+# Unit tests
+npx nx test aiwm
 
-# Make authenticated request
-curl -X GET http://localhost:3003/api/categories \
-  -H "Authorization: Bearer $TOKEN"
+# E2E tests
+npx nx test aiwm-e2e
+
+# Test coverage
+npx nx test aiwm --coverage
 ```
 
-### Authentication Implementation
-
-The aiwm service uses `@UseGuards(JwtAuthGuard)` from `@hydrabyte/base`:
-
-```typescript
-import { UseGuards } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@hydrabyte/base';
-
-@ApiTags('categories')
-@ApiBearerAuth('JWT-auth')
-@Controller('categories')
-export class CategoryController {
-  @Post()
-  @UseGuards(JwtAuthGuard)  // Requires valid JWT token
-  async create(@Body() dto: CreateCategoryDto) {
-    // ...
-  }
-}
-```
-
-### Unauthorized Access
-
-Requests without a valid token will receive a `401 Unauthorized` response:
-
-```json
-{
-  "statusCode": 401,
-  "message": "Unauthorized"
-}
-```
-
-## 🔐 Role-Based Access Control (RBAC)
-
-All API endpoints enforce **Role-Based Access Control** using the BaseService from `@hydrabyte/base`. Permissions are automatically calculated based on the user's role in the JWT token.
-
-### Permission System
-
-The RBAC system supports hierarchical roles with different scopes:
-
-| Role | Scope | Read | Write | Delete | Administrative |
-|------|-------|------|-------|--------|----------------|
-| `universe.owner` | Universe | ✅ | ✅ | ✅ | ✅ |
-| `universe.admin` | Universe | ✅ | ✅ | ✅ | ❌ |
-| `organization.owner` | Organization | ✅ | ✅ | ✅ | ✅ |
-| `organization.admin` | Organization | ✅ | ✅ | ✅ | ❌ |
-| `organization.member` | Organization | ✅ | ✅ | ❌ | ❌ |
-| `group.owner` | Group | ✅ | ✅ | ✅ | ✅ |
-| `group.member` | Group | ✅ | ❌ | ❌ | ❌ |
-
-### Permission Enforcement
-
-**Create Operation** (POST):
-- Requires: `allowWrite: true`
-- Auto-populates: `owner.orgId`, `owner.userId`, `owner.groupId`
-
-**Read Operations** (GET):
-- Requires: `allowRead: true`
-- Auto-filters by ownership scope (org/group/user)
-
-**Update Operation** (PUT):
-- Requires: `allowWrite: true`
-- Only owner or higher scope can modify
-
-**Delete Operation** (DELETE):
-- Requires: `allowDelete: true`
-- Soft delete (sets `isDeleted: true`)
-
-### Permission Denied Response
-
-When a user lacks required permissions, the API returns `403 Forbidden`:
-
-```json
-{
-  "statusCode": 403,
-  "message": "You do not have permission to <operation>"
-}
-```
-
-### Multi-Tenant Isolation
-
-The RBAC system automatically enforces **multi-tenant data isolation**:
-
-- **Organization-scoped** roles only see data from their organization
-- **Group-scoped** roles only see data from their group
-- **Universe-scoped** roles see all data
-
-Example: User A (orgId: X) creates a category. User B (orgId: Y) **cannot see** User A's category.
-
-### RBAC Logging
-
-All permission checks are logged automatically:
-
-```
-[DEBUG] [CategoryService] Creating entity
-{
-  "userId": "68dcf365f6a92c0d4911b619"
-}
-Role-Based Permissions: {
-  role: 'universe.owner',
-  scope: 'universe',
-  roleName: 'owner',
-  permissions: {
-    allowRead: true,
-    allowWrite: true,
-    allowDelete: true,
-    allowAdministrative: true,
-    scope: 'universe',
-    filter: {}
-  }
-}
-```
-
-## 📝 Audit Trail
-
-All entities automatically track **who created** and **who last updated** each record using audit trail fields. These fields are system-managed and cannot be tampered with by clients.
-
-### Audit Fields
-
-| Field | Type | Description | Auto-populated on |
-|-------|------|-------------|-------------------|
-| `createdBy` | string | User ID who created the record | CREATE operation |
-| `updatedBy` | string | User ID who last modified the record | CREATE, UPDATE, DELETE operations |
-
-### Automatic Population
-
-Audit fields are automatically populated from the authenticated user's JWT token (`RequestContext.userId`):
-
-```typescript
-// Example: Create a category
-POST /api/categories
-Authorization: Bearer <token>  // Contains userId: "68dcf365f6a92c0d4911b619"
-Body: {
-  "name": "Electronics",
-  "description": "Electronic devices"
-}
-
-// Response includes audit fields
-{
-  "_id": "68f1e930d03816679f514824",
-  "name": "Electronics",
-  "description": "Electronic devices",
-  "createdBy": "68dcf365f6a92c0d4911b619",  // Auto-set from token
-  "updatedBy": "68dcf365f6a92c0d4911b619",  // Auto-set from token
-  "createdAt": "2025-10-17T06:58:56.526Z",
-  "updatedAt": "2025-10-17T06:58:56.526Z"
-}
-```
-
-### Field Protection
-
-Audit fields are **protected from manual tampering** through two security layers:
-
-1. **DTO Validation**: DTOs do not include `createdBy` or `updatedBy` fields, so NestJS validation will reject requests containing these fields
-
+### Linting
 ```bash
-# Attempting to set audit fields manually
-curl -X POST http://localhost:3003/api/categories \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test",
-    "createdBy": "fake-user-id",  # Will be rejected
-    "updatedBy": "fake-user-id"   # Will be rejected
-  }'
+# Check for errors
+npx nx lint aiwm
 
-# Response: 400 Bad Request
-{
-  "message": [
-    "property createdBy should not exist",
-    "property updatedBy should not exist"
-  ],
-  "error": "Bad Request",
-  "statusCode": 400
-}
+# Auto-fix issues
+npx nx lint aiwm --fix
 ```
-
-2. **BaseService Sanitization**: Even if validation is bypassed, BaseService removes these fields before processing
-
-### Update Operations
-
-On **UPDATE**, only `updatedBy` is modified. The `createdBy` field is **immutable** and always preserves the original creator:
-
-```bash
-# Update existing category
-curl -X PUT http://localhost:3003/api/categories/68f1e930d03816679f514824 \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Updated Name"}'
-
-# Response
-{
-  "_id": "68f1e930d03816679f514824",
-  "name": "Updated Name",
-  "createdBy": "68dcf365f6a92c0d4911b619",  // Unchanged - original creator
-  "updatedBy": "68dcf365f6a92c0d4911b619",  // Updated with current user
-  "createdAt": "2025-10-17T06:58:56.526Z",  // Unchanged
-  "updatedAt": "2025-10-17T06:59:26.131Z"   // Updated timestamp
-}
-```
-
-### Soft Delete Tracking
-
-When a record is **soft deleted**, `updatedBy` tracks who performed the deletion:
-
-```bash
-# Soft delete category
-curl -X DELETE http://localhost:3003/api/categories/68f1e930d03816679f514824 \
-  -H "Authorization: Bearer $TOKEN"
-
-# In database:
-{
-  "_id": "68f1e930d03816679f514824",
-  "isDeleted": true,
-  "deletedAt": "2025-10-17T06:59:44.763Z",
-  "createdBy": "68dcf365f6a92c0d4911b619",  // Original creator preserved
-  "updatedBy": "68dcf365f6a92c0d4911b619",  // Who deleted the record
-  "updatedAt": "2025-10-17T06:59:44.764Z"   // When it was deleted
-}
-```
-
-### Benefits
-
-- **Accountability**: Every create/update/delete operation is traceable to a specific user
-- **Audit Compliance**: Maintains a complete audit trail for regulatory requirements
-- **Debugging**: Easily identify who made changes when investigating issues
-- **Security**: Fields are system-managed and protected from client manipulation
-
-## 📄 Pagination & Filtering
-
-All `GET` collection endpoints support **pagination**, **filtering**, and **sorting**.
-
-### Pagination Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | number | 1 | Page number (1-indexed) |
-| `limit` | number | 10 | Items per page (max: 100) |
-| `filter[field]` | string | - | Filter by field value |
-| `sort` | string | - | Sort fields (prefix `-` for descending) |
-
-### Pagination Response Format
-
-All paginated endpoints return a consistent response structure:
-
-```json
-{
-  "data": [
-    {
-      "_id": "68f1d03f81d7fb554e63e4d3",
-      "name": "Electronics",
-      "description": "Electronic devices",
-      "isActive": true,
-      "createdAt": "2025-10-17T05:12:31.894Z",
-      "updatedAt": "2025-10-17T05:12:31.894Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 25
-  }
-}
-```
-
-### Pagination Examples
-
-**Basic pagination:**
-```bash
-# Get first page (5 items per page)
-curl "http://localhost:3003/api/categories?page=1&limit=5" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Get second page
-curl "http://localhost:3003/api/categories?page=2&limit=5" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**Filtering by field:**
-```bash
-# Filter categories by name
-curl "http://localhost:3003/api/categories?filter[name]=Electronics" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Filter products by category
-curl "http://localhost:3003/api/products?filter[categoryId]=68f1d03f81d7fb554e63e4d3" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Filter active items only
-curl "http://localhost:3003/api/categories?filter[isActive]=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**Sorting:**
-```bash
-# Sort by creation date (newest first)
-curl "http://localhost:3003/api/categories?sort=-createdAt" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Sort by name (ascending)
-curl "http://localhost:3003/api/categories?sort=name" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Multiple sort fields
-curl "http://localhost:3003/api/categories?sort=-createdAt,name" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**Combined query:**
-```bash
-# Page 2, 10 items, active only, sorted by name
-curl "http://localhost:3003/api/categories?page=2&limit=10&filter[isActive]=true&sort=name" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Soft Delete Behavior
-
-Deleted records are **not permanently removed** from the database. Instead, they are marked with:
-
-```json
-{
-  "isDeleted": true,
-  "deletedAt": "2025-10-17T05:13:54.946Z"
-}
-```
-
-Soft-deleted records are **automatically hidden** from all `GET` queries (findAll, findById).
-
-To view deleted records, administrators would need a separate endpoint (not currently implemented).
-
-## ⚠️ Error Handling & Standardization
-
-All API endpoints return **standardized error responses** using the GlobalExceptionFilter. Every error response follows a consistent format with correlation ID for request tracking.
-
-### Standard Error Response Format
-
-All errors return a JSON response with the following structure:
-
-```json
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "timestamp": "2025-10-17T07:50:57.249Z",
-  "path": "/api/categories",
-  "correlationId": "550ecd9e-022e-4f92-8943-0a5a23eb7512",
-  "errors": [
-    "name must be a string",
-    "description must be a string"
-  ]
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `statusCode` | number | HTTP status code (400, 401, 403, 404, 500, etc.) |
-| `message` | string | Human-readable error message |
-| `timestamp` | string | ISO 8601 timestamp when error occurred |
-| `path` | string | API path that caused the error |
-| `correlationId` | string | Unique ID for tracking this request across services |
-| `errors` | string[] | Detailed validation errors (only for 400 Bad Request) |
-
-### Correlation ID
-
-Every request and response includes an `x-correlation-id` header for end-to-end tracking:
-
-**Client provides correlation ID:**
-```bash
-curl -i -H "x-correlation-id: my-custom-id" http://localhost:3003/api/categories
-# Response header: x-correlation-id: my-custom-id
-```
-
-**Server generates correlation ID:**
-```bash
-curl -i http://localhost:3003/api/categories
-# Response header: x-correlation-id: 76da91e5-9fc1-4f33-b096-1f1296bbd042
-```
-
-### Error Types
-
-#### 400 Bad Request - Validation Errors
-
-Returned when request data fails validation (class-validator rules):
-
-```bash
-curl -X POST http://localhost:3003/api/categories \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{}'
-
-# Response
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "timestamp": "2025-10-17T07:50:57.249Z",
-  "path": "/api/categories",
-  "correlationId": "550ecd9e-022e-4f92-8943-0a5a23eb7512",
-  "errors": [
-    "name must be a string",
-    "description must be a string"
-  ]
-}
-```
-
-#### 401 Unauthorized
-
-Returned when JWT token is missing or invalid:
-
-```bash
-curl http://localhost:3003/api/categories
-
-# Response
-{
-  "statusCode": 401,
-  "message": "Unauthorized",
-  "timestamp": "2025-10-17T07:51:14.367Z",
-  "path": "/api/categories",
-  "correlationId": "591280e3-825e-4035-b13e-616c1ff46a32"
-}
-```
-
-#### 403 Forbidden
-
-Returned when user lacks required permissions (RBAC):
-
-```bash
-curl -X DELETE http://localhost:3003/api/categories/123 \
-  -H "Authorization: Bearer $TOKEN_WITHOUT_DELETE_PERMISSION"
-
-# Response
-{
-  "statusCode": 403,
-  "message": "You do not have permission to delete",
-  "timestamp": "2025-10-17T07:52:30.123Z",
-  "path": "/api/categories/123",
-  "correlationId": "7f8e9d10-3c4a-5b6c-7d8e-9f0a1b2c3d4e"
-}
-```
-
-#### 404 Not Found
-
-Returned when requested resource doesn't exist:
-
-```bash
-curl http://localhost:3003/api/categories/999999999999999999999999 \
-  -H "Authorization: Bearer $TOKEN"
-
-# Response
-{
-  "statusCode": 404,
-  "message": "Category with ID 999999999999999999999999 not found",
-  "timestamp": "2025-10-17T07:51:08.476Z",
-  "path": "/api/categories/999999999999999999999999",
-  "correlationId": "27c6330b-24cf-4db3-9a9e-c441604d9778"
-}
-```
-
-#### 500 Internal Server Error
-
-Returned for unexpected server errors (with full stack trace logged):
-
-```json
-{
-  "statusCode": 500,
-  "message": "Internal server error",
-  "timestamp": "2025-10-17T07:53:45.678Z",
-  "path": "/api/categories",
-  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-}
-```
-
-### Error Logging
-
-The GlobalExceptionFilter automatically logs errors with appropriate severity:
-
-- **500+ errors**: Logged as `ERROR` with full stack trace
-- **400-499 errors**: Logged as `WARN` with error message
-- All logs include correlation ID for tracking
-
-```
-[ERROR] [GlobalExceptionFilter] [a1b2c3d4-e5f6-7890-abcd-ef1234567890] GET /api/categories - 500
-Error: Unexpected error occurred
-    at CategoryService.findAll (/app/services/aiwm/src/modules/category/category.service.ts:45:15)
-    ...
-```
-
-### Swagger Integration
-
-All error responses are fully documented in Swagger/OpenAPI with detailed schemas:
-
-**Access Swagger UI:**
-- URL: `http://localhost:3003/api-docs`
-- All endpoints display possible error responses with examples
-- Error schemas include: ValidationErrorResponseDto, UnauthorizedErrorResponseDto, ForbiddenErrorResponseDto, NotFoundErrorResponseDto, InternalServerErrorResponseDto
-
-**Error Decorators Available:**
-```typescript
-import { ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors } from '@hydrabyte/base';
-
-// In your controller
-@Post()
-@ApiCreateErrors()  // Adds 400, 401, 403, 500 to Swagger
-async create() { ... }
-
-@Get(':id')
-@ApiReadErrors()  // Adds 401, 403, 404, 500 to Swagger
-async findOne() { ... }
-```
-
-## 📚 API Documentation
-
-### Category Endpoints
-
-| Method | Endpoint | Description | Permission Required | Pagination |
-|--------|----------|-------------|---------------------|------------|
-| POST | `/api/categories` | Create category | `allowWrite: true` | ❌ |
-| GET | `/api/categories` | Get all categories | `allowRead: true` | ✅ |
-| GET | `/api/categories/:id` | Get category by ID | `allowRead: true` | ❌ |
-| PUT | `/api/categories/:id` | Update category | `allowWrite: true` | ❌ |
-| DELETE | `/api/categories/:id` | Soft delete category | `allowDelete: true` | ❌ |
-
-**Example - Create Category:**
-```bash
-curl -X POST http://localhost:3003/api/categories \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "name": "Electronics",
-    "description": "Electronic devices and accessories",
-    "isActive": true
-  }'
-```
-
-**Response (201 Created):**
-```json
-{
-  "_id": "68f1d03f81d7fb554e63e4d3",
-  "owner": {
-    "orgId": "68dd05b175d9e3c17bf97f60",
-    "userId": "68dcf365f6a92c0d4911b619",
-    "groupId": "",
-    "agentId": "",
-    "appId": ""
-  },
-  "name": "Electronics",
-  "description": "Electronic devices and accessories",
-  "isActive": true,
-  "createdAt": "2025-10-17T05:12:31.894Z",
-  "updatedAt": "2025-10-17T05:12:31.894Z",
-  "__v": 0
-}
-```
-
-**Example - Get All Categories (with pagination):**
-```bash
-curl "http://localhost:3003/api/categories?page=1&limit=10&sort=-createdAt" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**Response (200 OK):**
-```json
-{
-  "data": [
-    {
-      "_id": "68f1d03f81d7fb554e63e4d3",
-      "name": "Electronics",
-      "description": "Electronic devices and accessories",
-      "isActive": true,
-      "createdAt": "2025-10-17T05:12:31.894Z",
-      "updatedAt": "2025-10-17T05:12:31.894Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 1
-  }
-}
-```
-
-### Product Endpoints
-
-| Method | Endpoint | Description | Permission Required | Pagination |
-|--------|----------|-------------|---------------------|------------|
-| POST | `/api/products` | Create product | `allowWrite: true` | ❌ |
-| GET | `/api/products` | Get all products | `allowRead: true` | ✅ |
-| GET | `/api/products?categoryId=xxx` | Filter by category | `allowRead: true` | ✅ |
-| GET | `/api/products/:id` | Get product by ID | `allowRead: true` | ❌ |
-| PUT | `/api/products/:id` | Update product | `allowWrite: true` | ❌ |
-| DELETE | `/api/products/:id` | Soft delete product | `allowDelete: true` | ❌ |
-
-**Example - Create Product:**
-```bash
-curl -X POST http://localhost:3003/api/products \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "name": "iPhone 15 Pro",
-    "description": "Latest iPhone",
-    "price": 999.99,
-    "stock": 50,
-    "categoryId": "68f1d03f81d7fb554e63e4d3",
-    "isActive": true
-  }'
-```
-
-**Example - Get Products by Category (with pagination):**
-```bash
-curl "http://localhost:3003/api/products?filter[categoryId]=68f1d03f81d7fb554e63e4d3&page=1&limit=20" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Report Endpoints
-
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/reports/product-summary` | Generate product summary report (async) | ❌ No |
-
-**Example - Trigger Report Generation:**
-```bash
-curl -X POST http://localhost:3003/api/reports/product-summary
-```
-
-Response:
-```json
-{
-  "reportType": "product-summary",
-  "status": "queued",
-  "message": "Report generation has been queued with job ID: 1"
-}
-```
-
-Report will be generated asynchronously and saved to `/services/aiwm/reports/`.
-
-## 🔄 Event-Driven Flow
-
-### Category/Product CRUD Flow
-
-```
-1. Client → POST /api/categories
-2. CategoryController → CategoryService.create()
-3. CategoryService:
-   - Save to MongoDB
-   - Emit event → categories.queue
-4. CategoryProcessor:
-   - Listen to categories.queue
-   - Process event (logging, notifications, etc.)
-```
-
-### Report Generation Flow
-
-```
-1. Client → POST /api/reports/product-summary
-2. ReportController → ReportProducer.emitReportGenerate()
-3. Event queued → reports.queue
-4. ReportProcessor:
-   - Listen to reports.queue
-   - Use ProductService + CategoryService
-   - Generate JSON report
-   - Save to /reports/ folder
-```
-
-## 📊 Queue Events
-
-### Queue Names (config/queue.config.ts)
-
-```typescript
-QUEUE_NAMES = {
-  CATEGORIES: 'categories.queue',
-  PRODUCTS: 'products.queue',
-  REPORTS: 'reports.queue',
-}
-```
-
-### Event Types
-
-```typescript
-QUEUE_EVENTS = {
-  CATEGORY_CREATED: 'category.created',
-  CATEGORY_UPDATED: 'category.updated',
-  CATEGORY_DELETED: 'category.deleted',
-  PRODUCT_CREATED: 'product.created',
-  PRODUCT_UPDATED: 'product.updated',
-  PRODUCT_DELETED: 'product.deleted',
-  REPORT_GENERATE: 'report.generate',
-}
-```
-
-## 📝 Logging Utility
-
-### Colored Logger from `@hydrabyte/shared`
-
-The aiwm service demonstrates usage of the custom colored logger utility.
-
-**Features:**
-- ✅ **Color-coded** log levels (INFO: Cyan, DEBUG: Yellow, WARN: Magenta, ERROR: Red)
-- ✅ **Timestamps** for all log entries
-- ✅ **Context** tags (module/service name)
-- ✅ **Structured data** formatting (JSON)
-- ✅ **Environment-aware** (DEBUG logs hidden in production)
-
-### Usage Examples
-
-**Method 1: Create Logger Instance**
-```typescript
-import { createLogger } from '@hydrabyte/shared';
-
-export class CategoryService {
-  private readonly logger = createLogger('CategoryService');
-
-  async create(dto: CreateCategoryDto) {
-    this.logger.debug('Creating category', dto);
-
-    const saved = await this.save(dto);
-
-    this.logger.info('Category created successfully', {
-      id: saved._id,
-      name: saved.name
-    });
-
-    return saved;
-  }
-}
-```
-
-**Method 2: Direct Function Calls**
-```typescript
-import { logInfo, logDebug, logError, logWarn } from '@hydrabyte/shared';
-
-logInfo('User logged in', { userId: '123', username: 'john' });
-logDebug('Query executed', { query: 'SELECT * FROM users', duration: '45ms' });
-logWarn('Deprecated API used', { endpoint: '/api/v1/old' });
-logError('Database connection failed', { error: err.message, host: 'localhost' });
-```
-
-### Log Levels
-
-| Level | Color | Use Case | Production |
-|-------|-------|----------|------------|
-| **DEBUG** | Yellow | Development debugging, detailed flow | Hidden |
-| **INFO** | Cyan | General information, successful operations | Shown |
-| **WARN** | Magenta | Warnings, deprecated usage | Shown |
-| **ERROR** | Red | Errors, exceptions | Shown |
-
-### Output Format
-
-```
-[2025-10-06 08:57:40] [INFO] [CategoryService] Category created successfully
-{
-  "id": "68e38484e05bb8cc523e5561",
-  "name": "Books"
-}
-
-[2025-10-06 08:57:53] [DEBUG] [ReportService] Data collected for report
-{
-  "categoriesCount": 3,
-  "productsCount": 1
-}
-```
-
-### Additional Utilities
-
-```typescript
-import { logSeparator, logSection } from '@hydrabyte/shared';
-
-// Print separator line
-logSeparator(); // ────────────────────────────────────────
-
-// Print section header
-logSection('Report Generation');
-// ────────────────────────────────────────
-//   Report Generation
-// ────────────────────────────────────────
-```
-
-### Best Practices
-
-1. **Use logger instance per class/service**
-   ```typescript
-   private readonly logger = createLogger('ServiceName');
-   ```
-
-2. **Log at appropriate levels**
-   - `debug`: Input parameters, internal state
-   - `info`: Successful operations, milestones
-   - `warn`: Recoverable issues, deprecation
-   - `error`: Failures, exceptions
-
-3. **Include context data**
-   ```typescript
-   this.logger.info('Operation completed', {
-     id: resource.id,
-     duration: Date.now() - startTime,
-     status: 'success'
-   });
-   ```
-
-4. **Don't log sensitive data**
-   ```typescript
-   // ❌ Bad
-   this.logger.debug('User data', { password: user.password });
-
-   // ✅ Good
-   this.logger.debug('User data', {
-     id: user.id,
-     username: user.username
-   });
-   ```
-
-## 🛠️ Creating a New Service from AIWM
-
-### Method 1: Clone and Customize
-
-```bash
-# 1. Copy aiwm service
-cp -r services/aiwm services/your-new-service
-cp -r services/aiwm-e2e services/your-new-service-e2e
-
-# 2. Update project.json
-# Edit services/your-new-service/project.json
-# Change all "aiwm" references to "your-new-service"
-
-# 3. Update .env
-# Edit services/your-new-service/.env
-# Change PORT, MONGODB_URI database name
-
-# 4. Rename modules
-# Rename category → your-entity-1
-# Rename product → your-entity-2
-# Rename report → your-utility-module
-
-# 5. Update nx.json and .vscode/launch.json
-# Add your new service configuration
-
-# 6. Update imports and module references throughout the code
-```
-
-### Method 2: Using Nx Generator (Future)
-
-```bash
-# TODO: Create custom Nx generator
-npx nx g @your-workspace:service your-new-service --aiwm=aiwm
-```
-
-## 📝 Customization Checklist
-
-When creating a new service from this aiwm:
-
-- [ ] Update service name in `project.json`
-- [ ] Update port in `.env` (avoid conflicts)
-- [ ] Update MongoDB database name in `.env`
-- [ ] Rename entity modules to match your domain
-- [ ] Update Swagger title/description in `main.ts`
-- [ ] Update queue names in `config/queue.config.ts`
-- [ ] Customize event types in `config/queue.config.ts`
-- [ ] Update Mongoose schemas for your entities
-- [ ] Update DTOs with proper validation rules
-- [ ] Customize processor logic for your business needs
-- [ ] Update README.md with your service specifics
-- [ ] Add/remove modules as needed
-
-## 🔍 Code Structure Highlights
-
-### Avoiding Circular Dependencies
-
-AIWM uses separate `QueueModule` and `ProcessorsModule`:
-
-```typescript
-// queue.module.ts - Only producers
-@Module({
-  imports: [BullModule.forRoot(...), BullModule.registerQueue(...)],
-  providers: [CategoryProducer, ProductProducer, ReportProducer],
-  exports: [CategoryProducer, ProductProducer, ReportProducer],
-})
-
-// processors.module.ts - Only processors
-@Module({
-  imports: [ReportModule],  // Can safely import service modules
-  providers: [CategoryProcessor, ProductProcessor, ReportProcessor],
-})
-```
-
-### Module Dependency Graph
-
-```
-AppModule
-├── QueueModule (BullMQ config + Producers)
-├── CategoryModule → QueueModule
-├── ProductModule → QueueModule
-├── ReportModule → ProductModule, CategoryModule, QueueModule
-└── ProcessorsModule → ReportModule
-```
-
-## 🧪 Testing
-
-### Manual Testing Flow
-
-1. **Create Category:**
-```bash
-curl -X POST http://localhost:3003/api/categories \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Electronics", "description": "Gadgets"}'
-```
-✅ Check logs: CategoryProcessor processes event
-
-2. **Create Product:**
-```bash
-curl -X POST http://localhost:3003/api/products \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Phone", "description": "Smartphone", "price": 699, "stock": 10, "categoryId": "<category-id>"}'
-```
-✅ Check logs: ProductProcessor processes event
-
-3. **Generate Report:**
-```bash
-curl -X POST http://localhost:3003/api/reports/product-summary
-```
-✅ Check logs: ReportProcessor generates report
-✅ Verify file created in `/services/aiwm/reports/`
-
-### Expected Log Output
-
-```
-[CategoryProcessor] Processing job 1 of type category.created
-[CategoryProcessor] Category created: {...}
-
-[ProductProcessor] Processing job 1 of type product.created
-[ProductProcessor] Product created: {...}
-
-[ReportProcessor] Processing job 1 of type report.generate
-[ReportProcessor] Generating report: product-summary
-[ReportProcessor] Report generated successfully: /path/to/report.json
-```
-
-## 🎓 Learning Resources
-
-### Patterns Demonstrated
-
-1. **CRUD Pattern**: Standard REST API with Mongoose
-2. **Event Sourcing**: All state changes emit events
-3. **CQRS (Light)**: Separate read (queries) and write (commands) concerns
-4. **Async Processing**: Heavy operations offloaded to queues
-5. **Module Composition**: Utility modules reuse entity module services
-
-### Technologies Used
-
-- **NestJS**: Framework
-- **Mongoose**: MongoDB ODM
-- **BullMQ**: Queue/Job processing
-- **Redis**: Message broker for BullMQ
-- **Swagger**: API documentation
-- **class-validator**: DTO validation
-- **TypeScript**: Type safety
-
-## 📦 Dependencies
-
-Key packages (already installed at root):
-
-```json
-{
-  "@nestjs/mongoose": "^x.x.x",
-  "@nestjs/bullmq": "^x.x.x",
-  "@nestjs/swagger": "^x.x.x",
-  "mongoose": "^x.x.x",
-  "bullmq": "^x.x.x",
-  "class-validator": "^x.x.x",
-  "class-transformer": "^x.x.x"
-}
-```
-
-## 🚨 Common Issues
-
-### Redis Version Warning
-
-```
-It is highly recommended to use a minimum Redis version of 6.2.0
-Current: 6.0.16
-```
-
-**Solution**: Upgrade Redis or ignore (BullMQ will still work)
-
-### Circular Dependency Error
-
-**Solution**: Check that `QueueModule` and `ProcessorsModule` are separated
-
-### MongoDB Connection Failed
-
-**Solution**: Verify `MONGODB_URI` in `.env` and MongoDB is running
-
-## 📖 Additional Documentation
-
-- **NestJS Docs**: https://docs.nestjs.com
-- **BullMQ Docs**: https://docs.bullmq.io
-- **Mongoose Docs**: https://mongoosejs.com
-- **Swagger Docs**: https://swagger.io
-
-## 🤝 Contributing
-
-When improving this aiwm:
-
-1. Keep it generic and reusable
-2. Document all patterns and decisions
-3. Add examples for common use cases
-4. Update this README
-
-## 📄 License
-
-Part of Hydra Services monorepo.
 
 ---
 
-**Generated with AIWM Service v1.0.0**
+## Seed Data
+
+### Available Seed Scripts
+
+#### 1. Seed Instructions
+```bash
+node scripts/seed-instructions.js
+```
+
+**Creates:**
+- VTV Customer Support Assistant
+- VTV News Summarizer
+- VTV Education Assistant
+
+#### 2. Seed PII Patterns
+```bash
+node scripts/seed-pii-patterns.js
+```
+
+**Creates:**
+- Email pattern
+- Vietnam phone pattern
+- Credit card pattern
+- SSN pattern
+- API key pattern
+- JWT token pattern
+- Vietnam CCCD pattern
+- Vietnam bank account pattern
+
+#### 3. Seed Guardrails
+```bash
+node scripts/seed-guardrails.js
+```
+
+**Creates:**
+- VTV Safe Content Filter (strict)
+- Education Content Filter (moderate)
+- News Content Filter (minimal)
+
+#### 4. Seed VTV Agents
+```bash
+node scripts/seed-vtv-agents.js
+```
+
+**Creates:**
+- Complete data chain: Node → Instructions → Guardrails → Agents
+- 3 agents ready for VTV use case
+
+#### 5. Seed Tools
+```bash
+node scripts/seed-tools.js
+# or
+node scripts/seed-tools-fetch.js  # With real tools data
+```
+
+**Creates:**
+- Common tools for agents
+- Web search, calculator, weather, etc.
+
+### Running All Seeds
+```bash
+# Run in sequence
+node scripts/seed-instructions.js && \
+node scripts/seed-pii-patterns.js && \
+node scripts/seed-guardrails.js && \
+node scripts/seed-vtv-agents.js && \
+node scripts/seed-tools.js
+```
+
+---
+
+## Common Development Tasks
+
+### Check Models, Resources, Deployments Status
+```bash
+./scripts/check-models-resources-deployments.sh
+```
+
+**Output:**
+- All active models with their resources and deployments
+- Summary statistics
+- Models without resources/deployments
+
+### Check VTV Data
+```bash
+./scripts/check-vtv-data.sh
+```
+
+**Output:**
+- VTV-specific agents, guardrails, instructions
+
+### Health Check
+```bash
+curl http://localhost:3003/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "database": "connected",
+  "timestamp": "2025-01-15T10:30:00.000Z"
+}
+```
+
+### Swagger API Documentation
+```
+http://localhost:3003/api-docs
+```
+
+### Test Authentication
+```bash
+# Get token from IAM service first
+TOKEN="your-jwt-token-here"
+
+# Test protected endpoint
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:3003/agents
+```
+
+---
+
+## API Endpoints Overview
+
+### Core Resources
+- `POST /agents` - Create agent
+- `GET /agents` - List agents (with pagination)
+- `GET /agents/:id` - Get agent by ID
+- `PUT /agents/:id` - Update agent
+- `DELETE /agents/:id` - Soft delete agent
+
+Similar patterns for:
+- `/models`
+- `/nodes`
+- `/resources`
+- `/deployments`
+- `/instructions`
+- `/pii-patterns`
+- `/guardrails`
+- `/tools`
+- `/executions`
+- `/reports`
+
+### Pagination
+All list endpoints support pagination:
+```bash
+GET /agents?page=1&limit=10
+```
+
+### Population
+Some endpoints support populate:
+```bash
+GET /agents/:id?populate=instruction
+GET /agents/:id?populate=guardrail
+GET /agents/:id?populate=instruction,guardrail
+```
+
+### Filtering
+```bash
+GET /agents?status=active
+GET /models?type=llm&provider=openai
+```
+
+---
+
+## Security Features
+
+### 1. Authentication
+- JWT-based authentication
+- Token validation on every request
+- Integration với IAM service
+
+### 2. Authorization (RBAC)
+- Role-based access control
+- Hierarchical permissions: Universe → Org → Group → Agent → App
+- Permission checks in BaseService
+
+### 3. PII Protection
+- Automatic detection và redaction
+- Applied on input/output
+- Compliance ready
+
+### 4. Content Guardrails
+- Input/output validation
+- Keyword and topic blocking
+- Violation logging
+
+### 5. Audit Trails
+- Every action logged with userId
+- Correlation IDs for request tracking
+- Execution history for debugging
+
+### 6. Rate Limiting
+- Per-user rate limits
+- Per-organization quotas
+- DDoS protection
+
+---
+
+## Monitoring and Observability
+
+### Health Endpoint
+```bash
+GET /health
+```
+
+### Logs
+- Structured logging với correlation IDs
+- Log levels: debug, info, warn, error
+- Integration với log aggregation tools
+
+### Metrics
+- Execution count per agent/model
+- Average latency
+- Token consumption
+- Cost tracking
+- Success/failure rates
+
+### Dashboards
+Access via Reports endpoint:
+```bash
+GET /reports/dashboard
+```
+
+---
+
+## Troubleshooting
+
+### Service Won't Start
+
+**Issue:** Port already in use
+```
+Error: listen EADDRINUSE: address already in use :::3003
+```
+
+**Solution:**
+```bash
+# Find process using port
+lsof -i :3003
+
+# Kill the process
+kill -9 <PID>
+```
+
+### Database Connection Failed
+
+**Issue:** Cannot connect to MongoDB
+```
+MongoNetworkError: connect ECONNREFUSED
+```
+
+**Solution:**
+1. Check MongoDB is running:
+```bash
+mongosh mongodb://172.16.3.20:27017
+```
+
+2. Verify MONGODB_URI in `.env`:
+```
+MONGODB_URI=mongodb://172.16.3.20:27017
+```
+
+### Build Errors
+
+**Issue:** TypeScript compilation errors
+
+**Solution:**
+```bash
+# Clean cache
+npx nx reset
+
+# Rebuild
+npx nx build aiwm
+```
+
+### Seed Scripts Fail
+
+**Issue:** Duplicate key error
+```
+E11000 duplicate key error
+```
+
+**Solution:**
+```bash
+# Drop collections and re-seed
+mongosh mongodb://172.16.3.20:27017/core_aiwm --eval "
+  db.agents.drop();
+  db.guardrails.drop();
+  db.instructions.drop();
+"
+
+# Re-run seed
+node scripts/seed-vtv-agents.js
+```
+
+---
+
+## Environment Variables
+
+### Required
+```bash
+# MongoDB connection
+MONGODB_URI=mongodb://172.16.3.20:27017
+
+# Service port (optional, default: 3003)
+PORT=3003
+
+# Redis (for queue system)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# JWT secret (shared with IAM)
+JWT_SECRET=your-secret-here
+```
+
+### Optional
+```bash
+# Logging level
+LOG_LEVEL=info
+
+# Enable debug mode
+DEBUG=true
+
+# Node environment
+NODE_ENV=development
+```
+
+---
+
+## Project Structure
+
+```
+services/aiwm/
+├── src/
+│   ├── app/                      # Main app module
+│   │   ├── app.module.ts        # Root module with all imports
+│   │   ├── app.controller.ts    # Root controller
+│   │   └── app.service.ts       # Root service
+│   ├── modules/                  # Feature modules
+│   │   ├── agent/               # Agent module
+│   │   ├── model/               # Model module
+│   │   ├── node/                # Node module
+│   │   ├── resource/            # Resource module
+│   │   ├── deployment/          # Deployment module
+│   │   ├── instruction/         # Instruction module
+│   │   ├── pii/                 # PII module
+│   │   ├── guardrail/           # Guardrail module
+│   │   ├── tool/                # Tool module
+│   │   ├── configuration/       # Configuration module
+│   │   ├── execution/           # Execution module
+│   │   └── reports/             # Reports module
+│   ├── queues/                   # Queue system
+│   │   ├── queue.module.ts      # Queue configuration
+│   │   └── processors.module.ts # Job processors
+│   └── main.ts                   # Entry point
+├── test/                         # E2E tests
+├── project.json                  # Nx project configuration
+├── tsconfig.json                 # TypeScript config
+├── tsconfig.app.json            # App-specific TS config
+└── README.md                     # This file
+```
+
+---
+
+## Related Documentation
+
+### Product Overview
+- [Kaisar AI Ops Overview](../../docs/KAISAR-AI-OPS-OVERVIEW.md) - Comprehensive product documentation
+
+### API Documentation
+- [Agent API](../../docs/aiwm/API-AGENT.md) - Agent CRUD operations
+- [PII & Guardrails API](../../docs/aiwm/API-PII-GUARDRAILS.md) - Security features
+- [Model API](../../docs/aiwm/API-MODEL.md) - Model management
+- [Node API](../../docs/aiwm/API-NODE.md) - Node management
+- [Resource API](../../docs/aiwm/API-RESOURCE.md) - Resource management
+- [Deployment API](../../docs/aiwm/API-DEPLOYMENT.md) - Deployment management
+
+### Development Guides
+- [CLAUDE.md](../../CLAUDE.md) - AI agent development instructions
+- [Template Service Guide](../../docs/TEMPLATE-SERVICE-UPGRADE.md) - Service creation guide
+
+---
+
+## Contributing
+
+### Code Style
+- Follow existing patterns in template service
+- Use TypeScript strict mode
+- Write tests for new features
+- Update documentation
+
+### Commit Messages
+```
+feat(agent): add support for multi-model agents
+fix(pii): resolve regex pattern escaping issue
+docs(api): update agent endpoint documentation
+```
+
+### Pull Request Process
+1. Create feature branch from main
+2. Make changes with tests
+3. Run linter and fix issues
+4. Build successfully
+5. Create PR with description
+6. Wait for review and approval
+
+---
+
+## Support and Contact
+
+### Issues
+Report issues at: [GitHub Issues](https://github.com/your-org/hydra-services/issues)
+
+### Documentation
+Full documentation: [docs/](../../docs/)
+
+### Team
+- Backend Team: AIWM service development
+- DevOps Team: Infrastructure and deployment
+- Product Team: Feature requirements

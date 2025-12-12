@@ -21,3 +21,6 @@ export * from './lib/interfaces/resource-config.interface';
 export * from './lib/exceptions/instruction-in-use.exception';
 export * from './lib/exceptions/tool-in-use.exception';
 export * from './lib/exceptions/model-in-use.exception';
+
+// Security Utilities
+export * from './lib/security';

@@ -13,6 +13,8 @@ import { NodeModule } from '../modules/node/node.module';
 import { ModelModule } from '../modules/model/model.module';
 import { InstructionModule } from '../modules/instruction/instruction.module';
 import { ToolModule } from '../modules/tool/tool.module';
+import { PiiModule } from '../modules/pii/pii.module';
+import { GuardrailModule } from '../modules/guardrail/guardrail.module';
 import { DeploymentModule } from '../modules/deployment/deployment.module';
 import { ResourceModule } from '../modules/resource/resource.module';
 import { ConfigurationModule } from '../modules/configuration/configuration.module';
@@ -36,6 +38,8 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
     ModelModule,
     InstructionModule,
     ToolModule,
+    PiiModule,
+    GuardrailModule,
     DeploymentModule,
     ResourceModule,
     ConfigurationModule,

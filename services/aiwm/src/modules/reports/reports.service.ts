@@ -218,24 +218,8 @@ export class ReportsService {
 
     const agentsByStatus = this.groupByField(agents, 'status');
 
-    // Agent performance totals
-    const agentPerformance = agents.reduce(
-      (acc, agent) => ({
-        totalTasks: acc.totalTasks + (agent.totalTasks || 0),
-        completedTasks: acc.completedTasks + (agent.completedTasks || 0),
-        failedTasks: acc.failedTasks + (agent.failedTasks || 0),
-      }),
-      { totalTasks: 0, completedTasks: 0, failedTasks: 0 }
-    );
-
-    const agentSuccessRate =
-      agentPerformance.totalTasks > 0
-        ? (agentPerformance.completedTasks / agentPerformance.totalTasks) * 100
-        : 0;
-
-    const avgResponseTime = this.calculateAverage(
-      agents.map((a) => a.averageResponseTime || 0)
-    );
+    // Note: Agent performance metrics removed in MVP simplification
+    // Performance tracking moved to Execution entities
 
     // Executions statistics
     const executions = await this.executionModel
@@ -280,13 +264,6 @@ export class ReportsService {
         active: agentsByStatus['active'] || 0,
         busy: agentsByStatus['busy'] || 0,
         inactive: agentsByStatus['inactive'] || 0,
-        performance: {
-          totalTasks: agentPerformance.totalTasks,
-          completedTasks: agentPerformance.completedTasks,
-          failedTasks: agentPerformance.failedTasks,
-          successRate: Math.round(agentSuccessRate * 10) / 10,
-          avgResponseTime: Math.round(avgResponseTime),
-        },
       },
       executions: {
         total: executions.length,

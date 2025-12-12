@@ -130,7 +130,12 @@ This is an Nx monorepo using NestJS framework for microservices architecture wit
   - Organization management
   - JWT authentication strategy
   - Password encryption utilities
-  
+
+- **AIWM** (AI Workload Manager) - Port 3003
+  - Core service for AI operations at scale
+  - 10 modules: Model, Agent, Node, Resource, Deployment, Instruction, PII, Guardrail, Execution, Reports
+  - See [`services/aiwm/README.md`](services/aiwm/README.md) for detailed documentation
+
 - **CBM** (Core Business Management) - Port 3001
   - Basic service structure ready for business logic
 
@@ -269,8 +274,9 @@ Current services:
 - IAM: 3000
 - CBM: 3001
 - Template: 3002
+- AIWM: 3003
 
-**Next available ports:** 3003, 3004, 3005, etc.
+**Next available ports:** 3004, 3005, 3006, etc.
 
 ### Verification Checklist
 After service creation:

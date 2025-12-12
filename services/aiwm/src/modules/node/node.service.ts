@@ -141,7 +141,7 @@ export class NodeService extends BaseService<Node> {
   ): Promise<{ token: string; expiresAt: Date; installScript: string }> {
     // Verify node exists
     const node = await this.model
-      .findOne({ _id: new Types.ObjectId(id), deletedAt: null })
+      .findOne({ _id: new Types.ObjectId(id), isDeleted: false })
       .exec();
     if (!node) {
       throw new NotFoundException(`Node with ID ${id} not found`);
@@ -180,7 +180,7 @@ export class NodeService extends BaseService<Node> {
     // Generate installation script
     const installScript = this.generateInstallScript(token, node);
 
-    this.logger.log(
+    this.logger.info(
       `Token generated for node ${id} (expires: ${expiresAt.toISOString()})`
     );
 

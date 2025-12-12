@@ -91,12 +91,11 @@ export class AgentService extends BaseService<Agent> {
     // Business-specific logging with details
     this.logger.info('Agent created with details', {
       id: (saved as any)._id,
-      agentId: saved.agentId,
       name: saved.name,
-      role: saved.role,
       status: saved.status,
-      capabilities: saved.capabilities,
       nodeId: saved.nodeId,
+      instructionId: saved.instructionId,
+      guardrailId: saved.guardrailId,
       createdBy: context.userId,
     });
 
@@ -123,12 +122,11 @@ export class AgentService extends BaseService<Agent> {
       // Business-specific logging with details
       this.logger.info('Agent updated with details', {
         id: (updated as any)._id,
-        agentId: updated.agentId,
         name: updated.name,
-        role: updated.role,
         status: updated.status,
-        capabilities: updated.capabilities,
         nodeId: updated.nodeId,
+        instructionId: updated.instructionId,
+        guardrailId: updated.guardrailId,
         updatedBy: context.userId,
       });
 

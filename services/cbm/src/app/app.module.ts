@@ -11,6 +11,8 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DocumentModule } from '../modules/document/document.module';
+import { ProjectModule } from '../modules/project/project.module';
+import { WorkModule } from '../modules/work/work.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { DocumentModule } from '../modules/document/document.module';
     PassportModule,
     HealthModule,
     DocumentModule,
+    ProjectModule,
+    WorkModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],
