@@ -19,14 +19,25 @@ export class DocumentService extends BaseService<Document> {
   }
 
   /**
-   * Override findById to exclude content field
+   * Override findById to exclude content field and respect ownership
    */
   async findById(
     id: ObjectId,
     context: RequestContext
   ): Promise<Document | null> {
+    // Build owner filter based on context
+    const ownerFilter: any = {
+      _id: id,
+      deletedAt: null,
+    };
+
+    // Add ownership check
+    if (context.orgId) {
+      ownerFilter['owner.orgId'] = context.orgId;
+    }
+
     return this.documentModel
-      .findOne({ _id: id, deletedAt: null })
+      .findOne(ownerFilter)
       .select('-content')
       .lean()
       .exec() as Promise<Document | null>;
@@ -34,13 +45,25 @@ export class DocumentService extends BaseService<Document> {
 
   /**
    * Find document by ID with full content (for /content endpoint)
+   * Respects ownership - only returns documents owned by the requesting user/org
    */
   async findByIdWithContent(
     id: ObjectId,
     context: RequestContext
   ): Promise<Document | null> {
+    // Build owner filter based on context
+    const ownerFilter: any = {
+      _id: id,
+      isDeleted: false,
+    };
+
+    // Add ownership check
+    if (context.orgId) {
+      ownerFilter['owner.orgId'] = context.orgId;
+    }
+
     return this.documentModel
-      .findOne({ _id: id, deletedAt: null })
+      .findOne(ownerFilter)
       .lean()
       .exec() as Promise<Document | null>;
   }

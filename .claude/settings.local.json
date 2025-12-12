@@ -66,7 +66,8 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTFlYmEwODUxN2Y5MTc5NDNhZTFmYTEiLCJ1c2VybmFtZSI6ImFkbWluQHgtb3IuY2xvdWQiLCJzdGF0dXMiOiJhY3RpdmUiLCJyb2xlcyI6WyJ1bml2ZXJzZS5vd25lciJdLCJvcmdJZCI6IjY5MWViOWU2NTE3ZjkxNzk0M2FlMWY5ZCIsImdyb3VwSWQiOiIiLCJhZ2VudElkIjoiIiwiYXBwSWQiOiIiLCJpYXQiOjE3NjU1MjcwNzEsImV4cCI6MTc2NTUzMDY3MX0.mL0EdhMqHruqEYlcvXXncAyFO3HUt5unI1jFOnYDq1s\")",
       "Bash(PROJECT_ID=\"693bd401e313d1c3edfb403d\":*)",
       "Bash(__NEW_LINE__ echo \"=== Test 1.2: List All Projects ===\")",
-      "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-cbm.sh)"
+      "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-cbm.sh)",
+      "Bash(/tmp/test-document-content.sh)"
     ],
     "deny": [],
     "ask": []
