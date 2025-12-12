@@ -19,14 +19,23 @@ export class ProjectService extends BaseService<Project> {
   }
 
   /**
-   * Override findAll to handle statistics aggregation
+   * Override findAll to handle statistics aggregation and optimize response
    * Aggregates by status only
+   * Excludes 'description' field to reduce response size
    */
   async findAll(
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<Project>> {
     const findResult = await super.findAll(options, context);
+
+    // Exclude description field from results to reduce response size
+    findResult.data = findResult.data.map((project: any) => {
+      // Convert Mongoose document to plain object
+      const plainProject = project.toObject ? project.toObject() : project;
+      const { description, ...rest } = plainProject;
+      return rest as Project;
+    });
 
     // Aggregate statistics by status
     const statusStats = await super.aggregate(

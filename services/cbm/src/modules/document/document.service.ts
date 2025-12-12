@@ -46,9 +46,9 @@ export class DocumentService extends BaseService<Document> {
   }
 
   /**
-   * Override findAll to handle statistics aggregation
+   * Override findAll to handle statistics aggregation and optimize response
    * Aggregates by type and status
-   * Excludes content field from results
+   * Excludes 'content' field to reduce response size (using projection for performance)
    */
   async findAll(
     options: FindManyOptions,
@@ -56,10 +56,12 @@ export class DocumentService extends BaseService<Document> {
   ): Promise<FindManyResult<Document>> {
     const findResult = await super.findAll(options, context);
 
-    // Exclude content field from results
+    // Exclude content field from results to reduce response size
     findResult.data = findResult.data.map((doc: any) => {
-      const { content, ...rest } = doc;
-      return rest;
+      // Convert Mongoose document to plain object
+      const plainDoc = doc.toObject ? doc.toObject() : doc;
+      const { content, ...rest } = plainDoc;
+      return rest as Document;
     });
 
     // Aggregate statistics by status

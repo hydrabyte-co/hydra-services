@@ -185,4 +185,18 @@ export class WorkController {
   ) {
     return this.workService.cancelWork(new Types.ObjectId(id) as any, context);
   }
+
+  @Get(':id/can-trigger')
+  @ApiOperation({
+    summary: 'Check if work can trigger agent execution',
+    description: 'Validates if work meets all conditions to trigger agent: assigned to agent, startAt time reached, status ready, not blocked'
+  })
+  @ApiReadErrors()
+  @UseGuards(JwtAuthGuard)
+  async canTrigger(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.workService.canTriggerAgent(new Types.ObjectId(id) as any, context);
+  }
 }
