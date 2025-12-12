@@ -22,7 +22,7 @@ import {
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { WorkService } from './work.service';
-import { CreateWorkDto, UpdateWorkDto } from './work.dto';
+import { CreateWorkDto, UpdateWorkDto, BlockWorkDto } from './work.dto';
 
 @ApiTags('Works')
 @ApiBearerAuth()
@@ -105,15 +105,20 @@ export class WorkController {
   @Post(':id/block')
   @ApiOperation({
     summary: 'Block work',
-    description: 'Transition work from in_progress to blocked status'
+    description: 'Transition work from in_progress to blocked status. Requires a reason explaining why the work is blocked.'
   })
   @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
   async block(
     @Param('id') id: string,
+    @Body() blockWorkDto: BlockWorkDto,
     @CurrentUser() context: RequestContext
   ) {
-    return this.workService.blockWork(new Types.ObjectId(id) as any, context);
+    return this.workService.blockWork(
+      new Types.ObjectId(id) as any,
+      blockWorkDto.reason,
+      context
+    );
   }
 
   @Post(':id/unblock')

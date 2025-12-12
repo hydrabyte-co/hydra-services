@@ -4,6 +4,7 @@ import { Model, ObjectId, Types } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Work } from './work.schema';
+import { CreateWorkDto } from './work.dto';
 
 /**
  * WorkService
@@ -20,8 +21,12 @@ export class WorkService extends BaseService<Work> {
 
   /**
    * Override create to validate reporter/assignee and parentId
+   * Validates hierarchy rules based on work type:
+   * - epic: automatically sets parentId to null (cannot have parent)
+   * - task: if has parentId, parent must be epic
+   * - subtask: must have parentId, and parent must be task
    */
-  async create(data: any, context: RequestContext): Promise<Work> {
+  async create(data: CreateWorkDto, context: RequestContext): Promise<Work> {
     // Validate reporter exists and isDeleted = false
     await this.validateEntityExists(data.reporter.type, data.reporter.id);
 
@@ -30,18 +35,34 @@ export class WorkService extends BaseService<Work> {
       await this.validateEntityExists(data.assignee.type, data.assignee.id);
     }
 
-    // Validate parentId if provided
-    if (data.parentId) {
-      await this.validateParentId(data.parentId, data.type, context);
-    }
+    // Validate and enforce parentId rules based on type
+    await this.validateAndSetParentId(data, context);
 
-    return super.create(data as any, context) as Promise<Work>;
+    data.status = 'backlog'; // New work always starts with 'backlog' status
+    return super.create(data as CreateWorkDto, context) as Promise<Work>;
   }
 
   /**
    * Override update to validate reporter/assignee and parentId
+   * NOTE: type, status, and reason cannot be updated via PATCH
+   * - type: Cannot be changed after creation (would break hierarchy)
+   * - status: Must use action methods (startWork, blockWork, etc.)
+   * - reason: Managed automatically by blockWork/unblockWork actions
    */
   async update(id: ObjectId, data: any, context: RequestContext): Promise<Work | null> {
+    // Block fields that cannot be updated directly
+    if (data.type !== undefined) {
+      throw new BadRequestException('Cannot update work type. Type is immutable after creation.');
+    }
+
+    if (data.status !== undefined) {
+      throw new BadRequestException('Cannot update status directly. Use action endpoints: /start, /block, /unblock, /request-review, /complete, /reopen, /cancel');
+    }
+
+    if (data.reason !== undefined) {
+      throw new BadRequestException('Cannot update reason directly. Reason is managed by block/unblock actions.');
+    }
+
     // Validate reporter if being updated
     if (data.reporter) {
       await this.validateEntityExists(data.reporter.type, data.reporter.id);
@@ -58,7 +79,18 @@ export class WorkService extends BaseService<Work> {
       if (!work) {
         throw new BadRequestException('Work not found');
       }
-      await this.validateParentId(data.parentId, work.type, context);
+
+      // Create a temporary object for validation with existing type
+      const tempData = {
+        type: work.type, // Use existing type since it cannot be changed
+        parentId: data.parentId,
+      };
+
+      // Validate using the same rules as create
+      await this.validateAndSetParentId(tempData, context);
+
+      // Apply the validated parentId back to data
+      data.parentId = tempData.parentId;
     }
 
     return super.update(id, data, context);
@@ -86,20 +118,50 @@ export class WorkService extends BaseService<Work> {
   }
 
   /**
-   * Validate parentId hierarchy rules
+   * Validate and set parentId based on work type hierarchy rules
+   * - epic: must not have parent (automatically set to null)
+   * - task: if has parent, parent must be epic
+   * - subtask: must have parent, and parent must be task
    */
-  private async validateParentId(parentId: string, workType: string, context: RequestContext): Promise<void> {
-    if (!parentId) return;
+  private async validateAndSetParentId(data: any, context: RequestContext): Promise<void> {
+    const workType = data.type;
 
-    // Check parent exists - use findById which respects ownership
-    const parent = await this.findById(new Types.ObjectId(parentId) as any, context);
-    if (!parent) {
-      throw new BadRequestException(`Parent work ${parentId} not found`);
+    // Rule 1: Epic cannot have parent - force parentId to null
+    if (workType === 'epic') {
+      if (data.parentId) {
+        throw new BadRequestException('Epic cannot have a parent. Remove parentId or change work type.');
+      }
+      data.parentId = null;
+      return;
     }
 
-    // Validate hierarchy: subtask can only have task/epic parent, not another subtask
-    if (workType === 'subtask' && parent.type === 'subtask') {
-      throw new BadRequestException('Subtask cannot have another subtask as parent');
+    // Rule 2: Task can optionally have parent, if provided it must be epic
+    if (workType === 'task') {
+      if (data.parentId) {
+        const parent = await this.findById(new Types.ObjectId(data.parentId) as any, context);
+        if (!parent) {
+          throw new BadRequestException(`Parent work ${data.parentId} not found`);
+        }
+        if (parent.type !== 'epic') {
+          throw new BadRequestException(`Task can only have epic as parent. Found parent type: ${parent.type}`);
+        }
+      }
+      return;
+    }
+
+    // Rule 3: Subtask must have parent, and parent must be task
+    if (workType === 'subtask') {
+      if (!data.parentId) {
+        throw new BadRequestException('Subtask must have a parentId. Provide a task ID as parent.');
+      }
+      const parent = await this.findById(new Types.ObjectId(data.parentId) as any, context);
+      if (!parent) {
+        throw new BadRequestException(`Parent work ${data.parentId} not found`);
+      }
+      if (parent.type !== 'task') {
+        throw new BadRequestException(`Subtask can only have task as parent. Found parent type: ${parent.type}`);
+      }
+      return;
     }
   }
 
@@ -202,9 +264,11 @@ export class WorkService extends BaseService<Work> {
   /**
    * Action: Block work
    * Transition: in_progress → blocked
+   * @param reason - Explanation of why the work is blocked (required)
    */
   async blockWork(
     id: ObjectId,
+    reason: string,
     context: RequestContext
   ): Promise<Work> {
     const work = await this.findById(id, context);
@@ -218,9 +282,13 @@ export class WorkService extends BaseService<Work> {
       );
     }
 
+    if (!reason || reason.trim().length === 0) {
+      throw new BadRequestException('Reason is required when blocking work');
+    }
+
     return this.update(
       id,
-      { status: 'blocked' } as any,
+      { status: 'blocked', reason } as any,
       context
     ) as Promise<Work>;
   }
@@ -228,6 +296,7 @@ export class WorkService extends BaseService<Work> {
   /**
    * Action: Unblock work
    * Transition: blocked → in_progress
+   * Clears the reason field when unblocking
    */
   async unblockWork(
     id: ObjectId,
@@ -246,7 +315,7 @@ export class WorkService extends BaseService<Work> {
 
     return this.update(
       id,
-      { status: 'in_progress' } as any,
+      { status: 'in_progress', reason: null } as any,
       context
     ) as Promise<Work>;
   }
@@ -382,7 +451,7 @@ export class WorkService extends BaseService<Work> {
    * 2. Work has startAt date/time set
    * 3. Current time >= startAt time
    * 4. Status is 'todo' or 'in_progress'
-   * 5. Work is not blocked (blockedBy array is empty)
+   * 5. Work has no dependencies (dependencies array is empty)
    */
   async canTriggerAgent(
     id: ObjectId,
@@ -440,11 +509,11 @@ export class WorkService extends BaseService<Work> {
       };
     }
 
-    // Check 5: Must not be blocked
-    if (work.blockedBy && work.blockedBy.length > 0) {
+    // Check 5: Must have no dependencies
+    if (work.dependencies && work.dependencies.length > 0) {
       return {
         canTrigger: false,
-        reason: `Work is blocked by ${work.blockedBy.length} other work(s): ${work.blockedBy.join(', ')}`,
+        reason: `Work has ${work.dependencies.length} dependency/dependencies: ${work.dependencies.join(', ')}`,
         work,
       };
     }
@@ -452,7 +521,7 @@ export class WorkService extends BaseService<Work> {
     // All conditions met
     return {
       canTrigger: true,
-      reason: 'All conditions met: assigned to agent, startAt time reached, status is ready, not blocked',
+      reason: 'All conditions met: assigned to agent, startAt time reached, status is ready, no dependencies',
       work,
     };
   }

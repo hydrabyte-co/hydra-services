@@ -23,9 +23,6 @@ export class Work extends BaseSchema {
   @Prop({ required: true, maxlength: 200 })
   title!: string; // Work title
 
-  @Prop({ maxlength: 500 })
-  summary?: string; // Short summary
-
   @Prop({ maxlength: 10000 })
   description?: string; // Detailed description (markdown)
 
@@ -55,7 +52,10 @@ export class Work extends BaseSchema {
   status!: string; // Work status
 
   @Prop({ type: [String], default: [] })
-  blockedBy!: string[]; // Array of Work IDs that block this work
+  dependencies!: string[]; // Array of Work IDs that this work depends on
+
+  @Prop({ maxlength: 1000 })
+  reason?: string; // Reason/explanation when work is blocked
 
   @Prop({ type: String })
   parentId?: string; // Parent Work ID (for subtasks)
@@ -77,4 +77,4 @@ WorkSchema.index({ 'reporter.id': 1 });
 WorkSchema.index({ 'assignee.id': 1 });
 WorkSchema.index({ parentId: 1 });
 WorkSchema.index({ createdAt: -1 });
-WorkSchema.index({ title: 'text', summary: 'text', description: 'text' }); // Full-text search
+WorkSchema.index({ title: 'text', description: 'text' }); // Full-text search

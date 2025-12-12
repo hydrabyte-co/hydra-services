@@ -49,16 +49,6 @@ export class CreateWorkDto {
   title!: string;
 
   @ApiPropertyOptional({
-    description: 'Short summary',
-    example: 'Add JWT-based authentication to the API',
-    maxLength: 500,
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  summary?: string;
-
-  @ApiPropertyOptional({
     description: 'Detailed description (markdown)',
     example: '## Requirements\n- JWT tokens\n- Refresh token flow\n- Password hashing',
     maxLength: 10000,
@@ -134,14 +124,14 @@ export class CreateWorkDto {
   status?: string;
 
   @ApiPropertyOptional({
-    description: 'Array of Work IDs that block this work',
+    description: 'Array of Work IDs that this work depends on',
     example: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
     type: [String],
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  blockedBy?: string[];
+  dependencies?: string[];
 
   @ApiPropertyOptional({
     description: 'Parent Work ID (for subtasks)',
@@ -164,7 +154,10 @@ export class CreateWorkDto {
 
 /**
  * DTO for updating an existing work
- * All fields are optional
+ * NOTE: Cannot update type, status, or reason
+ * - type: Immutable after creation
+ * - status: Use action endpoints instead
+ * - reason: Managed by block/unblock actions
  */
 export class UpdateWorkDto {
   @ApiPropertyOptional({
@@ -179,16 +172,6 @@ export class UpdateWorkDto {
   title?: string;
 
   @ApiPropertyOptional({
-    description: 'Short summary',
-    example: 'Updated summary...',
-    maxLength: 500,
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  summary?: string;
-
-  @ApiPropertyOptional({
     description: 'Detailed description (markdown)',
     example: 'Updated description...',
     maxLength: 10000,
@@ -197,15 +180,6 @@ export class UpdateWorkDto {
   @IsString()
   @MaxLength(10000)
   description?: string;
-
-  @ApiPropertyOptional({
-    description: 'Work type',
-    enum: ['epic', 'task', 'subtask'],
-    example: 'task',
-  })
-  @IsOptional()
-  @IsEnum(['epic', 'task', 'subtask'])
-  type?: string;
 
   @ApiPropertyOptional({
     description: 'Project ID',
@@ -254,23 +228,14 @@ export class UpdateWorkDto {
   startAt?: Date;
 
   @ApiPropertyOptional({
-    description: 'Work status',
-    enum: ['backlog', 'todo', 'in_progress', 'blocked', 'cancelled', 'review', 'done'],
-    example: 'todo',
-  })
-  @IsOptional()
-  @IsEnum(['backlog', 'todo', 'in_progress', 'blocked', 'cancelled', 'review', 'done'])
-  status?: string;
-
-  @ApiPropertyOptional({
-    description: 'Array of Work IDs that block this work',
+    description: 'Array of Work IDs that this work depends on',
     example: ['507f1f77bcf86cd799439011'],
     type: [String],
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  blockedBy?: string[];
+  dependencies?: string[];
 
   @ApiPropertyOptional({
     description: 'Parent Work ID (for subtasks)',
@@ -289,4 +254,20 @@ export class UpdateWorkDto {
   @IsArray()
   @IsString({ each: true })
   documents?: string[];
+}
+
+/**
+ * DTO for blocking a work
+ * Requires reason to explain why the work is being blocked
+ */
+export class BlockWorkDto {
+  @ApiProperty({
+    description: 'Reason why the work is being blocked',
+    example: 'Waiting for API design to be finalized before implementation can continue',
+    maxLength: 1000,
+  })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  reason!: string;
 }
