@@ -24,6 +24,9 @@ import {
   ApiReadErrors,
   ApiUpdateErrors,
   ApiDeleteErrors,
+  UniverseScopeOnly,
+  RequireUniverseRole,
+  UniverseRoleGuard,
 } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types, ObjectId } from 'mongoose';
@@ -56,7 +59,9 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'Get all organizations', description: 'Get list of organizations with pagination and filtering' })
   @ApiResponse({ status: 200, description: 'Organizations retrieved successfully' })
   @ApiReadErrors({ notFound: false })
-  @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
+  @UniverseScopeOnly()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async findAll(
     @Query() paginationQuery: PaginationQueryDto,
     @CurrentUser() context: RequestContext

@@ -4,7 +4,14 @@ import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiRead
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { AgentService } from './agent.service';
-import { CreateAgentDto, UpdateAgentDto } from './agent.dto';
+import {
+  CreateAgentDto,
+  UpdateAgentDto,
+  AgentConnectDto,
+  AgentConnectResponseDto,
+  AgentHeartbeatDto,
+  AgentCredentialsResponseDto,
+} from './agent.dto';
 
 @ApiTags('agents')
 @ApiBearerAuth('JWT-auth')
@@ -81,5 +88,59 @@ export class AgentController {
   ) {
     await this.agentService.remove(id, context);
     return { message: 'Agent deleted successfully' };
+  }
+
+  @Post(':id/connect')
+  @ApiOperation({
+    summary: 'Agent connection/authentication',
+    description: 'Public endpoint for agent to connect and authenticate. Returns JWT token + instruction + tools config.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent connected successfully',
+    type: AgentConnectResponseDto
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials or agent suspended' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  async connect(
+    @Param('id') id: string,
+    @Body() connectDto: AgentConnectDto,
+  ): Promise<AgentConnectResponseDto> {
+    return this.agentService.connect(id, connectDto);
+  }
+
+  @Post(':id/heartbeat')
+  @ApiOperation({
+    summary: 'Agent heartbeat',
+    description: 'Update agent last heartbeat timestamp. Requires agent JWT token.'
+  })
+  @ApiResponse({ status: 200, description: 'Heartbeat received' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @UseGuards(JwtAuthGuard)
+  async heartbeat(
+    @Param('id') id: string,
+    @Body() heartbeatDto: AgentHeartbeatDto,
+    @CurrentUser() context: RequestContext,
+  ) {
+    return this.agentService.heartbeat(id, heartbeatDto);
+  }
+
+  @Post(':id/credentials/regenerate')
+  @ApiOperation({
+    summary: 'Regenerate agent credentials',
+    description: 'Admin endpoint to regenerate agent secret. Returns new secret + env config + install script.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Credentials regenerated successfully',
+    type: AgentCredentialsResponseDto
+  })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @UseGuards(JwtAuthGuard)
+  async regenerateCredentials(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext,
+  ): Promise<AgentCredentialsResponseDto> {
+    return this.agentService.regenerateCredentials(id, context);
   }
 }
