@@ -23,6 +23,16 @@ export class CreateAgentDto {
   @IsEnum(['active', 'inactive', 'busy', 'suspended'])
   status: string;
 
+  @ApiPropertyOptional({
+    description: 'Agent type',
+    enum: ['managed', 'autonomous'],
+    example: 'managed',
+    required: false
+  })
+  @IsOptional()
+  @IsEnum(['managed', 'autonomous'])
+  type?: string;
+
   @ApiPropertyOptional({ description: 'Instruction ID (optional)', required: false })
   @IsOptional()
   @IsString()
@@ -55,9 +65,16 @@ export class CreateAgentDto {
   allowedToolIds?: string[];
 
   @ApiPropertyOptional({
-    description: 'Runtime configuration (discord, telegram, etc.)',
+    description: 'Runtime configuration with flat structure using prefixes (auth_, claude_, discord_, telegram_)',
     required: false,
-    example: { discord: { token: 'xxx', channelIds: ['123'] } }
+    example: {
+      auth_roles: ['agent'],
+      claude_model: 'claude-3-5-sonnet-latest',
+      claude_maxTurns: 100,
+      claude_permissionMode: 'bypassPermissions',
+      discord_token: 'xxx',
+      discord_channelIds: ['123', '456']
+    }
   })
   @IsOptional()
   @IsObject()
@@ -87,6 +104,15 @@ export class UpdateAgentDto {
   @IsEnum(['active', 'inactive', 'busy', 'suspended'])
   status?: string;
 
+  @ApiPropertyOptional({
+    description: 'Agent type',
+    enum: ['managed', 'autonomous'],
+    required: false
+  })
+  @IsOptional()
+  @IsEnum(['managed', 'autonomous'])
+  type?: string;
+
   @ApiPropertyOptional({ description: 'Instruction ID', required: false })
   @IsOptional()
   @IsString()
@@ -115,9 +141,16 @@ export class UpdateAgentDto {
   allowedToolIds?: string[];
 
   @ApiPropertyOptional({
-    description: 'Runtime configuration (discord, telegram, etc.)',
+    description: 'Runtime configuration with flat structure using prefixes (auth_, claude_, discord_, telegram_)',
     required: false,
-    example: { discord: { token: 'xxx', channelIds: ['123'] } }
+    example: {
+      auth_roles: ['agent'],
+      claude_model: 'claude-3-5-sonnet-latest',
+      claude_maxTurns: 100,
+      claude_permissionMode: 'bypassPermissions',
+      discord_token: 'xxx',
+      discord_channelIds: ['123', '456']
+    }
   })
   @IsOptional()
   @IsObject()
@@ -136,10 +169,26 @@ export class AgentConnectDto {
 
 /**
  * Response DTO for agent connection
+ * Matches IAM TokenData structure with agent-specific additions
  */
 export class AgentConnectResponseDto {
-  @ApiProperty({ description: 'JWT token for agent authentication' })
-  token: string;
+  @ApiProperty({ description: 'JWT access token (contains agentId, username, roles, orgId)', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
+  accessToken: string;
+
+  @ApiProperty({ description: 'Token expiration time in seconds', example: 86400 })
+  expiresIn: number;
+
+  @ApiProperty({ description: 'Refresh token (not implemented for agents)', example: null, nullable: true })
+  refreshToken: string | null;
+
+  @ApiProperty({ description: 'Refresh token expiration in seconds', example: 0 })
+  refreshExpiresIn: number;
+
+  @ApiProperty({ description: 'Token type', example: 'bearer' })
+  tokenType: string;
+
+  @ApiProperty({ description: 'MCP endpoint URL for tool discovery and execution', example: 'http://localhost:3305/mcp' })
+  mcpEndpoint: string;
 
   @ApiProperty({ description: 'Merged instruction text for agent' })
   instruction: string;
@@ -147,15 +196,8 @@ export class AgentConnectResponseDto {
   @ApiProperty({ description: 'Array of allowed tools', type: [Object] })
   tools: Tool[];
 
-  @ApiProperty({ description: 'Agent information' })
-  agent: {
-    id: string;
-    name: string;
-    orgId: string;
-  };
-
-  @ApiProperty({ description: 'Agent runtime settings/configuration', required: false })
-  settings?: Record<string, unknown>;
+  @ApiProperty({ description: 'Agent runtime settings/configuration' })
+  settings: Record<string, unknown>;
 }
 
 /**

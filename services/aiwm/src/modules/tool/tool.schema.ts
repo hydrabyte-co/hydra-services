@@ -14,8 +14,8 @@ export class Tool extends BaseSchema {
   @Prop({ required: true, maxlength: 100 })
   name!: string; // e.g., "webSearch", "listAgents"
 
-  @Prop({ required: true, enum: ['mcp', 'builtin'] })
-  type!: string; // "mcp" or "builtin"
+  @Prop({ required: true, enum: ['mcp', 'builtin', 'custom', 'api'] })
+  type!: string; // "mcp", "builtin", "custom", or "api"
 
   @Prop({ required: true, maxlength: 500 })
   description!: string;
@@ -28,7 +28,7 @@ export class Tool extends BaseSchema {
   transport?: string; // "sse" or "http" - required if type="mcp"
 
   @Prop()
-  endpoint?: string; // Tool endpoint URL - required if type="mcp"
+  endpoint?: string; // Tool endpoint URL - for mcp/api types
 
   @Prop()
   dockerImage?: string; // e.g., "aiops/mcp-web-search:latest" - required if type="mcp"
@@ -49,6 +49,19 @@ export class Tool extends BaseSchema {
   lastHealthCheck?: Date; // Last health check timestamp
 
   // Built-in tools are pre-packaged in agent container, no deployment needed
+  // API tools call internal HTTP APIs (e.g., CBM services) via AIWM proxy
+  // Custom tools are user-defined functions executed by agent client
+
+  // Execution configuration (for api type)
+  @Prop({ type: Object })
+  execution?: {
+    method?: string;          // HTTP method: GET, POST, PUT, DELETE
+    baseUrl?: string;         // Base URL of the service (e.g., http://cbm:3001)
+    path?: string;            // API path template (e.g., /projects/{id})
+    headers?: Record<string, string>; // Additional headers
+    authRequired?: boolean;   // Whether to pass user JWT token
+    timeout?: number;         // Request timeout in ms
+  };
 
   // Common fields
   @Prop({ required: true, enum: ['active', 'inactive', 'error'], default: 'active' })

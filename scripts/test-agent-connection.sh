@@ -134,8 +134,8 @@ fi
 echo "✅ Created node: $NODE_ID"
 echo ""
 
-# Step 5: Create agent with instruction and tools
-echo "Step 5: Create agent..."
+# Step 5: Create agent with instruction and tools (autonomous type)
+echo "Step 5: Create agent (autonomous type)..."
 AGENT_RESPONSE=$(curl -s -X POST "${AIWM_BASE_URL}/agents" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -143,19 +143,21 @@ AGENT_RESPONSE=$(curl -s -X POST "${AIWM_BASE_URL}/agents" \
     \"name\": \"Test Connection Agent\",
     \"description\": \"Agent for testing connection flow\",
     \"status\": \"active\",
+    \"type\": \"autonomous\",
     \"instructionId\": \"$INSTRUCTION_ID\",
     \"nodeId\": \"$NODE_ID\",
     \"secret\": \"test-secret-123456\",
     \"allowedToolIds\": [\"$TOOL1_ID\", \"$TOOL2_ID\"],
     \"settings\": {
-      \"discord\": {
-        \"token\": \"test-discord-token\",
-        \"channelIds\": [\"123456789\"]
-      },
-      \"telegram\": {
-        \"token\": \"test-telegram-token\",
-        \"groupIds\": [\"-1001234567890\"]
-      }
+      \"auth_roles\": [\"agent\", \"document.reader\"],
+      \"claude_model\": \"claude-3-5-haiku-latest\",
+      \"claude_maxTurns\": 50,
+      \"claude_permissionMode\": \"bypassPermissions\",
+      \"claude_resume\": true,
+      \"discord_token\": \"test-discord-token\",
+      \"discord_channelIds\": [\"123456789\"],
+      \"telegram_token\": \"test-telegram-token\",
+      \"telegram_groupIds\": [\"-1001234567890\"]
     },
     \"tags\": [\"test\", \"connection-test\"]
   }")
@@ -203,7 +205,9 @@ CONNECT_RESPONSE=$(curl -s -X POST "${AIWM_BASE_URL}/agents/${AGENT_ID}/connect"
     \"secret\": \"$NEW_SECRET\"
   }")
 
-AGENT_TOKEN=$(echo "$CONNECT_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['token'])" 2>/dev/null || echo "")
+AGENT_TOKEN=$(echo "$CONNECT_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])" 2>/dev/null || echo "")
+EXPIRES_IN=$(echo "$CONNECT_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['expiresIn'])" 2>/dev/null || echo "")
+TOKEN_TYPE=$(echo "$CONNECT_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['tokenType'])" 2>/dev/null || echo "")
 INSTRUCTION_TEXT=$(echo "$CONNECT_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['instruction'])" 2>/dev/null || echo "")
 
 if [ -z "$AGENT_TOKEN" ]; then
@@ -213,7 +217,9 @@ if [ -z "$AGENT_TOKEN" ]; then
 fi
 
 echo "✅ Agent connected successfully"
-echo "   Agent JWT: ${AGENT_TOKEN:0:30}..."
+echo "   accessToken: ${AGENT_TOKEN:0:30}..."
+echo "   expiresIn: $EXPIRES_IN seconds (24 hours)"
+echo "   tokenType: $TOKEN_TYPE"
 echo ""
 echo "   Received instruction:"
 echo "   ---"
@@ -232,6 +238,39 @@ print(f'   Total tools: {len(tools)}')
 for tool in tools:
     print(f'   - {tool[\"name\"]}: {tool[\"description\"]}')
 " 2>/dev/null || echo "   (Could not parse tools)"
+echo ""
+
+# Validate JWT payload structure
+echo "   Validating JWT payload structure..."
+echo "$AGENT_TOKEN" | python3 -c "
+import sys, json, base64
+token_parts = sys.stdin.read().strip().split('.')
+if len(token_parts) >= 2:
+    # Decode JWT payload (add padding if needed)
+    payload_b64 = token_parts[1]
+    padding = 4 - len(payload_b64) % 4
+    if padding != 4:
+        payload_b64 += '=' * padding
+    payload_json = base64.urlsafe_b64decode(payload_b64)
+    payload = json.loads(payload_json)
+
+    print(f'   ✓ sub (agentId): {payload.get(\"sub\", \"MISSING\")}')
+    print(f'   ✓ username: {payload.get(\"username\", \"MISSING\")}')
+    print(f'   ✓ status: {payload.get(\"status\", \"MISSING\")}')
+    print(f'   ✓ roles: {payload.get(\"roles\", \"MISSING\")}')
+    print(f'   ✓ orgId: {payload.get(\"orgId\", \"MISSING\")}')
+    print(f'   ✓ agentId: {payload.get(\"agentId\", \"MISSING\")}')
+    print(f'   ✓ userId: \"{payload.get(\"userId\", \"MISSING\")}\" (should be empty)')
+    print(f'   ✓ type: {payload.get(\"type\", \"MISSING\")}')
+
+    # Validate format
+    if payload.get('username', '').startswith('agent:'):
+        print('   ✅ JWT payload structure matches IAM format')
+    else:
+        print('   ⚠️  username format unexpected')
+else:
+    print('   ❌ Invalid JWT format')
+" 2>/dev/null || echo "   (Could not decode JWT)"
 echo ""
 
 # Step 8: Test heartbeat

@@ -66,6 +66,7 @@ export class AgentService extends BaseService<Agent> {
     context: RequestContext
   ): Promise<FindManyResult<Agent>> {
     const findResult = await super.findAll(options, context);
+
     // Aggregate statistics by status
     const statusStats = await super.aggregate(
       [
@@ -73,6 +74,20 @@ export class AgentService extends BaseService<Agent> {
         {
           $group: {
             _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Aggregate statistics by type
+    const typeStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$type',
             count: { $sum: 1 },
           },
         },
@@ -92,6 +107,11 @@ export class AgentService extends BaseService<Agent> {
       statistics.byStatus[stat._id] = stat.count;
     });
 
+    // Map type statistics
+    typeStats.forEach((stat: any) => {
+      statistics.byType[stat._id] = stat.count;
+    });
+
     findResult.statistics = statistics;
     return findResult;
   }
@@ -100,14 +120,20 @@ export class AgentService extends BaseService<Agent> {
     createAgentDto: CreateAgentDto,
     context: RequestContext
   ): Promise<Agent> {
-    // Hash secret if provided
-    if (createAgentDto.secret) {
-      const hashedSecret = await bcrypt.hash(createAgentDto.secret, 10);
-      createAgentDto.secret = hashedSecret;
+    // Only autonomous agents have secrets
+    if (createAgentDto.type === 'autonomous') {
+      // Hash secret if provided
+      if (createAgentDto.secret) {
+        const hashedSecret = await bcrypt.hash(createAgentDto.secret, 10);
+        createAgentDto.secret = hashedSecret;
+      } else {
+        // Generate random secret if not provided
+        const randomSecret = crypto.randomBytes(32).toString('hex');
+        createAgentDto.secret = await bcrypt.hash(randomSecret, 10);
+      }
     } else {
-      // Generate random secret if not provided
-      const randomSecret = crypto.randomBytes(32).toString('hex');
-      createAgentDto.secret = await bcrypt.hash(randomSecret, 10);
+      // Managed agents don't need secrets
+      delete createAgentDto.secret;
     }
 
     // BaseService handles permissions, ownership, save, and generic logging
@@ -133,6 +159,7 @@ export class AgentService extends BaseService<Agent> {
   /**
    * Agent connection/authentication endpoint
    * Validates agentId + secret, returns JWT token + config
+   * Only works for autonomous agents
    */
   async connect(
     agentId: string,
@@ -148,24 +175,44 @@ export class AgentService extends BaseService<Agent> {
       throw new NotFoundException(`Agent with ID ${agentId} not found`);
     }
 
+    // Only autonomous agents can connect
+    if (agent.type !== 'autonomous') {
+      throw new BadRequestException('Only autonomous agents can connect via this endpoint');
+    }
+
     // Check if agent is suspended
     if (agent.status === 'suspended') {
       throw new UnauthorizedException('Agent is suspended');
     }
 
     // Verify secret
+    if (!agent.secret) {
+      throw new UnauthorizedException('Agent has no secret configured');
+    }
     const isSecretValid = await bcrypt.compare(connectDto.secret, agent.secret);
     if (!isSecretValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Generate JWT token
+    // Extract roles from settings (flat field with backward compatibility)
+    const agentRoles = (agent.settings as any).auth_roles || ['agent'];
+
+    // Generate JWT token with IAM-compatible payload
     const payload = {
-      sub: agentId,
-      type: 'agent',
-      orgId: agent.owner,
+      sub: agentId,                          // Agent ID as userId
+      username: `agent:${agentId}`,          // Format: agent:<agentId>
+      status: agent.status,                  // Agent status
+      roles: agentRoles,                     // From settings.auth_roles or default ['agent']
+      orgId: typeof agent.owner === 'string' ? agent.owner : (agent.owner as any).toString(),
+      groupId: '',                           // Empty for agents
+      agentId: agentId,                      // Same as sub
+      userId: '',                            // Empty as requested
+      type: 'agent',                         // Marker for agent token
     };
-    const token = this.jwtService.sign(payload); // expiresIn already set in JwtModule config
+    const token = this.jwtService.sign(payload); // expiresIn: '24h' set in JwtModule config
+
+    // Calculate expiresIn seconds (24 hours)
+    const expiresInSeconds = 24 * 60 * 60;
 
     // Build instruction (MVP: just return agent instruction)
     const instruction = await this.buildInstructionForAgent(agent);
@@ -185,18 +232,21 @@ export class AgentService extends BaseService<Agent> {
     this.logger.info('Agent connected successfully', {
       agentId,
       name: agent.name,
+      username: payload.username,
+      roles: payload.roles,
       connectionCount: agent.connectionCount + 1,
     });
 
+    // Return IAM TokenData-compatible structure with agent-specific additions
     return {
-      token,
+      accessToken: token,
+      expiresIn: expiresInSeconds,
+      refreshToken: null,                    // Not implemented for agents
+      refreshExpiresIn: 0,
+      tokenType: 'bearer',
+      mcpEndpoint: `${process.env.AIWM_BASE_URL || 'http://localhost:3305'}/mcp`,  // MCP endpoint for tool discovery
       instruction,
       tools: tools as any,
-      agent: {
-        id: agentId,
-        name: agent.name,
-        orgId: typeof agent.owner === 'string' ? agent.owner : (agent.owner as any).toString(),
-      },
       settings: agent.settings || {},
     };
   }
@@ -292,6 +342,7 @@ export class AgentService extends BaseService<Agent> {
   /**
    * Regenerate agent credentials (admin only)
    * Returns new secret + env config + install script
+   * Only works for autonomous agents
    */
   async regenerateCredentials(
     agentId: string,
@@ -303,6 +354,11 @@ export class AgentService extends BaseService<Agent> {
 
     if (!agent) {
       throw new NotFoundException(`Agent with ID ${agentId} not found`);
+    }
+
+    // Only autonomous agents have credentials
+    if (agent.type !== 'autonomous') {
+      throw new BadRequestException('Only autonomous agents have credentials to regenerate');
     }
 
     // Generate new secret
@@ -345,11 +401,11 @@ export class AgentService extends BaseService<Agent> {
     const baseUrl = process.env.AIWM_PUBLIC_URL || 'https://api.x-or.cloud/dev/aiwm';
     const settings = agent.settings || {};
 
-    // Extract common settings with defaults
-    const claudeModel = (settings as any).claudeModel || 'claude-3-5-haiku-latest';
-    const maxTurns = (settings as any).maxTurns || 100;
-    const permissionMode = (settings as any).permissionMode || 'bypassPermissions';
-    const resume = (settings as any).resume !== false; // default true
+    // Extract common settings with defaults (flat fields with backward compatibility)
+    const claudeModel = (settings as any).claude_model || (settings as any).claudeModel || 'claude-3-5-haiku-latest';
+    const maxTurns = (settings as any).claude_maxTurns || (settings as any).maxTurns || 100;
+    const permissionMode = (settings as any).claude_permissionMode || (settings as any).permissionMode || 'bypassPermissions';
+    const resume = (settings as any).claude_resume !== undefined ? (settings as any).claude_resume : ((settings as any).resume !== false); // default true
 
     let envConfig = `# ===== AIWM Integration =====
 AIWM_ENABLED=true
@@ -367,9 +423,10 @@ CLAUDE_PERMISSION_MODE=${permissionMode}
 CLAUDE_RESUME=${resume}
 `;
 
-    // Add OAuth token if present
-    if ((settings as any).claudeOAuthToken) {
-      envConfig += `CLAUDE_CODE_OAUTH_TOKEN=${(settings as any).claudeOAuthToken}\n`;
+    // Add OAuth token if present (flat field with backward compatibility)
+    const claudeOAuthToken = (settings as any).claude_oauthToken || (settings as any).claudeOAuthToken;
+    if (claudeOAuthToken) {
+      envConfig += `CLAUDE_CODE_OAUTH_TOKEN=${claudeOAuthToken}\n`;
     }
 
     // Add platform configurations
@@ -378,20 +435,28 @@ CLAUDE_RESUME=${resume}
 # Configure your platform settings here
 `;
 
-    if ((settings as any).discord) {
-      const discord = (settings as any).discord;
-      if (discord.token) envConfig += `DISCORD_TOKEN=${discord.token}\n`;
-      if (discord.channelIds) envConfig += `DISCORD_CHANNEL_ID=${Array.isArray(discord.channelIds) ? discord.channelIds.join(',') : discord.channelIds}\n`;
-      if (discord.botId) envConfig += `DISCORD_BOT_ID=${discord.botId}\n`;
+    // Discord settings (flat fields with backward compatibility)
+    const discordToken = (settings as any).discord_token || (settings as any).discord?.token;
+    const discordChannelIds = (settings as any).discord_channelIds || (settings as any).discord?.channelIds;
+    const discordBotId = (settings as any).discord_botId || (settings as any).discord?.botId;
+
+    if (discordToken || discordChannelIds || discordBotId) {
+      if (discordToken) envConfig += `DISCORD_TOKEN=${discordToken}\n`;
+      if (discordChannelIds) envConfig += `DISCORD_CHANNEL_ID=${Array.isArray(discordChannelIds) ? discordChannelIds.join(',') : discordChannelIds}\n`;
+      if (discordBotId) envConfig += `DISCORD_BOT_ID=${discordBotId}\n`;
     } else {
       envConfig += `# DISCORD_TOKEN=your_discord_token\n# DISCORD_CHANNEL_ID=your_channel_id\n`;
     }
 
-    if ((settings as any).telegram) {
-      const telegram = (settings as any).telegram;
-      if (telegram.token) envConfig += `TELEGRAM_BOT_TOKEN=${telegram.token}\n`;
-      if (telegram.groupIds) envConfig += `TELEGRAM_GROUP_ID=${Array.isArray(telegram.groupIds) ? telegram.groupIds.join(',') : telegram.groupIds}\n`;
-      if (telegram.botUsername) envConfig += `TELEGRAM_BOT_USERNAME=${telegram.botUsername}\n`;
+    // Telegram settings (flat fields with backward compatibility)
+    const telegramToken = (settings as any).telegram_token || (settings as any).telegram?.token;
+    const telegramGroupIds = (settings as any).telegram_groupIds || (settings as any).telegram?.groupIds;
+    const telegramBotUsername = (settings as any).telegram_botUsername || (settings as any).telegram?.botUsername;
+
+    if (telegramToken || telegramGroupIds || telegramBotUsername) {
+      if (telegramToken) envConfig += `TELEGRAM_BOT_TOKEN=${telegramToken}\n`;
+      if (telegramGroupIds) envConfig += `TELEGRAM_GROUP_ID=${Array.isArray(telegramGroupIds) ? telegramGroupIds.join(',') : telegramGroupIds}\n`;
+      if (telegramBotUsername) envConfig += `TELEGRAM_BOT_USERNAME=${telegramBotUsername}\n`;
     } else {
       envConfig += `# TELEGRAM_BOT_TOKEN=your_telegram_token\n# TELEGRAM_GROUP_ID=your_group_id\n`;
     }
@@ -458,6 +523,17 @@ echo "Installation script placeholder - implement actual logic"
     updateAgentDto: UpdateAgentDto,
     context: RequestContext
   ): Promise<Agent | null> {
+    // Prevent type changes (managed <-> autonomous)
+    if (updateAgentDto.type) {
+      const existingAgent = await this.agentModel.findById(id).exec();
+      if (existingAgent && existingAgent.type !== updateAgentDto.type) {
+        throw new BadRequestException(
+          `Cannot change agent type from '${existingAgent.type}' to '${updateAgentDto.type}'. ` +
+          'Please delete and recreate the agent with the desired type.'
+        );
+      }
+    }
+
     // Convert string to ObjectId for BaseService
     const objectId = new Types.ObjectId(id);
     const updated = await super.update(

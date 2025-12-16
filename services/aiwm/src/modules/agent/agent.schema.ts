@@ -20,6 +20,13 @@ export class Agent extends BaseSchema {
   @Prop({ required: true, enum: ['active', 'inactive', 'busy', 'suspended'] })
   status: string;
 
+  @Prop({
+    type: String,
+    enum: ['managed', 'autonomous'],
+    default: 'managed'
+  })
+  type: string;
+
   @Prop({ type: String, ref: 'Instruction' })
   instructionId?: string;
 
@@ -32,15 +39,41 @@ export class Agent extends BaseSchema {
   @Prop({ default: [] })
   tags: string[];
 
-  // Authentication & Connection Management
-  @Prop({ required: true, select: false })
-  secret: string; // Hashed secret for agent authentication
+  // Authentication & Connection Management (only for autonomous agents)
+  @Prop({ required: false, select: false })
+  secret?: string; // Hashed secret for agent authentication (autonomous only)
 
   @Prop({ type: [String], ref: 'Tool', default: [] })
   allowedToolIds: string[]; // Whitelist of tool IDs this agent can use
 
+  /**
+   * Runtime configuration with flat structure using prefixes
+   *
+   * Supported settings:
+   * - auth_roles: string[] - Agent roles for RBAC (default: ['agent'])
+   * - claude_model: string - Claude model version (e.g., 'claude-3-5-sonnet-latest')
+   * - claude_maxTurns: number - Maximum conversation turns (default: 100)
+   * - claude_permissionMode: string - Permission mode (default: 'bypassPermissions')
+   * - claude_resume: boolean - Resume capability (default: true)
+   * - claude_oauthToken: string - Claude OAuth token (optional)
+   * - discord_token: string - Discord bot token
+   * - discord_channelIds: string[] - Discord channel IDs
+   * - discord_botId: string - Discord bot ID
+   * - telegram_token: string - Telegram bot token
+   * - telegram_groupIds: string[] - Telegram group IDs
+   * - telegram_botUsername: string - Telegram bot username
+   *
+   * Example:
+   * {
+   *   auth_roles: ['agent'],
+   *   claude_model: 'claude-3-5-sonnet-latest',
+   *   claude_maxTurns: 100,
+   *   discord_token: 'xxx',
+   *   discord_channelIds: ['123', '456']
+   * }
+   */
   @Prop({ type: Object, default: {} })
-  settings: Record<string, unknown>; // Runtime config (discord token, telegram config, etc.)
+  settings: Record<string, unknown>;
 
   // Connection tracking
   @Prop()
@@ -60,6 +93,7 @@ export const AgentSchema = SchemaFactory.createForClass(Agent);
 
 // Indexes for performance
 AgentSchema.index({ status: 1, createdAt: -1 });
+AgentSchema.index({ type: 1 });
 AgentSchema.index({ nodeId: 1 });
 AgentSchema.index({ instructionId: 1 });
 AgentSchema.index({ guardrailId: 1 });
