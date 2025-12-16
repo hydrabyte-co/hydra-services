@@ -26,6 +26,62 @@ export class OrganizationsService extends BaseService<Organization> {
         delete options.filter.search;
       }
     }
-    return super.findAll(options, context);
+    const findResult = await super.findAll(options, context);
+
+    // Exclude content field from results to reduce response size
+    findResult.data = findResult.data.map((doc: any) => {
+      // Convert Mongoose document to plain object
+      const plainDoc = doc.toObject ? doc.toObject() : doc;
+      const { content, ...rest } = plainDoc;
+      return rest as Organization;
+    });
+
+    // Aggregate statistics by status
+    const statusStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Aggregate statistics by type
+    const typeStats = await super.aggregate(
+      [
+        { $match: { ...options.filter } },
+        {
+          $group: {
+            _id: '$type',
+            count: { $sum: 1 },
+          },
+        },
+      ],
+      context
+    );
+
+    // Build statistics object
+    const statistics: any = {
+      total: findResult.pagination.total,
+      byStatus: {},
+      byType: {},
+    };
+
+    // Map status statistics
+    statusStats.forEach((stat: any) => {
+      statistics.byStatus[stat._id] = stat.count;
+    });
+
+    // Map type statistics
+    typeStats.forEach((stat: any) => {
+      statistics.byType[stat._id] = stat.count;
+    });
+
+    findResult.statistics = statistics;
+    return findResult;
   }
 }
