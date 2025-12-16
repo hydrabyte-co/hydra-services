@@ -108,7 +108,9 @@ create_tool '{
   "description": "List documents with pagination, filtering, and sorting options",
   "type": "api",
   "category": "data",
+  "category": "data",
   "status": "active",
+  "scope": "org",
   "scope": "org",
   "schema": {
     "inputSchema": {
@@ -160,8 +162,9 @@ create_tool '{
   "name": "cbm_documents_findById",
   "description": "Get a specific document by its ID",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "document", "read"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -188,8 +191,9 @@ create_tool '{
   "name": "cbm_documents_getContent",
   "description": "Get document content with appropriate MIME type (HTML, markdown, text, JSON)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "document", "content", "read"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -216,8 +220,9 @@ create_tool '{
   "name": "cbm_documents_createOne",
   "description": "Create a new document with summary, content, type, and optional metadata",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "document", "create"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["summary", "content"],
@@ -267,8 +272,9 @@ create_tool '{
   "name": "cbm_documents_updateOne",
   "description": "Update an existing document (all fields optional)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "document", "update"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -322,8 +328,9 @@ create_tool '{
   "name": "cbm_documents_deleteOne",
   "description": "Soft delete a document by ID",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "document", "delete"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -357,8 +364,9 @@ create_tool '{
   "name": "cbm_works_findMany",
   "description": "List works with pagination, filtering, and sorting options",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "list", "query"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -401,8 +409,9 @@ create_tool '{
   "name": "cbm_works_findById",
   "description": "Get a specific work item by its ID",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "read"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -429,8 +438,9 @@ create_tool '{
   "name": "cbm_works_createOne",
   "description": "Create a new work item (epic, task, or subtask) with required title, type, and reporter",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "create"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["title", "type", "reporter"],
@@ -528,8 +538,9 @@ create_tool '{
   "name": "cbm_works_updateOne",
   "description": "Update a work item (note: type, status, and reason are immutable)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "update"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -592,8 +603,9 @@ create_tool '{
   "name": "cbm_works_deleteOne",
   "description": "Delete a work item (only allowed if status is done or cancelled)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "delete"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -620,8 +632,9 @@ create_tool '{
   "name": "cbm_works_start",
   "description": "Start a work item (transition from backlog/todo to in_progress)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -648,8 +661,9 @@ create_tool '{
   "name": "cbm_works_block",
   "description": "Block a work item (transition from in_progress to blocked, requires reason)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id", "reason"],
@@ -682,8 +696,9 @@ create_tool '{
   "name": "cbm_works_unblock",
   "description": "Unblock a work item (transition from blocked to in_progress)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -710,8 +725,9 @@ create_tool '{
   "name": "cbm_works_requestReview",
   "description": "Request review for a work item (transition from in_progress to review)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -738,8 +754,9 @@ create_tool '{
   "name": "cbm_works_complete",
   "description": "Complete a work item (transition from review to done)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -766,8 +783,9 @@ create_tool '{
   "name": "cbm_works_reopen",
   "description": "Reopen a completed work item (transition from done to in_progress)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -794,8 +812,9 @@ create_tool '{
   "name": "cbm_works_cancel",
   "description": "Cancel a work item (transition from any status to cancelled)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -822,8 +841,9 @@ create_tool '{
   "name": "cbm_works_canTrigger",
   "description": "Check if an agent can be triggered for this work item",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "work", "query", "agent"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -857,8 +877,9 @@ create_tool '{
   "name": "cbm_projects_findMany",
   "description": "List projects with pagination, filtering, and sorting options",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "list", "query"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -901,8 +922,9 @@ create_tool '{
   "name": "cbm_projects_findById",
   "description": "Get a specific project by its ID",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "read"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -929,8 +951,9 @@ create_tool '{
   "name": "cbm_projects_createOne",
   "description": "Create a new project with name, description, members, and optional metadata",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "create"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["name"],
@@ -991,8 +1014,9 @@ create_tool '{
   "name": "cbm_projects_updateOne",
   "description": "Update an existing project (all fields optional)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "update"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1048,8 +1072,9 @@ create_tool '{
   "name": "cbm_projects_deleteOne",
   "description": "Delete a project (only allowed if status is completed or archived)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "delete"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1076,8 +1101,9 @@ create_tool '{
   "name": "cbm_projects_activate",
   "description": "Activate a project (transition from draft to active)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1104,8 +1130,9 @@ create_tool '{
   "name": "cbm_projects_hold",
   "description": "Put a project on hold (transition from active to on_hold)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1132,8 +1159,9 @@ create_tool '{
   "name": "cbm_projects_resume",
   "description": "Resume a project from hold (transition from on_hold to active)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1160,8 +1188,9 @@ create_tool '{
   "name": "cbm_projects_complete",
   "description": "Complete a project (transition from active to completed)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1188,8 +1217,9 @@ create_tool '{
   "name": "cbm_projects_archive",
   "description": "Archive a completed project (transition from completed to archived)",
   "type": "api",
+  "category": "data",
   "status": "active",
-  "tags": ["cbm", "project", "action", "state-transition"],
+  "scope": "org",
   "inputSchema": {
     "type": "object",
     "required": ["id"],
@@ -1242,4 +1272,3 @@ echo -e "  1. Verify tools: ${BLUE}curl -X GET '${AIWM_BASE_URL}/tools?filter[ta
 echo -e "  2. Assign tools to agents via allowedToolIds"
 echo -e "  3. Agents will discover these tools via MCP endpoint"
 echo ""
-

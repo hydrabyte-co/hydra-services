@@ -61,10 +61,10 @@ export class CreateToolDto {
 
   @ApiProperty({
     description: 'Tool type',
-    enum: ['mcp', 'builtin'],
+    enum: ['mcp', 'builtin', 'custom', 'api'],
     example: 'mcp',
   })
-  @IsEnum(['mcp', 'builtin'])
+  @IsEnum(['mcp', 'builtin', 'custom', 'api'])
   type!: string;
 
   @ApiProperty({

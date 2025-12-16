@@ -203,7 +203,7 @@ export class AgentService extends BaseService<Agent> {
       username: `agent:${agentId}`,          // Format: agent:<agentId>
       status: agent.status,                  // Agent status
       roles: agentRoles,                     // From settings.auth_roles or default ['agent']
-      orgId: typeof agent.owner === 'string' ? agent.owner : (agent.owner as any).toString(),
+      orgId: agent.owner.orgId,              // Owner organization ID
       groupId: '',                           // Empty for agents
       agentId: agentId,                      // Same as sub
       userId: '',                            // Empty as requested
