@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -29,7 +30,7 @@ import { RequestContext } from '@hydrabyte/shared';
 import { Types, ObjectId } from 'mongoose';
 import { UsersService } from './user.service';
 import { User } from './user.schema';
-import { CreateUserData, UpdateUserData } from './user.dto';
+import { CreateUserData, UpdateUserData, ChangePasswordDto } from './user.dto';
 
 @ApiTags('users')
 @ApiBearerAuth('JWT-auth')
@@ -105,5 +106,28 @@ export class UsersController {
   ) {
     await this.userService.softDelete(new Types.ObjectId(id) as unknown as ObjectId, context);
     return { message: 'User deleted successfully' };
+  }
+
+  @Patch(':id/change-password')
+  @ApiOperation({
+    summary: 'Change user password',
+    description: 'Change password for a specific user. Only organization.owner can perform this action.'
+  })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Only organization owner can change passwords' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiUpdateErrors()
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+    @CurrentUser() context: RequestContext
+  ): Promise<{ message: string }> {
+    await this.userService.changePassword(
+      new Types.ObjectId(id) as unknown as ObjectId,
+      changePasswordDto,
+      context
+    );
+    return { message: 'Password changed successfully' };
   }
 }

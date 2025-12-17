@@ -56,3 +56,16 @@ export class UpdateUserData {
   @IsOptional()
   status: UserStatuses = UserStatuses.Active;
 }
+
+export class ChangePasswordDto {
+  @ApiProperty({
+    description: 'New password (8-15 chars, uppercase, lowercase, number, special char)',
+    example: 'NewP@ssw0rd',
+    pattern: PasswordRegex.source,
+  })
+  @Matches(PasswordRegex, {
+    message: InvalidPasswordMessage,
+  })
+  @IsNotEmpty()
+  newPassword: string;
+}
