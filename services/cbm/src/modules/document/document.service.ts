@@ -127,10 +127,15 @@ export class DocumentService extends BaseService<Document> {
       baseMatch['owner.orgId'] = context.orgId;
     }
 
-    // Merge with search filters if any
-    const matchFilter = options.filter
-      ? { ...baseMatch, ...options.filter }
-      : baseMatch;
+    // Merge with search filters if any using $and to avoid conflicts
+    let matchFilter: any;
+    if (options.filter && Object.keys(options.filter).length > 0) {
+      matchFilter = {
+        $and: [baseMatch, options.filter]
+      };
+    } else {
+      matchFilter = baseMatch;
+    }
 
     // Aggregate statistics by status
     const statusStats = await super.aggregate(
