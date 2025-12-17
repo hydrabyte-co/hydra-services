@@ -137,7 +137,6 @@ export class LicenseController {
     // Merge filter with pagination options
     const options = {
       ...paginationQuery,
-      filter: { ...paginationQuery.filter, ...filter },
     };
 
     return this.licenseService.findAll(options, context);
