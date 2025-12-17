@@ -17,7 +17,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { randomUUID } from 'node:crypto';
 import { ToolService } from './modules/tool/tool.service';
+import { AgentService } from './modules/agent/agent.service';
 import { RequestContext } from '@hydrabyte/shared';
+import { Types } from 'mongoose';
 import * as z from 'zod';
 
 const logger = new Logger('McpBootstrap');
@@ -57,6 +59,7 @@ export async function bootstrapMcpServer() {
   // Step 2.1: Get services from NestJS context
   const jwtService = app.get(JwtService);
   const toolService = app.get(ToolService);
+  const agentService = app.get(AgentService);
   logger.log('✅ Services injected from NestJS context');
 
   // Step 3: Helper function to validate bearer token
@@ -173,16 +176,30 @@ export async function bootstrapMcpServer() {
       roles: roles || []
     };
 
-    // Fetch active tools from database
+    // Step 1: Fetch agent to get allowedToolIds
+    const agent = await agentService.findById(agentId, context);
+    if (!agent) {
+      logger.warn(`Agent not found: ${agentId}`);
+      return;
+    }
+
+    logger.log(`✅ Agent found: ${agent.name}, allowedToolIds: ${agent.allowedToolIds?.length || 0}`);
+
+    // Step 2: If no allowed tools, skip registration
+    if (!agent.allowedToolIds || agent.allowedToolIds.length === 0) {
+      logger.log(`⚠️  Agent has no allowed tools, skipping registration`);
+      return;
+    }
+
+    // Step 3: Convert string IDs to ObjectId for MongoDB query
+    const toolObjectIds = agent.allowedToolIds.map(id => new Types.ObjectId(id));
+
+    // Step 4: Fetch active tools from allowedToolIds whitelist
     const result = await toolService.findAll(
       {
         filter: {
-          status: 'active',
-          $or: [
-            { scope: 'public' },
-            { 'owner.orgId': orgId, scope: 'org' },
-            { 'owner.agentId': agentId, scope: 'private' }
-          ]
+          _id: { $in: toolObjectIds },
+          status: 'active'
         },
         page: 1,
         limit: 100
@@ -190,7 +207,7 @@ export async function bootstrapMcpServer() {
       context
     );
 
-    logger.log(`✅ Found ${result.data.length} active tools`);
+    logger.log(`✅ Found ${result.data.length} active tools from allowedToolIds`);
 
     // Register each tool with MCP server
     for (const tool of result.data) {
