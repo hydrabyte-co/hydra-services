@@ -37,6 +37,20 @@ export class AgentService extends BaseService<Agent> {
     private readonly configurationService: ConfigurationService
   ) {
     super(agentModel as any);
+
+    // Log JWT secret hash for debugging (never log the actual secret)
+    // Note: this.logger is now available after super() call
+    const jwtSecret = process.env.JWT_SECRET || 'R4md0m_S3cr3t';
+    const secretHash = crypto
+      .createHash('sha256')
+      .update(jwtSecret)
+      .digest('hex')
+      .substring(0, 8);
+
+    // Use setTimeout to log after constructor completes
+    setTimeout(() => {
+      this.logger.info(`AgentService initialized with JWT secret hash: ${secretHash}...`);
+    }, 0);
   }
 
   /**
@@ -212,7 +226,18 @@ export class AgentService extends BaseService<Agent> {
       userId: '',                            // Empty as requested
       type: 'agent',                         // Marker for agent token
     };
+
+    this.logger.debug('Signing JWT token with payload', {
+      agentId,
+      username: payload.username,
+      roles: payload.roles,
+      orgId: payload.orgId
+    });
+
     const token = this.jwtService.sign(payload); // expiresIn: '24h' set in JwtModule config
+
+    // Log first/last chars of token for debugging (never log full token)
+    this.logger.debug(`Token generated: ${token.substring(0, 20)}...${token.substring(token.length - 20)}`)
 
     // Calculate expiresIn seconds (24 hours)
     const expiresInSeconds = 24 * 60 * 60;
