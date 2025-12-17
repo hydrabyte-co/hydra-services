@@ -24,14 +24,6 @@ export class CreatePiiDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Type of PII pattern',
-    enum: ['email', 'phone', 'credit_card', 'ssn', 'api_key', 'custom'],
-    example: 'email',
-  })
-  @IsEnum(['email', 'phone', 'credit_card', 'ssn', 'api_key', 'custom'])
-  type!: string;
-
-  @ApiProperty({
     description: 'Regex pattern as string for detecting PII',
     example: '\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b',
   })
@@ -56,24 +48,6 @@ export class CreatePiiDto {
   @IsString()
   @MaxLength(1000)
   description?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether this pattern is enabled',
-    example: true,
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  enabled?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Locale/region for region-specific patterns',
-    example: 'vn',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(10)
-  locale?: string;
 
   @ApiPropertyOptional({
     description: 'PII pattern status',
@@ -111,15 +85,6 @@ export class UpdatePiiDto {
   name?: string;
 
   @ApiPropertyOptional({
-    description: 'Type of PII pattern',
-    enum: ['email', 'phone', 'credit_card', 'ssn', 'api_key', 'custom'],
-    example: 'email',
-  })
-  @IsOptional()
-  @IsEnum(['email', 'phone', 'credit_card', 'ssn', 'api_key', 'custom'])
-  type?: string;
-
-  @ApiPropertyOptional({
     description: 'Regex pattern as string for detecting PII',
     example: '\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b',
   })
@@ -146,23 +111,6 @@ export class UpdatePiiDto {
   @IsString()
   @MaxLength(1000)
   description?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether this pattern is enabled',
-    example: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  enabled?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Locale/region for region-specific patterns',
-    example: 'us',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(10)
-  locale?: string;
 
   @ApiPropertyOptional({
     description: 'PII pattern status',

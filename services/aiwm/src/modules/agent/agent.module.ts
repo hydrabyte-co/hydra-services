@@ -7,6 +7,7 @@ import { Agent, AgentSchema } from './agent.schema';
 import { Instruction, InstructionSchema } from '../instruction/instruction.schema';
 import { Tool, ToolSchema } from '../tool/tool.schema';
 import { QueueModule } from '../../queues/queue.module';
+import { ConfigurationModule } from '../configuration/configuration.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { QueueModule } from '../../queues/queue.module';
       signOptions: { expiresIn: '24h' },
     }),
     QueueModule,
+    ConfigurationModule,
   ],
   controllers: [AgentController],
   providers: [AgentService],

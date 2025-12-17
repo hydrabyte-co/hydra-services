@@ -23,6 +23,8 @@ import {
   AgentCredentialsResponseDto,
 } from './agent.dto';
 import { AgentProducer } from '../../queues/producers/agent.producer';
+import { ConfigurationService } from '../configuration/configuration.service';
+import { ConfigKey } from '../configuration/enums/config-key.enum';
 
 @Injectable()
 export class AgentService extends BaseService<Agent> {
@@ -31,7 +33,8 @@ export class AgentService extends BaseService<Agent> {
     @InjectModel(Instruction.name) private instructionModel: Model<Instruction>,
     @InjectModel(Tool.name) private toolModel: Model<Tool>,
     private readonly jwtService: JwtService,
-    private readonly agentProducer: AgentProducer
+    private readonly agentProducer: AgentProducer,
+    private readonly configurationService: ConfigurationService
   ) {
     super(agentModel as any);
   }
@@ -237,6 +240,24 @@ export class AgentService extends BaseService<Agent> {
       connectionCount: agent.connectionCount + 1,
     });
 
+    // Get AIWM base URL from configuration
+    const aiwmBaseUrlConfig = await this.configurationService.findByKey(
+      ConfigKey.AIWM_BASE_MCP_URL as any,
+      { orgId: agent.owner.orgId } as RequestContext
+    );
+    const mcpBaseUrl = aiwmBaseUrlConfig?.value || process.env.AIWM_BASE_URL || 'http://localhost:3306';
+
+    // Build MCP server configuration (HTTP transport format)
+    const mcpServers = {
+      'API': {
+        type: 'http',
+        url: mcpBaseUrl,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    };
+
     // Return IAM TokenData-compatible structure with agent-specific additions
     return {
       accessToken: token,
@@ -244,9 +265,8 @@ export class AgentService extends BaseService<Agent> {
       refreshToken: null,                    // Not implemented for agents
       refreshExpiresIn: 0,
       tokenType: 'bearer',
-      mcpEndpoint: `${process.env.AIWM_BASE_URL || 'http://localhost:3305'}/mcp`,  // MCP endpoint for tool discovery
+      mcpServers,                            // MCP server configurations
       instruction,
-      tools: tools as any,
       settings: agent.settings || {},
     };
   }

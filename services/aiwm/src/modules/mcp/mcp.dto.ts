@@ -103,3 +103,64 @@ export class McpErrorResponse {
     details?: any;
   };
 }
+
+/**
+ * JSON-RPC 2.0 Request
+ */
+export class JsonRpcRequest {
+  @ApiProperty({ description: 'JSON-RPC version', example: '2.0' })
+  @IsString()
+  @IsNotEmpty()
+  jsonrpc: string;
+
+  @ApiProperty({ description: 'Request ID', example: 0 })
+  @IsNotEmpty()
+  id: number | string;
+
+  @ApiProperty({ description: 'Method name', example: 'initialize' })
+  @IsString()
+  @IsNotEmpty()
+  method: string;
+
+  @ApiPropertyOptional({ description: 'Method parameters' })
+  @IsOptional()
+  params?: any;
+}
+
+/**
+ * JSON-RPC 2.0 Success Response
+ */
+export class JsonRpcSuccessResponse {
+  @ApiProperty({ description: 'JSON-RPC version', example: '2.0' })
+  jsonrpc: string;
+
+  @ApiProperty({ description: 'Request ID (same as request)', example: 0 })
+  id: number | string;
+
+  @ApiProperty({ description: 'Result data' })
+  result: any;
+}
+
+/**
+ * JSON-RPC 2.0 Error Response
+ */
+export class JsonRpcErrorResponse {
+  @ApiProperty({ description: 'JSON-RPC version', example: '2.0' })
+  jsonrpc: string;
+
+  @ApiProperty({ description: 'Request ID (same as request)', example: 0 })
+  id: number | string;
+
+  @ApiProperty({
+    description: 'Error object',
+    example: {
+      code: -32601,
+      message: 'Method not found'
+    }
+  })
+  error: {
+    code: number;
+    message: string;
+    data?: any;
+  };
+}

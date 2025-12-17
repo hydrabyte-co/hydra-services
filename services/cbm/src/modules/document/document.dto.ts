@@ -7,6 +7,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { PaginationQueryDto } from '@hydrabyte/base';
 
 /**
  * DTO for creating a new document
@@ -130,4 +131,105 @@ export class UpdateDocumentDto {
   @IsOptional()
   @IsEnum(['public', 'org', 'private'])
   scope?: string;
+}
+
+/**
+ * DTO for querying documents with search support
+ * Extends PaginationQueryDto to include search functionality
+ */
+export class DocumentQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    description: 'Search text - searches in summary, content, and labels',
+    example: 'API integration',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+/**
+ * DTO for updating document content
+ * Supports multiple operation types: replace, find-replace, append operations
+ */
+export class UpdateContentDto {
+  @ApiProperty({
+    description: 'Operation type',
+    enum: [
+      'replace',
+      'find-replace-text',
+      'find-replace-regex',
+      'find-replace-markdown',
+      'append',
+      'append-after-text',
+      'append-to-section',
+    ],
+    example: 'replace',
+  })
+  @IsEnum([
+    'replace',
+    'find-replace-text',
+    'find-replace-regex',
+    'find-replace-markdown',
+    'append',
+    'append-after-text',
+    'append-to-section',
+  ])
+  operation!: string;
+
+  @ApiPropertyOptional({
+    description: 'New content for replace operation',
+    example: '# New Document Content\n\nThis is the updated content.',
+  })
+  @IsOptional()
+  @IsString()
+  content?: string;
+
+  @ApiPropertyOptional({
+    description: 'Text to find (for find-replace-text operation)',
+    example: 'old text',
+  })
+  @IsOptional()
+  @IsString()
+  find?: string;
+
+  @ApiPropertyOptional({
+    description: 'Replacement text (for find-replace operations)',
+    example: 'new text',
+  })
+  @IsOptional()
+  @IsString()
+  replace?: string;
+
+  @ApiPropertyOptional({
+    description: 'Regex pattern to find (for find-replace-regex operation)',
+    example: 'TODO:\\s*.*',
+  })
+  @IsOptional()
+  @IsString()
+  pattern?: string;
+
+  @ApiPropertyOptional({
+    description: 'Regex flags (for find-replace-regex operation)',
+    example: 'gi',
+    default: 'g',
+  })
+  @IsOptional()
+  @IsString()
+  flags?: string;
+
+  @ApiPropertyOptional({
+    description: 'Markdown section heading to find (for find-replace-markdown operation)',
+    example: '## API Specification',
+  })
+  @IsOptional()
+  @IsString()
+  section?: string;
+
+  @ApiPropertyOptional({
+    description: 'New content for the markdown section (for find-replace-markdown operation)',
+    example: '## API Specification\n\nUpdated API documentation here.',
+  })
+  @IsOptional()
+  @IsString()
+  sectionContent?: string;
 }

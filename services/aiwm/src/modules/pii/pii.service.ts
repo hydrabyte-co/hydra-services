@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ObjectId } from 'mongoose';
+import { Model } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Pii } from './pii.schema';
@@ -39,19 +39,6 @@ export class PiiService extends BaseService<Pii> {
       context
     );
 
-    const typeStats = await super.aggregate(
-      [
-        { $match: { ...options.filter } },
-        {
-          $group: {
-            _id: '$type',
-            count: { $sum: 1 },
-          },
-        },
-      ],
-      context
-    );
-
     // Build statistics object
     const statistics: any = {
       total: findResult.pagination.total,
@@ -62,11 +49,6 @@ export class PiiService extends BaseService<Pii> {
     // Map status statistics
     statusStats.forEach((stat: any) => {
       statistics.byStatus[stat._id] = stat.count;
-    });
-
-    // Map type statistics
-    typeStats.forEach((stat: any) => {
-      statistics.byType[stat._id] = stat.count;
     });
 
     findResult.statistics = statistics;

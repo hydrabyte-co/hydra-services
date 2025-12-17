@@ -42,7 +42,7 @@
       "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
       "executor": "nx:noop"
     },
-    "serve": {
+    "api": {
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
@@ -50,6 +50,25 @@
       "options": {
         "buildTarget": "aiwm:build",
         "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "aiwm:build:development"
+        },
+        "production": {
+          "buildTarget": "aiwm:build:production"
+        }
+      }
+    },
+    "mcp": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "aiwm:build",
+        "runBuildTargetDependencies": false,
+        "args": ["mcp"]
       },
       "configurations": {
         "development": {

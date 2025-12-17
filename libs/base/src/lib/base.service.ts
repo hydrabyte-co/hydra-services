@@ -102,11 +102,18 @@ export class BaseService<Entity> {
       throw new ForbiddenException('You do not have permission to read.');
     }
 
-    const { filter = {}, sort, page = 1, limit = 10 } = options;
+    const { sort, page = 1, limit = 10 } = options;
+    const filter = {...options as any};
+    delete filter['isDeleted']; // Ensure isDeleted is not set by user filter
+    delete filter['deletedAt']; // Ensure deletedAt is not set by user filter
+    delete filter['owner']; // Ensure owner is not set by user filter
+    delete filter['sort']; // Ensure sort is not set by user filter
+    delete filter['page']; // Ensure page is not set by user filter
+    delete filter['limit']; // Ensure limit is not set by user filter
 
     // Merge scope-based filter with user filter (user filter takes precedence)
     const finalFilter = { ...permissions.filter, ...filter, isDeleted: false };
-
+    this.logger.debug('Origin filter', filter);
     this.logger.debug('Final query filter', finalFilter);
 
     const [data, total] = await Promise.all([

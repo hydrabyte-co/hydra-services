@@ -187,14 +187,24 @@ export class AgentConnectResponseDto {
   @ApiProperty({ description: 'Token type', example: 'bearer' })
   tokenType: string;
 
-  @ApiProperty({ description: 'MCP endpoint URL for tool discovery and execution', example: 'http://localhost:3305/mcp' })
-  mcpEndpoint: string;
+  @ApiProperty({
+    description: 'MCP server configurations (HTTP transport format)',
+    example: {
+      'cbm-tools': {
+        type: 'http',
+        url: 'http://localhost:3305/mcp',
+        headers: { Authorization: 'Bearer ...' }
+      }
+    }
+  })
+  mcpServers: Record<string, {
+    type: string;
+    url: string;
+    headers: Record<string, string>;
+  }>;
 
   @ApiProperty({ description: 'Merged instruction text for agent' })
   instruction: string;
-
-  @ApiProperty({ description: 'Array of allowed tools', type: [Object] })
-  tools: Tool[];
 
   @ApiProperty({ description: 'Agent runtime settings/configuration' })
   settings: Record<string, unknown>;

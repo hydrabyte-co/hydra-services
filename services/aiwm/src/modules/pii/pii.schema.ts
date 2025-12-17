@@ -14,9 +14,6 @@ export class Pii extends BaseSchema {
   @Prop({ required: true })
   name!: string; // e.g., "Email Address", "Phone Number (Vietnam)"
 
-  @Prop({ required: true, enum: ['email', 'phone', 'credit_card', 'ssn', 'api_key', 'custom'] })
-  type!: string; // Type of PII pattern
-
   @Prop({ required: true })
   pattern!: string; // Regex pattern as string
 
@@ -25,12 +22,6 @@ export class Pii extends BaseSchema {
 
   @Prop()
   description?: string; // Description of what this pattern detects
-
-  @Prop({ default: true })
-  enabled!: boolean; // Whether this pattern is active
-
-  @Prop()
-  locale?: string; // e.g., "vn", "us", "global" - for region-specific patterns
 
   @Prop({ enum: ['active', 'inactive'], default: 'active' })
   status!: string; // 'active' or 'inactive'
@@ -46,7 +37,5 @@ export const PiiSchema = SchemaFactory.createForClass(Pii);
 
 // Indexes for performance
 PiiSchema.index({ status: 1, enabled: 1, createdAt: -1 });
-PiiSchema.index({ type: 1 });
 PiiSchema.index({ tags: 1 });
-PiiSchema.index({ locale: 1 });
 PiiSchema.index({ name: 'text', description: 'text' }); // Text search

@@ -15,7 +15,6 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
   JwtAuthGuard,
   CurrentUser,
-  PaginationQueryDto,
   ApiCreateErrors,
   ApiReadErrors,
   ApiUpdateErrors,
@@ -25,7 +24,7 @@ import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { Response } from 'express';
 import { DocumentService } from './document.service';
-import { CreateDocumentDto, UpdateDocumentDto } from './document.dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, UpdateContentDto } from './document.dto';
 
 @ApiTags('Documents')
 @ApiBearerAuth()
@@ -45,11 +44,11 @@ export class DocumentController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all documents with pagination and statistics' })
+  @ApiOperation({ summary: 'List all documents with pagination, search, and statistics' })
   @ApiReadErrors({ notFound: false })
   @UseGuards(JwtAuthGuard)
   async findAll(
-    @Query() query: PaginationQueryDto,
+    @Query() query: DocumentQueryDto,
     @CurrentUser() context: RequestContext
   ) {
     return this.documentService.findAll(query, context);
@@ -106,6 +105,21 @@ export class DocumentController {
     @CurrentUser() context: RequestContext
   ) {
     return this.documentService.update(new Types.ObjectId(id) as any, updateDocumentDto as any, context);
+  }
+
+  @Patch(':id/content')
+  @ApiOperation({
+    summary: 'Update document content with advanced operations',
+    description: 'Supports: replace all, find-replace text, find-replace regex, find-replace markdown section'
+  })
+  @ApiUpdateErrors()
+  @UseGuards(JwtAuthGuard)
+  async updateContent(
+    @Param('id') id: string,
+    @Body() updateContentDto: UpdateContentDto,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.documentService.updateContent(new Types.ObjectId(id) as any, updateContentDto, context);
   }
 
   @Delete(':id')

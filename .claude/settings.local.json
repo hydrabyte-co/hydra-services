@@ -68,7 +68,14 @@
       "Bash(__NEW_LINE__ echo \"=== Test 1.2: List All Projects ===\")",
       "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-cbm.sh)",
       "Bash(/tmp/test-document-content.sh)",
-      "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-agent-connection.sh:*)"
+      "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-agent-connection.sh:*)",
+      "Bash(npx nx mcp:*)",
+      "Bash(timeout 5 npx tsx:*)",
+      "Bash(timeout 5 npx nx run:*)",
+      "Bash(grep:*)",
+      "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-mcp-server.sh:*)",
+      "Bash(source .env)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []
