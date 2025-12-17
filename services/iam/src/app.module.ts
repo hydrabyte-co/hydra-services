@@ -9,6 +9,7 @@ import { AppService } from './app.service';
 import { OrganizationsModule } from './modules/organization/organization.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/user/user.module';
+import { LicenseModule } from './modules/license/license.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from './modules/user/user.module';
     AuthModule,
     OrganizationsModule,
     UsersModule,
+    LicenseModule, // Register License module
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy],

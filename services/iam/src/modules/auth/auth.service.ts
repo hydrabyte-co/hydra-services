@@ -13,6 +13,7 @@ import {
 import { Organization } from '../organization/organization.schema';
 import { User } from '../user/user.schema';
 import { TokenStorageService } from './token-storage.service';
+import { LicenseService } from '../license/license.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -20,7 +21,8 @@ export class AuthService {
   constructor(
     @InjectModel(Organization.name) private readonly orgRepo: Model<Organization>,
     @InjectModel(User.name) private readonly userRepo: Model<User>,
-    private readonly tokenStorage: TokenStorageService
+    private readonly tokenStorage: TokenStorageService,
+    private readonly licenseService: LicenseService
   ) {}
 
   async login(data: LoginData): Promise<TokenData> {
@@ -54,16 +56,29 @@ export class AuthService {
 
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '1h';
 
+    // Fetch licenses for organization
+    const orgId = user.owner?.orgId || '';
+    let licenses: Record<string, string> = {};
+    if (orgId) {
+      try {
+        licenses = await this.licenseService.getLicensesForJWT(orgId);
+      } catch (error) {
+        console.error('Failed to fetch licenses for JWT:', error.message);
+        // Continue with empty licenses if fetch fails
+      }
+    }
+
     // Create JWT payload
     const jwtPayload = {
       sub: user._id.toString(),
       username: user.username,
       status: user.status,
       roles: user.roles || [],
-      orgId: user.owner?.orgId || '',
+      orgId,
       groupId: user.owner?.groupId || '',
       agentId: user.owner?.agentId || '',
       appId: user.owner?.appId || '',
+      licenses, // Add licenses to JWT payload
     };
 
     // Sign access token
@@ -207,16 +222,29 @@ export class AuthService {
 
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '1h';
 
+    // Fetch CURRENT licenses from database (passive update)
+    const orgId = user.owner?.orgId || '';
+    let licenses: Record<string, string> = {};
+    if (orgId) {
+      try {
+        licenses = await this.licenseService.getLicensesForJWT(orgId);
+      } catch (error) {
+        console.error('Failed to fetch licenses for JWT:', error.message);
+        // Continue with empty licenses if fetch fails
+      }
+    }
+
     // Create new JWT payload
     const jwtPayload = {
       sub: user._id.toString(),
       username: user.username,
       status: user.status,
       roles: user.roles || [],
-      orgId: user.owner?.orgId || '',
+      orgId,
       groupId: user.owner?.groupId || '',
       agentId: user.owner?.agentId || '',
       appId: user.owner?.appId || '',
+      licenses, // Add updated licenses to JWT payload
     };
 
     // Sign new access token

@@ -4,13 +4,41 @@ import { Model } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { Organization } from './organization.schema';
 import { RequestContext } from '@hydrabyte/shared';
+import { LicenseService } from '../license/license.service';
 
 @Injectable()
 export class OrganizationsService extends BaseService<Organization> {
   constructor(
-    @InjectModel(Organization.name) OrganizationModel: Model<Organization>
+    @InjectModel(Organization.name) OrganizationModel: Model<Organization>,
+    private readonly licenseService: LicenseService
   ) {
     super(OrganizationModel);
+  }
+
+  /**
+   * Override create to auto-create default licenses for new organizations
+   */
+  async create(data: Partial<Organization>, context: RequestContext): Promise<Partial<Organization>> {
+    const organization = await super.create(data, context);
+
+    // Create default licenses for the new organization
+    if (organization && '_id' in organization) {
+      try {
+        await this.licenseService.createDefaultLicenses(
+          {
+            orgId: (organization as any)._id.toString(),
+            notes: 'Default licenses - created automatically',
+          },
+          context
+        );
+        console.log(`[Organization] Created default licenses for org ${(organization as any)._id}`);
+      } catch (error: any) {
+        console.error('[Organization] Failed to create default licenses:', error.message);
+        // Don't fail organization creation if license creation fails
+      }
+    }
+
+    return organization;
   }
 
   async findAll(

@@ -87,6 +87,7 @@ export const CurrentUser = createParamDecorator(
       groupId: user.groupId || '',
       agentId: user.agentId || '',
       appId: user.appId || '',
+      licenses: user.licenses || {}, // License map from JWT
     };
 
     // 🔐 SECURITY: Only universe.* roles can override orgId

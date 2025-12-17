@@ -8,6 +8,7 @@ export interface RequestContext {
   agentId: string;
   appId: string;
   roles: PredefinedRole[];
+  licenses?: Record<string, string>; // License map: { iam: 'full', aiwm: 'limited' }
 }
 
 /**

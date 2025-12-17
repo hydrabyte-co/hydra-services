@@ -3,9 +3,11 @@ export * from './lib/const/config';
 export * from './lib/const/services';
 export * from './lib/enum/services';
 export * from './lib/enum/roles';
+export * from './lib/enum/license';
 export * from './lib/enum/config-key.enum';
 export * from './lib/type/service';
 export * from './lib/types/permission.types';
+export * from './lib/types/jwt-payload.types';
 export * from './lib/util/auth';
 export * from './utils/logger.util';
 

@@ -3,9 +3,13 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { OrganizationsController } from './organization.controller';
 import { OrganizationsService } from './organization.service';
 import { Organization, OrganizationSchema } from './organization.schema';
+import { LicenseModule } from '../license/license.module';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Organization.name, schema: OrganizationSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: Organization.name, schema: OrganizationSchema }]),
+    LicenseModule, // Import for auto-creating licenses
+  ],
   controllers: [OrganizationsController],
   providers: [OrganizationsService],
 })

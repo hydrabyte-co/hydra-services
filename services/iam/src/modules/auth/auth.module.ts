@@ -10,6 +10,7 @@ import {
   OrganizationSchema,
 } from '../organization/organization.schema';
 import { User, UserSchema } from '../user/user.schema';
+import { LicenseModule } from '../license/license.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { User, UserSchema } from '../user/user.schema';
       { name: Organization.name, schema: OrganizationSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    LicenseModule, // Import for license fetching during login/refresh
   ],
   controllers: [AuthController],
   providers: [AuthService, TokenStorageService, JwtStrategy],
