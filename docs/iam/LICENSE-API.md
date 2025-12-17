@@ -56,7 +56,7 @@ Tạo một license cho một cặp organization-service.
 
 | Field | Type | Required | Mô tả |
 |-------|------|----------|-------|
-| `orgId` | string | ✅ | ID của organization (MongoDB ObjectId format) |
+| `orgId` | string | ✅ | ID của organization (MongoDB ObjectId format). **Load từ GET /organizations** |
 | `serviceName` | string | ✅ | Tên service: `iam`, `cbm`, `aiwm`, `noti` |
 | `type` | string | ✅ | Loại license: `disabled`, `limited`, `full` |
 | `quotaLimit` | number | ❌ | Giới hạn quota (null = unlimited). Chưa enforce ở Phase 1 |
@@ -74,7 +74,6 @@ Tạo một license cho một cặp organization-service.
   "quotaLimit": 1000,
   "quotaUsed": 0,
   "expiresAt": "2025-12-31T23:59:59Z",
-  "status": "active",
   "notes": "Trial period - 30 days",
   "createdAt": "2025-01-15T10:30:00Z",
   "updatedAt": "2025-01-15T10:30:00Z",
@@ -155,7 +154,6 @@ Tạo default licenses cho tất cả services của một organization.
     "orgId": "507f1f77bcf86cd799439011",
     "serviceName": "iam",
     "type": "full",
-    "status": "active",
     "notes": "Default licenses for new organization"
   },
   {
@@ -163,7 +161,6 @@ Tạo default licenses cho tất cả services của một organization.
     "orgId": "507f1f77bcf86cd799439011",
     "serviceName": "cbm",
     "type": "disabled",
-    "status": "active",
     "notes": "Default licenses for new organization"
   },
   {
@@ -171,7 +168,6 @@ Tạo default licenses cho tất cả services của một organization.
     "orgId": "507f1f77bcf86cd799439011",
     "serviceName": "aiwm",
     "type": "disabled",
-    "status": "active",
     "notes": "Default licenses for new organization"
   },
   {
@@ -179,7 +175,6 @@ Tạo default licenses cho tất cả services của một organization.
     "orgId": "507f1f77bcf86cd799439011",
     "serviceName": "noti",
     "type": "disabled",
-    "status": "active",
     "notes": "Default licenses for new organization"
   }
 ]
@@ -235,7 +230,6 @@ GET /licenses?sort=-createdAt
       "quotaLimit": 1000,
       "quotaUsed": 250,
       "expiresAt": "2025-12-31T23:59:59Z",
-      "status": "active",
       "notes": "Premium license",
       "createdAt": "2025-01-15T10:30:00Z",
       "updatedAt": "2025-01-15T10:30:00Z"
@@ -317,7 +311,6 @@ GET /licenses/507f1f77bcf86cd799439012
   "quotaLimit": 1000,
   "quotaUsed": 250,
   "expiresAt": "2025-12-31T23:59:59Z",
-  "status": "active",
   "notes": "Premium license - expires end of year",
   "createdAt": "2025-01-15T10:30:00Z",
   "updatedAt": "2025-01-20T14:15:00Z",
@@ -359,7 +352,6 @@ Cập nhật một license. Chỉ cho phép cập nhật các trường: `type`,
   "type": "limited",
   "quotaLimit": 500,
   "expiresAt": "2025-06-30T23:59:59Z",
-  "status": "active",
   "notes": "Downgraded to limited - 6 months extension"
 }
 ```
@@ -371,7 +363,6 @@ Cập nhật một license. Chỉ cho phép cập nhật các trường: `type`,
 | `type` | string | Loại license: `disabled`, `limited`, `full` |
 | `quotaLimit` | number | Giới hạn quota (null = unlimited) |
 | `expiresAt` | string | Ngày hết hạn (ISO 8601 hoặc null) |
-| `status` | string | Trạng thái: `active`, `suspended`, `expired` |
 | `notes` | string | Ghi chú cập nhật |
 
 #### Response (200 OK)
@@ -385,7 +376,6 @@ Cập nhật một license. Chỉ cho phép cập nhật các trường: `type`,
   "quotaLimit": 500,
   "quotaUsed": 250,
   "expiresAt": "2025-06-30T23:59:59Z",
-  "status": "active",
   "notes": "Downgraded to limited - 6 months extension",
   "createdAt": "2025-01-15T10:30:00Z",
   "updatedAt": "2025-01-22T09:45:00Z",
@@ -558,6 +548,111 @@ Mảng các object, mỗi object đại diện cho một service:
 
 ---
 
+## 8. Load Organizations cho Dropdown
+
+### `GET /organizations`
+
+Load danh sách organizations để hiển thị trong dropdown/select khi tạo hoặc sửa license.
+
+#### Query Parameters
+
+| Parameter | Type | Required | Mô tả |
+|-----------|------|----------|-------|
+| `page` | number | ❌ | Trang hiện tại (default: 1) |
+| `limit` | number | ❌ | Số items per page (default: 10, max: 100 cho dropdown) |
+| `sort` | string | ❌ | Sắp xếp theo tên: `name` hoặc `-name` |
+
+#### Example Request
+
+```bash
+# Load tất cả orgs cho dropdown (không phân trang)
+GET /organizations?limit=1000&sort=name
+
+# Hoặc với phân trang
+GET /organizations?page=1&limit=50&sort=name
+```
+
+#### Response (200 OK)
+
+```json
+{
+  "data": [
+    {
+      "_id": "691eb9e6517f917943ae1f9d",
+      "name": "Acme Corporation",
+      "caption": "Enterprise Plan",
+      "description": "Main production organization",
+      "type": "enterprise",
+      "createdAt": "2025-01-10T08:00:00Z"
+    },
+    {
+      "_id": "691eb9e6517f917943ae1f9e",
+      "name": "Beta Startup Inc",
+      "caption": "Startup Plan",
+      "description": "Development environment",
+      "type": "startup",
+      "createdAt": "2025-01-12T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 125
+  }
+}
+```
+
+#### Frontend Display Format
+
+**Select Option Format:**
+```html
+<option value="691eb9e6517f917943ae1f9d">
+  Acme Corporation
+  <691eb9e6517f917943ae1f9d>
+</option>
+```
+
+**React/Vue Format:**
+```javascript
+{
+  value: "691eb9e6517f917943ae1f9d",
+  label: "Acme Corporation",
+  caption: "691eb9e6517f917943ae1f9d"
+}
+
+// Hiển thị:
+// Acme Corporation
+// <691eb9e6517f917943ae1f9d>
+```
+
+**💡 UI Recommendations:**
+
+1. **Autocomplete/Search:**
+   - Enable search trong dropdown
+   - Match theo `name` hoặc `_id`
+   - Highlight matched text
+
+2. **Display Format:**
+   ```
+   [Organization Name]
+   <[Organization ID]>
+   ```
+   Ví dụ:
+   ```
+   Acme Corporation
+   <691eb9e6517f917943ae1f9d>
+   ```
+
+3. **Loading State:**
+   - Show skeleton/spinner khi load organizations
+   - Cache results để tránh reload nhiều lần
+
+4. **Empty State:**
+   - "No organizations found" nếu list rỗng
+   - Link to create organization page
+
+---
+
 ## Common Response Fields
 
 Tất cả license records đều có các trường sau:
@@ -578,7 +673,6 @@ Tất cả license records đều có các trường sau:
 | `quotaLimit` | number/null | Giới hạn quota. `null` = unlimited. **Chưa enforce** |
 | `quotaUsed` | number | Quota đã sử dụng. **Chưa track** |
 | `expiresAt` | string/null | Ngày hết hạn (ISO 8601). `null` = never expires. **Chưa enforce** |
-| `status` | string | Trạng thái: `active`, `suspended`, `expired` |
 | `notes` | string | Ghi chú nội bộ |
 
 ### Audit Fields
@@ -681,20 +775,42 @@ hoặc với chi tiết validation:
 
 ### 1. License Management Dashboard
 
+**Page Load Sequence:**
+```javascript
+// 1. Load organizations cho dropdown (parallel với licenses)
+GET /organizations?limit=1000&sort=name
+
+// 2. Load licenses list
+GET /licenses?page=1&limit=10
+
+// Thực hiện song song để tối ưu loading time
+Promise.all([
+  fetchOrganizations(),
+  fetchLicenses()
+])
+```
+
 **Hiển thị danh sách:**
 - Dùng `GET /licenses` với pagination
 - Hiển thị statistics từ response để tạo overview cards
 - Filter theo orgId khi xem licenses của một org cụ thể
 
 **Tạo license mới:**
-- Form với validation theo spec ở trên
+- Form với organization dropdown (load từ `GET /organizations`)
+- Organization select format:
+  ```
+  [Org Name]
+  <[Org ID]>
+  ```
+- Validation theo spec ở trên
 - Dùng `POST /licenses` hoặc `POST /licenses/default`
 - Handle error 409 (duplicate) để thông báo user
 
 **Sửa license:**
 - Dùng `PATCH /licenses/:id`
-- Chỉ cho phép sửa: type, quotaLimit, expiresAt, status, notes
-- Disable fields orgId và serviceName
+- Chỉ cho phép sửa: type, quotaLimit, expiresAt, notes
+- **DISABLE fields**: `orgId` và `serviceName` (không cho phép thay đổi)
+- Show orgId và serviceName as read-only text
 
 **Xóa license:**
 - Confirm dialog trước khi xóa
@@ -775,13 +891,6 @@ full     → Green badge with "Full Access" text
 // Format expiresAt
 new Date(expiresAt).toLocaleDateString()
 // Hoặc relative time: "Expires in 45 days"
-```
-
-**Status Display:**
-```
-active    → Green dot
-suspended → Yellow dot
-expired   → Red dot
 ```
 
 **Filter/Search:**

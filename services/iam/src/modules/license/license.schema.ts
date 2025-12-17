@@ -79,19 +79,6 @@ export class License extends BaseSchema {
   expiresAt?: Date | null;
 
   /**
-   * License status
-   * - active: License is currently valid and enforced
-   * - suspended: License temporarily disabled
-   * - expired: License has expired (handled in future phases)
-   */
-  @Prop({
-    type: String,
-    enum: ['active', 'suspended', 'expired'],
-    default: 'active',
-  })
-  status: string;
-
-  /**
    * Internal notes for license management
    * Only visible to universe.owner
    * Used for tracking plan types, reasons for changes, etc.
