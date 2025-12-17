@@ -1,4 +1,5 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
@@ -6,8 +7,9 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-auth') {
   private readonly logger = new Logger(JwtStrategy.name);
 
-  constructor() {
-    const jwtSecret = process.env['JWT_SECRET'] || 'R4md0m_S3cr3t';
+  constructor(configService: ConfigService) {
+    // Use ConfigService to get JWT_SECRET from environment
+    const jwtSecret = configService.get<string>('JWT_SECRET') || 'R4md0m_S3cr3t';
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // Lấy token từ header Authorization: Bearer <token>

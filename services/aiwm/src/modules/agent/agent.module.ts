@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
 import { Agent, AgentSchema } from './agent.schema';
@@ -16,9 +17,23 @@ import { ConfigurationModule } from '../configuration/configuration.module';
       { name: Instruction.name, schema: InstructionSchema },
       { name: Tool.name, schema: ToolSchema },
     ]),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'R4md0m_S3cr3t',  // Must match JwtStrategy secret
-      signOptions: { expiresIn: '24h' },
+    // Use registerAsync to ensure ConfigService is loaded before accessing JWT_SECRET
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const jwtSecret = configService.get<string>('JWT_SECRET') || 'R4md0m_S3cr3t';
+
+        // Log the secret hash for debugging
+        const crypto = require('crypto');
+        const secretHash = crypto.createHash('sha256').update(jwtSecret).digest('hex').substring(0, 8);
+        console.log(`[AgentModule] JwtModule registering with secret hash: ${secretHash}...`);
+
+        return {
+          secret: jwtSecret,
+          signOptions: { expiresIn: '24h' },
+        };
+      },
     }),
     QueueModule,
     ConfigurationModule,
