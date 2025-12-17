@@ -49,6 +49,7 @@ export class AgentService extends BaseService<Agent> {
 
     // Use setTimeout to log after constructor completes
     setTimeout(() => {
+      console.log(`[AgentService] AgentService initialized with JWT secret hash: ${secretHash}...`);
       this.logger.info(`AgentService initialized with JWT secret hash: ${secretHash}...`);
     }, 0);
   }
