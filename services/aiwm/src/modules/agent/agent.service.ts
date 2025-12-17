@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -35,25 +34,9 @@ export class AgentService extends BaseService<Agent> {
     @InjectModel(Tool.name) private toolModel: Model<Tool>,
     private readonly jwtService: JwtService,
     private readonly agentProducer: AgentProducer,
-    private readonly configurationService: ConfigurationService,
-    private readonly configService: ConfigService
+    private readonly configurationService: ConfigurationService
   ) {
     super(agentModel as any);
-
-    // Log JWT secret hash for debugging (never log the actual secret)
-    // Use ConfigService to ensure we get the same value as JwtModule
-    const jwtSecret = this.configService.get<string>('JWT_SECRET') || 'R4md0m_S3cr3t';
-    const secretHash = crypto
-      .createHash('sha256')
-      .update(jwtSecret)
-      .digest('hex')
-      .substring(0, 8);
-
-    // Use setTimeout to log after constructor completes
-    setTimeout(() => {
-      console.log(`[AgentService] AgentService initialized with JWT secret hash: ${secretHash}...`);
-      this.logger.info(`AgentService initialized with JWT secret hash: ${secretHash}...`);
-    }, 0);
   }
 
   /**

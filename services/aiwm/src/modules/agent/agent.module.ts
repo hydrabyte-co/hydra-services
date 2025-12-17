@@ -21,19 +21,10 @@ import { ConfigurationModule } from '../configuration/configuration.module';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
-        const jwtSecret = configService.get<string>('JWT_SECRET') || 'R4md0m_S3cr3t';
-
-        // Log the secret hash for debugging
-        const crypto = require('crypto');
-        const secretHash = crypto.createHash('sha256').update(jwtSecret).digest('hex').substring(0, 8);
-        console.log(`[AgentModule] JwtModule registering with secret hash: ${secretHash}...`);
-
-        return {
-          secret: jwtSecret,
-          signOptions: { expiresIn: '24h' },
-        };
-      },
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'R4md0m_S3cr3t',
+        signOptions: { expiresIn: '24h' },
+      }),
     }),
     QueueModule,
     ConfigurationModule,
