@@ -17,7 +17,7 @@ import { ConfigurationModule } from '../configuration/configuration.module';
       { name: Tool.name, schema: ToolSchema },
     ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
+      secret: process.env.JWT_SECRET || 'R4md0m_S3cr3t',  // Must match JwtStrategy secret
       signOptions: { expiresIn: '24h' },
     }),
     QueueModule,
