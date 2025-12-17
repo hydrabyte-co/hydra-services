@@ -21,9 +21,12 @@ import { AgentService } from './modules/agent/agent.service';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import * as z from 'zod';
+import { Tool } from './modules/tool/tool.schema';
 
 const logger = new Logger('McpBootstrap');
-const MCP_PORT = process.env.MCP_PORT ? parseInt(process.env.MCP_PORT, 10) : 3306;
+const MCP_PORT = process.env.MCP_PORT
+  ? parseInt(process.env.MCP_PORT, 10)
+  : 3306;
 
 export async function bootstrapMcpServer() {
   logger.log('=== Step 1: Starting NestJS Application Context ===');
@@ -63,7 +66,9 @@ export async function bootstrapMcpServer() {
   logger.log('✅ Services injected from NestJS context');
 
   // Step 3: Helper function to validate bearer token
-  const validateBearerToken = async (authHeader: string | undefined): Promise<any> => {
+  const validateBearerToken = async (
+    authHeader: string | undefined
+  ): Promise<any> => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new Error('Missing or invalid Authorization header');
     }
@@ -85,12 +90,21 @@ export async function bootstrapMcpServer() {
       throw new Error(`Tool ${tool.name} has no execution configuration`);
     }
 
-    const { method, baseUrl, path, headers = {}, authRequired = true } = execution;
+    const {
+      method,
+      baseUrl,
+      path,
+      headers = {},
+      authRequired = true,
+    } = execution;
 
     // Replace path parameters with arguments
     let finalPath = path;
     for (const [key, value] of Object.entries(args)) {
-      finalPath = finalPath.replace(`{${key}}`, encodeURIComponent(String(value)));
+      finalPath = finalPath.replace(
+        `{${key}}`,
+        encodeURIComponent(String(value))
+      );
     }
 
     // Build full URL
@@ -134,7 +148,9 @@ export async function bootstrapMcpServer() {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `API call failed: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
 
     // Get response content
@@ -148,7 +164,9 @@ export async function bootstrapMcpServer() {
       content = await response.text();
     }
 
-    logger.log(`✅ API call successful, response length: ${content.length} bytes`);
+    logger.log(
+      `✅ API call successful, response length: ${content.length} bytes`
+    );
 
     return {
       content: [
@@ -173,7 +191,7 @@ export async function bootstrapMcpServer() {
       agentId: agentId || '',
       groupId: groupId || '',
       appId: '',
-      roles: roles || []
+      roles: roles || [],
     };
 
     // Step 1: Fetch agent to get allowedToolIds
@@ -183,7 +201,11 @@ export async function bootstrapMcpServer() {
       return;
     }
 
-    logger.log(`✅ Agent found: ${agent.name}, allowedToolIds: ${agent.allowedToolIds?.length || 0}`);
+    logger.log(
+      `✅ Agent found: ${agent.name}, allowedToolIds: ${
+        agent.allowedToolIds?.length || 0
+      }`
+    );
 
     // Step 2: If no allowed tools, skip registration
     if (!agent.allowedToolIds || agent.allowedToolIds.length === 0) {
@@ -192,33 +214,50 @@ export async function bootstrapMcpServer() {
     }
 
     // Step 3: Convert string IDs to ObjectId for MongoDB query
-    const toolObjectIds = agent.allowedToolIds.map(id => new Types.ObjectId(id));
+    const toolObjectIds = agent.allowedToolIds;
 
     // Step 4: Fetch active tools from allowedToolIds whitelist
-    const result = await toolService.findAll(
+    const toolFilter = {
+      //_id: { $in: toolObjectIds },
+      status: 'active',
+      //"owner.orgId": orgId,
+      //isDeleted: false,
+    };
+    let tools: Tool[] = [];
+    const findToolResult = await toolService.findAll(
       {
-        filter: {
-          _id: { $in: toolObjectIds },
-          status: 'active'
-        },
-        page: 1,
-        limit: 100
+        ...toolFilter,
+        limit: 100,
       },
       context
     );
-
-    logger.log(`✅ Found ${result.data.length} active tools from allowedToolIds`);
+    if (findToolResult) {
+      tools = findToolResult.data.filter((tool: any) =>
+        toolObjectIds.some((id) => id.toString() === tool._id.toString())
+      );
+    }
+    logger.log(
+      `✅ Found ${
+        tools.length
+      } active tools from allowedToolIds: ${agent.allowedToolIds.join(', ')}`
+    );
 
     // Register each tool with MCP server
-    for (const tool of result.data) {
+    for (const tool of tools) {
       const inputSchema = tool.schema?.inputSchema || {};
 
       // Convert JSON Schema to Zod schema (simplified)
       const zodInputSchema: Record<string, z.ZodString> = {};
-      if (inputSchema && typeof inputSchema === 'object' && 'properties' in inputSchema) {
+      if (
+        inputSchema &&
+        typeof inputSchema === 'object' &&
+        'properties' in inputSchema
+      ) {
         const props = inputSchema.properties as Record<string, any>;
         for (const key in props) {
-          zodInputSchema[key] = z.string().describe(props[key].description || key);
+          zodInputSchema[key] = z
+            .string()
+            .describe(props[key].description || key);
         }
       }
 
@@ -227,7 +266,8 @@ export async function bootstrapMcpServer() {
         {
           title: tool.name,
           description: tool.description,
-          inputSchema: Object.keys(zodInputSchema).length > 0 ? zodInputSchema : undefined,
+          inputSchema:
+            Object.keys(zodInputSchema).length > 0 ? zodInputSchema : undefined,
         },
         async (args) => {
           logger.log(`🔧 Executing tool: ${tool.name} (type: ${tool.type})`);
@@ -239,15 +279,30 @@ export async function bootstrapMcpServer() {
               return await executeApiTool(tool, args, tokenPayload);
             } else if (tool.type === 'builtin') {
               return {
-                content: [{ type: 'text' as const, text: `Built-in tool ${tool.name} execution not yet implemented` }],
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `Built-in tool ${tool.name} execution not yet implemented`,
+                  },
+                ],
               };
             } else if (tool.type === 'mcp') {
               return {
-                content: [{ type: 'text' as const, text: `MCP tool ${tool.name} execution not yet implemented` }],
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `MCP tool ${tool.name} execution not yet implemented`,
+                  },
+                ],
               };
             } else if (tool.type === 'custom') {
               return {
-                content: [{ type: 'text' as const, text: `Custom tool ${tool.name} execution not yet implemented` }],
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `Custom tool ${tool.name} execution not yet implemented`,
+                  },
+                ],
               };
             } else {
               throw new Error(`Unknown tool type: ${tool.type}`);
@@ -280,7 +335,10 @@ export async function bootstrapMcpServer() {
   expressApp.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version');
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, mcp-session-id, mcp-protocol-version'
+    );
     res.header('Access-Control-Expose-Headers', 'mcp-session-id');
 
     if (req.method === 'OPTIONS') {
@@ -337,7 +395,11 @@ export async function bootstrapMcpServer() {
 
       try {
         userContext = await validateBearerToken(authHeader);
-        logger.log(`✅ Token validated for agent: ${userContext.agentId || userContext.sub} (org: ${userContext.orgId})`);
+        logger.log(
+          `✅ Token validated for agent: ${
+            userContext.agentId || userContext.sub
+          } (org: ${userContext.orgId})`
+        );
       } catch (error) {
         logger.error('Authentication failed:', error);
         return res.status(401).json({
