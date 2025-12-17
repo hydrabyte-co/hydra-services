@@ -75,7 +75,8 @@
       "Bash(grep:*)",
       "Bash(/Users/dzung/Code/hydra-byte/hydra-services/scripts/test-mcp-server.sh:*)",
       "Bash(source .env)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTQwZGI3MGQ2NzA2NTI2MmMyZTE3ZWQiLCJ1c2VybmFtZSI6ImFnZW50OjY5NDBkYjcwZDY3MDY1MjYyYzJlMTdlZCIsInN0YXR1cyI6ImFjdGl2ZSIsInJvbGVzIjpbIm9yZ2FuaXphdGlvbi5vd25lciJdLCJvcmdJZCI6IjY5MWViOWU2NTE3ZjkxNzk0M2FlMWY5ZCIsImdyb3VwSWQiOiIiLCJhZ2VudElkIjoiNjk0MGRiNzBkNjcwNjUyNjJjMmUxN2VkIiwidXNlcklkIjoiIiwidHlwZSI6ImFnZW50IiwiaWF0IjoxNzY1OTQ4NDc1LCJleHAiOjE3NjYwMzQ4NzV9.VwrGeJ4e4hIEsVhjHoY1YkSj2bZ6v_IkmKL-HInNPT8\" echo \"=== Token Payload ===\" echo $TOKEN)"
     ],
     "deny": [],
     "ask": []

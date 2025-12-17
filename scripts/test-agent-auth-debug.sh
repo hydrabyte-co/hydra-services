@@ -67,7 +67,8 @@ else
   echo "❌ Heartbeat failed with status: $HTTP_STATUS"
   echo ""
   echo "=== Debugging Info ==="
-  echo "1. Check server logs for JWT secret hash mismatch"
-  echo "2. Verify JWT_SECRET environment variable is set correctly"
-  echo "3. Look for JwtStrategy and AgentService initialization logs"
+  echo "1. Check server logs for JwtAuthGuard activation logs"
+  echo "2. Look for '[JwtAuthGuard] canActivate called for POST /agents/.../heartbeat'"
+  echo "3. Look for '[JwtAuthGuard] handleRequest called' with error details"
+  echo "4. Verify JwtStrategy.validate() is being called"
 fi
