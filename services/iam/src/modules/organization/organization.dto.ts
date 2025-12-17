@@ -8,7 +8,7 @@ export class CreateOrganizationDTO {
     pattern: '^[a-z0-9-]+$',
   })
   @IsNotEmpty({ message: 'Name is required' })
-  @Matches(/^[a-z0-9-]+$/, { message: 'Name must match [a-z0-9-]+' })
+  @Matches(/^[a-zA-Z0-9-]+$/, { message: 'Name must match [a-zA-Z0-9-]+' })
   name: string;
 
   @ApiProperty({
