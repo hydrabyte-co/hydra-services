@@ -108,6 +108,8 @@ export class BaseService<Entity> {
     delete filter['deletedAt']; // Ensure deletedAt is not set by user filter
     delete filter['owner']; // Ensure owner is not set by user filter
     delete filter['sort']; // Ensure sort is not set by user filter
+    delete filter['sortOrder']; // Ensure sortOrder is not set by user filter
+    delete filter['sortBy']; // Ensure sortBy is not set by user filter
     delete filter['page']; // Ensure page is not set by user filter
     delete filter['limit']; // Ensure limit is not set by user filter
 
