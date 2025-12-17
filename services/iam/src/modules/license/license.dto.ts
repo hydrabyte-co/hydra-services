@@ -117,15 +117,6 @@ export class UpdateLicenseDto {
   expiresAt?: Date | null;
 
   @ApiPropertyOptional({
-    description: 'License status',
-    enum: ['active', 'suspended', 'expired'],
-    example: 'active',
-  })
-  @IsOptional()
-  @IsString()
-  status?: string;
-
-  @ApiPropertyOptional({
     description: 'Update internal notes',
     example: 'Upgraded to full access',
   })
