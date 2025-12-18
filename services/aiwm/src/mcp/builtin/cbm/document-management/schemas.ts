@@ -123,3 +123,65 @@ export const UpdateDocumentContentSchema = z.object({
 export const DeleteDocumentSchema = z.object({
   id: z.string().describe('Document ID to delete'),
 });
+
+/**
+ * Schema for replacing entire document content
+ */
+export const ReplaceDocumentContentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  content: z.string().describe('New content to replace entire document'),
+});
+
+/**
+ * Schema for search and replace text in document
+ */
+export const SearchAndReplaceTextInDocumentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  find: z.string().describe('Text to find'),
+  replace: z.string().describe('Replacement text'),
+});
+
+/**
+ * Schema for search and replace using regex in document
+ */
+export const SearchAndReplaceRegexInDocumentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  pattern: z.string().describe('Regex pattern to find'),
+  replace: z.string().describe('Replacement text'),
+  flags: z.string().optional().default('g').describe('Regex flags (default: g)'),
+});
+
+/**
+ * Schema for replacing a markdown section in document
+ */
+export const ReplaceMarkdownSectionInDocumentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  section: z.string().describe('Markdown section heading to find (e.g., "## API Specification")'),
+  sectionContent: z.string().describe('New content for the markdown section'),
+});
+
+/**
+ * Schema for appending content to end of document
+ */
+export const AppendToDocumentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  content: z.string().describe('Content to append to end of document'),
+});
+
+/**
+ * Schema for appending content after specific text in document
+ */
+export const AppendAfterTextInDocumentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  find: z.string().describe('Text to find, content will be appended after this'),
+  content: z.string().describe('Content to append after the found text'),
+});
+
+/**
+ * Schema for appending content to a markdown section in document
+ */
+export const AppendToMarkdownSectionInDocumentSchema = z.object({
+  id: z.string().describe('Document ID'),
+  section: z.string().describe('Markdown section heading (e.g., "## API Specification")'),
+  content: z.string().describe('Content to append to end of the section'),
+});

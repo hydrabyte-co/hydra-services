@@ -13,6 +13,28 @@ import {
 const logger = new Logger('DocumentManagementExecutors');
 
 /**
+ * Helper function to remove unnecessary fields from document object
+ * Optimizes token usage for LLM by removing owner, createdBy, updatedBy, __v
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeDocument(doc: any): any {
+  if (!doc) return doc;
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { owner, createdBy, updatedBy, __v, ...sanitized } = doc;
+  return sanitized;
+}
+
+/**
+ * Helper function to sanitize array of documents
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeDocuments(docs: any[]): any[] {
+  if (!Array.isArray(docs)) return docs;
+  return docs.map(sanitizeDocument);
+}
+
+/**
  * Execute create document
  */
 export async function executeCreateDocument(
@@ -36,6 +58,21 @@ export async function executeCreateDocument(
       context,
       body: JSON.stringify(args),
     });
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
 
     return formatToolResponse(response);
   } catch (error: any) {
@@ -77,6 +114,24 @@ export async function executeListDocuments(
       }
     );
 
+    // Sanitize response.data to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      // Sanitize the data array if it exists
+      if (json.data && Array.isArray(json.data)) {
+        json.data = sanitizeDocuments(json.data);
+      }
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(json, null, 2),
+          },
+        ],
+      };
+    }
+
     return formatToolResponse(response);
   } catch (error: any) {
     logger.error('Error listing documents:', error);
@@ -108,6 +163,21 @@ export async function executeGetDocument(
         context,
       }
     );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
 
     return formatToolResponse(response);
   } catch (error: any) {
@@ -180,6 +250,21 @@ export async function executeUpdateDocument(
         body: JSON.stringify(updateData),
       }
     );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
 
     return formatToolResponse(response);
   } catch (error: any) {
@@ -269,6 +354,376 @@ export async function executeDeleteDocument(
         {
           type: 'text',
           text: `Error deleting document: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute replace entire document content
+ */
+export async function executeReplaceDocumentContent(
+  args: { id: string; content: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, content } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'replace',
+          content,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error replacing document content:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error replacing document content: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute search and replace text in document
+ */
+export async function executeSearchAndReplaceTextInDocument(
+  args: { id: string; find: string; replace: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, find, replace } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'find-replace-text',
+          find,
+          replace,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error searching and replacing text in document:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error searching and replacing text: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute search and replace using regex in document
+ */
+export async function executeSearchAndReplaceRegexInDocument(
+  args: { id: string; pattern: string; replace: string; flags?: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, pattern, replace, flags = 'g' } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'find-replace-regex',
+          pattern,
+          replace,
+          flags,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error searching and replacing regex in document:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error searching and replacing regex: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute replace markdown section in document
+ */
+export async function executeReplaceMarkdownSectionInDocument(
+  args: { id: string; section: string; sectionContent: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, section, sectionContent } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'find-replace-markdown',
+          section,
+          sectionContent,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error replacing markdown section in document:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error replacing markdown section: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute append content to end of document
+ */
+export async function executeAppendToDocument(
+  args: { id: string; content: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, content } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'append',
+          content,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error appending to document:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error appending to document: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute append content after specific text in document
+ */
+export async function executeAppendAfterTextInDocument(
+  args: { id: string; find: string; content: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, find, content } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'append-after-text',
+          find,
+          content,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error appending after text in document:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error appending after text: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute append content to markdown section in document
+ */
+export async function executeAppendToMarkdownSectionInDocument(
+  args: { id: string; section: string; content: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, section, content } = args;
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/documents/${id}/content`,
+      {
+        method: 'PATCH',
+        context,
+        body: JSON.stringify({
+          operation: 'append-to-section',
+          section,
+          content,
+        }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeDocument(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error appending to markdown section in document:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error appending to markdown section: ${error.message}`,
         },
       ],
       isError: true,
