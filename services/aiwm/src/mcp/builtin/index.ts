@@ -3,14 +3,15 @@
  */
 
 import { ToolDefinition } from '../types';
-import { DocumentManagementTools } from './cbm';
+import { DocumentManagementTools, WorkManagementTools } from './cbm';
 
 /**
  * All builtin tools from all services
  */
 export const BuiltInTools: ToolDefinition[] = [
   ...DocumentManagementTools,
-  // Future: ProjectManagementTools, WorkManagementTools, etc.
+  ...WorkManagementTools,
+  // Future: ProjectManagementTools, etc.
 ];
 
 /**

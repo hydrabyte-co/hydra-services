@@ -1,0 +1,139 @@
+/**
+ * WorkManagement tool definitions
+ */
+
+import { ToolDefinition } from '../../../types';
+import {
+  executeCreateWork,
+  executeListWorks,
+  executeGetWork,
+  executeUpdateWork,
+  executeDeleteWork,
+  executeStartWork,
+  executeBlockWork,
+  executeUnblockWork,
+  executeRequestReviewForWork,
+  executeCompleteWork,
+  executeReopenWork,
+  executeCancelWork,
+} from './executors';
+import {
+  CreateWorkSchema,
+  ListWorksSchema,
+  GetWorkSchema,
+  UpdateWorkSchema,
+  DeleteWorkSchema,
+  StartWorkSchema,
+  BlockWorkSchema,
+  UnblockWorkSchema,
+  RequestReviewForWorkSchema,
+  CompleteWorkSchema,
+  ReopenWorkSchema,
+  CancelWorkSchema,
+} from './schemas';
+
+/**
+ * All WorkManagement tools
+ */
+export const WorkManagementTools: ToolDefinition[] = [
+  {
+    name: 'CreateWork',
+    description:
+      'Create a new work item (epic/task/subtask) with title, description, type, reporter, assignee, and other metadata',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeCreateWork,
+    inputSchema: CreateWorkSchema,
+  },
+  {
+    name: 'ListWorks',
+    description:
+      'List works with pagination, search, and filters (type, status, project, reporter, assignee)',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeListWorks,
+    inputSchema: ListWorksSchema,
+  },
+  {
+    name: 'GetWork',
+    description: 'Get a specific work by ID with full details',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeGetWork,
+    inputSchema: GetWorkSchema,
+  },
+  {
+    name: 'UpdateWork',
+    description:
+      'Update work metadata (title, description, assignee, etc.). Cannot update status - use workflow action tools instead',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeUpdateWork,
+    inputSchema: UpdateWorkSchema,
+  },
+  {
+    name: 'DeleteWork',
+    description: 'Soft delete a work by ID (only allowed when status is done or cancelled)',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeDeleteWork,
+    inputSchema: DeleteWorkSchema,
+  },
+  {
+    name: 'StartWork',
+    description: 'Start work - transition from todo to in_progress status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeStartWork,
+    inputSchema: StartWorkSchema,
+  },
+  {
+    name: 'BlockWork',
+    description:
+      'Block work with reason - transition from in_progress to blocked status. Requires reason explaining why work is blocked',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeBlockWork,
+    inputSchema: BlockWorkSchema,
+  },
+  {
+    name: 'UnblockWork',
+    description: 'Unblock work - transition from blocked to in_progress status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeUnblockWork,
+    inputSchema: UnblockWorkSchema,
+  },
+  {
+    name: 'RequestReviewForWork',
+    description: 'Request review - transition from in_progress to review status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeRequestReviewForWork,
+    inputSchema: RequestReviewForWorkSchema,
+  },
+  {
+    name: 'CompleteWork',
+    description: 'Complete work - transition from review to done status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeCompleteWork,
+    inputSchema: CompleteWorkSchema,
+  },
+  {
+    name: 'ReopenWork',
+    description: 'Reopen completed work - transition from done to in_progress status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeReopenWork,
+    inputSchema: ReopenWorkSchema,
+  },
+  {
+    name: 'CancelWork',
+    description: 'Cancel work from any status - transition to cancelled status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeCancelWork,
+    inputSchema: CancelWorkSchema,
+  },
+];
