@@ -48,6 +48,8 @@ export class OrganizationsController {
   @ApiResponse({ status: 201, description: 'Organization created successfully' })
   @ApiCreateErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
+  @UniverseScopeOnly()
   async create(
     @Body() createDTO: CreateOrganizationDTO,
     @CurrentUser() context: RequestContext
@@ -62,6 +64,8 @@ export class OrganizationsController {
   @RequireUniverseRole()
   @UniverseScopeOnly()
   @UseGuards(JwtAuthGuard, UniverseRoleGuard)
+  @RequireUniverseRole()
+  @UniverseScopeOnly()
   async findAll(
     @Query() paginationQuery: PaginationQueryDto,
     @CurrentUser() context: RequestContext
@@ -73,7 +77,7 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'Get organization by ID', description: 'Get a single organization by ID' })
   @ApiResponse({ status: 200, description: 'Organization found' })
   @ApiReadErrors()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async findOne(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext
@@ -90,6 +94,8 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Organization updated successfully' })
   @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
+  @UniverseScopeOnly()
   async update(
     @Param('id') id: string,
     @Body() updateDTO: UpdateOrganizationDTO,
@@ -107,6 +113,8 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Organization deleted successfully' })
   @ApiDeleteErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
+  @UniverseScopeOnly()
   async delete(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext

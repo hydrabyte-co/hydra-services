@@ -1,16 +1,16 @@
 import { Matches, IsNotEmpty, IsObject, IsArray, IsEnum, IsOptional } from "class-validator";
 import { ApiProperty } from '@nestjs/swagger';
-import { UsernameRegex, InvalidUsernameMessage, PasswordRegex, InvalidPasswordMessage } from "../../core/const/iam.const";
+import { UsernameRegex, InvalidUsernameMessage, PasswordRegex, InvalidPasswordMessage, EmailRegex } from "../../core/const/iam.const";
 import { UserStatuses } from "../../core/enums/user.enum";
 
 export class CreateUserData {
   @ApiProperty({
-    description: 'Username (6+ chars, letters, numbers, _, . or email format)',
-    example: 'john.doe',
-    pattern: UsernameRegex.source,
+    description: 'Email address (valid email format)',
+    example: 'john.doe@example.com',
+    pattern: EmailRegex.source,
   })
-  @Matches(UsernameRegex, {
-    message: InvalidUsernameMessage,
+  @Matches(EmailRegex, {
+    message: 'Invalid email address format',
   })
   @IsNotEmpty()
   username = '';

@@ -19,6 +19,8 @@ import {
 } from '@nestjs/swagger';
 import {
   JwtAuthGuard,
+  LicenseGuard,
+  RequireLicense,
   CurrentUser,
   PaginationQueryDto,
   ApiCreateErrors,
@@ -26,7 +28,7 @@ import {
   ApiUpdateErrors,
   ApiDeleteErrors,
 } from '@hydrabyte/base';
-import { RequestContext } from '@hydrabyte/shared';
+import { RequestContext, LicenseType } from '@hydrabyte/shared';
 import { Types, ObjectId } from 'mongoose';
 import { UsersService } from './user.service';
 import { User } from './user.schema';
@@ -39,10 +41,11 @@ export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create user', description: 'Create a new user' })
+  @ApiOperation({ summary: 'Create user', description: 'Create a new user - Requires FULL license' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiCreateErrors()
-  @UseGuards(JwtAuthGuard)
+  @RequireLicense(LicenseType.FULL)
+  @UseGuards(JwtAuthGuard, LicenseGuard)
   async create(
     @Body() createDTO: CreateUserData,
     @CurrentUser() context: RequestContext

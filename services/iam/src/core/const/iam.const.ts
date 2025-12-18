@@ -5,3 +5,6 @@ export const InvalidPasswordMessage =
 export const UsernameRegex = /^[\w-._]+(@([\w-]+\.)+[\w-]{2,4})*$/;
 export const InvalidUsernameMessage =
   'Usernames must be in the format of more than 6 characters, including letters, numbers, and the underscore (_) or dot (.) character, or in the form of an email address.';
+// add email validation regex
+export const EmailRegex =
+  /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
