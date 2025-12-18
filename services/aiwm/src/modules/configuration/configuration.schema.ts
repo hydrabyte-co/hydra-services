@@ -13,16 +13,12 @@ export class Configuration extends BaseSchema {
   @Prop({
     required: true,
     enum: Object.values(ConfigKey),
-    unique: true,
     index: true,
   })
-  key!: string; // ConfigKey enum value
+  key!: string; // ConfigKey enum value (unique per organization)
 
-  @Prop({ required: true })
-  value!: string; // Plain text value (no encryption)
-
-  @Prop({ default: true, index: true })
-  isActive!: boolean; // Enable/disable configuration
+  @Prop({ required: true, default: '' })
+  value!: string; // Plain text value (no encryption, allows empty string)
 
   @Prop()
   notes?: string; // Admin notes
@@ -39,8 +35,10 @@ export const ConfigurationSchema =
 
 // Indexes
 ConfigurationSchema.index({ key: 1 });
-ConfigurationSchema.index({ isActive: 1 });
 ConfigurationSchema.index({ deletedAt: 1 });
 
-// Compound index for efficient queries
-ConfigurationSchema.index({ isActive: 1, deletedAt: 1 });
+// Unique constraint: one key per organization
+ConfigurationSchema.index(
+  { key: 1, 'owner.orgId': 1 },
+  { unique: true, name: 'unique_key_per_org' }
+);

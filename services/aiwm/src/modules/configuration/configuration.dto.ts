@@ -38,14 +38,6 @@ export class CreateConfigurationDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether this configuration is active',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 }
 
 /**
@@ -69,13 +61,6 @@ export class UpdateConfigurationDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
-
-  @ApiPropertyOptional({
-    description: 'Active status',
-  })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 }
 
 /**
@@ -87,9 +72,6 @@ export class ConfigurationListResponseDto {
 
   @ApiProperty({ enum: ConfigKey, example: ConfigKey.S3_ENDPOINT })
   key!: string;
-
-  @ApiProperty({ example: true })
-  isActive!: boolean;
 
   @ApiProperty({
     description: 'Metadata for this config key',
@@ -135,14 +117,6 @@ export class ConfigurationDetailResponseDto extends ConfigurationListResponseDto
  */
 export class ConfigurationQueryDto {
   @ApiPropertyOptional({
-    description: 'Filter by active status',
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-
-  @ApiPropertyOptional({
     description: 'Page number',
     default: 1,
   })
@@ -155,4 +129,41 @@ export class ConfigurationQueryDto {
   })
   @IsOptional()
   limit?: number;
+}
+
+/**
+ * Initialize All Configurations Response DTO
+ */
+export class InitializeConfigurationsResponseDto {
+  @ApiProperty({
+    description: 'Success status',
+    example: true,
+  })
+  success!: boolean;
+
+  @ApiProperty({
+    description: 'Summary of initialization',
+    example: {
+      total: 26,
+      created: 18,
+      skipped: 8,
+    },
+  })
+  summary!: {
+    total: number;
+    created: number;
+    skipped: number;
+  };
+
+  @ApiProperty({
+    description: 'List of configuration keys that were created',
+    example: ['s3.endpoint', 'smtp.host', 'llm.openai.api_key'],
+  })
+  created!: string[];
+
+  @ApiProperty({
+    description: 'List of configuration keys that were skipped (already exist)',
+    example: ['discord.webhook_url', 'telegram.bot_token'],
+  })
+  skipped!: string[];
 }

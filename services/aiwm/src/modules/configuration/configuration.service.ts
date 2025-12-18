@@ -40,34 +40,10 @@ export class ConfigurationService extends BaseService<Configuration> {
   ): Promise<FindManyResult<Configuration>> {
     const findResult = await super.findAll(options, context);
 
-    // Aggregate statistics by active status
-    const activeStats = await super.aggregate(
-      [
-        { $match: { ...options.filter } },
-        {
-          $group: {
-            _id: '$isActive',
-            count: { $sum: 1 },
-          },
-        },
-      ],
-      context
-    );
-
     // Build statistics
     const statistics: any = {
       total: findResult.pagination.total,
-      active: 0,
-      inactive: 0,
     };
-
-    activeStats.forEach((stat: any) => {
-      if (stat._id === true) {
-        statistics.active = stat.count;
-      } else {
-        statistics.inactive = stat.count;
-      }
-    });
 
     findResult.statistics = statistics;
     return findResult;
@@ -127,9 +103,6 @@ export class ConfigurationService extends BaseService<Configuration> {
       if (dto.notes !== undefined) {
         updateData.notes = dto.notes;
       }
-      if (dto.isActive !== undefined) {
-        updateData.isActive = dto.isActive;
-      }
 
       await this.configModel.updateOne(
         { _id: existing._id },
@@ -149,7 +122,6 @@ export class ConfigurationService extends BaseService<Configuration> {
       const created = await super.create(
         {
           ...dto,
-          isActive: dto.isActive ?? true,
         } as any,
         context
       );
@@ -193,10 +165,6 @@ export class ConfigurationService extends BaseService<Configuration> {
 
     if (dto.notes !== undefined) {
       updateData.notes = dto.notes;
-    }
-
-    if (dto.isActive !== undefined) {
-      updateData.isActive = dto.isActive;
     }
 
     // Update using updateOne
@@ -262,6 +230,92 @@ export class ConfigurationService extends BaseService<Configuration> {
       throw new NotFoundException(`Metadata for key '${key}' not found`);
     }
     return metadata;
+  }
+
+  /**
+   * Initialize all configuration keys with empty values
+   * Only creates keys that don't exist yet (no overwrite)
+   *
+   * @returns Summary of initialization (created vs skipped)
+   */
+  async initializeAll(
+    context: RequestContext
+  ): Promise<{
+    total: number;
+    created: number;
+    skipped: number;
+    createdKeys: string[];
+    skippedKeys: string[];
+  }> {
+    const allKeys = Object.values(ConfigKey);
+    const createdKeys: string[] = [];
+    const skippedKeys: string[] = [];
+
+    for (const key of allKeys) {
+      try {
+        // Check if key already exists
+        const existing = await this.configModel
+          .findOne({
+            key,
+            deletedAt: null,
+            'owner.orgId': context.orgId,
+          })
+          .exec();
+
+        if (existing) {
+          skippedKeys.push(key);
+          continue;
+        }
+
+        // Create new configuration with empty value
+        // Skip validation for empty string initialization
+        const newConfig = new this.configModel({
+          key,
+          value: '', // Empty string
+          owner: {
+            orgId: context.orgId,
+            userId: context.userId,
+            groupId: context.groupId || '',
+            agentId: context.agentId || '',
+            appId: context.appId || '',
+          },
+          createdBy: context.userId,
+          updatedBy: context.userId,
+        });
+
+        await newConfig.save({ validateBeforeSave: false });
+        createdKeys.push(key);
+      } catch (error: any) {
+        // Handle duplicate key error gracefully (E11000)
+        if (error.code === 11000) {
+          // Key already exists, skip it
+          skippedKeys.push(key);
+          this.logger.debug('Configuration key already exists, skipping', {
+            key,
+            orgId: context.orgId,
+          });
+        } else {
+          // Re-throw other errors
+          throw error;
+        }
+      }
+    }
+
+    this.logger.info('Configuration initialization completed', {
+      total: allKeys.length,
+      created: createdKeys.length,
+      skipped: skippedKeys.length,
+      orgId: context.orgId,
+      userId: context.userId,
+    });
+
+    return {
+      total: allKeys.length,
+      created: createdKeys.length,
+      skipped: skippedKeys.length,
+      createdKeys,
+      skippedKeys,
+    };
   }
 
   /**

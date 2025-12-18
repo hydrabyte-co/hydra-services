@@ -4,7 +4,7 @@
  * Predefined configuration keys for system integrations.
  * Shared across all services for type-safe config access.
  *
- * V2: Simplified design with 23 priority config keys.
+ * V2: Simplified design with 26 config keys.
  */
 export enum ConfigKey {
   // ==========================================
@@ -49,4 +49,11 @@ export enum ConfigKey {
   OPENAI_API_KEY = 'llm.openai.api_key',
   ANTHROPIC_API_KEY = 'llm.anthropic.api_key',
   GROQ_API_KEY = 'llm.groq.api_key',
+
+  // ==========================================
+  // Service Integrations (3 keys)
+  // ==========================================
+  AIWM_BASE_API_URL = 'aiwm.base_api_url',
+  AIWM_BASE_MCP_URL = 'aiwm.base_mcp_url',
+  CBM_BASE_URL = 'cbm.base_url',
 }

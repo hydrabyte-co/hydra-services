@@ -306,4 +306,43 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
     },
     example: 'gsk_...',
   },
+
+  // =========================================================================
+  // Service Integrations (3 keys)
+  // =========================================================================
+  [ConfigKey.AIWM_BASE_API_URL]: {
+    key: ConfigKey.AIWM_BASE_API_URL,
+    displayName: 'AIWM Base API URL',
+    description: 'Base URL for AIWM service REST API',
+    dataType: 'url',
+    isRequired: false,
+    validation: {
+      pattern: '^https?://.+',
+    },
+    example: 'http://localhost:3003',
+  },
+
+  [ConfigKey.AIWM_BASE_MCP_URL]: {
+    key: ConfigKey.AIWM_BASE_MCP_URL,
+    displayName: 'AIWM Base MCP URL',
+    description: 'Base URL for AIWM MCP server',
+    dataType: 'url',
+    isRequired: false,
+    validation: {
+      pattern: '^https?://.+',
+    },
+    example: 'http://localhost:3004',
+  },
+
+  [ConfigKey.CBM_BASE_URL]: {
+    key: ConfigKey.CBM_BASE_URL,
+    displayName: 'CBM Base URL',
+    description: 'Base URL for CBM (Core Business Management) service',
+    dataType: 'url',
+    isRequired: false,
+    validation: {
+      pattern: '^https?://.+',
+    },
+    example: 'http://localhost:3001',
+  },
 };

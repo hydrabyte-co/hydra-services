@@ -93,7 +93,13 @@ export class ToolService extends BaseService<Tool> {
     // Aggregate statistics by status
     const statusStats = await super.aggregate(
       [
-        { $match: { ...options.filter } },
+        {
+          $match: {
+            ...options.filter,
+            'owner.orgId': context.orgId,
+            isDeleted: false,
+          },
+        },
         {
           $group: {
             _id: '$status',

@@ -30,6 +30,7 @@ import {
   ConfigurationQueryDto,
   ConfigurationListResponseDto,
   ConfigurationDetailResponseDto,
+  InitializeConfigurationsResponseDto,
 } from './configuration.dto';
 import { CONFIG_METADATA } from './constants';
 
@@ -81,7 +82,6 @@ export class ConfigurationController {
     const options = {
       page: query.page || 1,
       limit: query.limit || 50,
-      filter: query.isActive !== undefined ? { isActive: query.isActive } : {},
     };
 
     const result = await this.configurationService.findAll(options, context);
@@ -92,7 +92,6 @@ export class ConfigurationController {
       return {
         _id: config._id,
         key: config.key,
-        isActive: config.isActive,
         metadata,
         notes: config.notes,
         createdAt: config.createdAt,
@@ -150,13 +149,46 @@ export class ConfigurationController {
       _id: (config as any)._id,
       key: config.key,
       value: config.value, // ✅ Value included in detail response
-      isActive: config.isActive,
       metadata,
       notes: config.notes,
       createdBy: config.createdBy,
       updatedBy: config.updatedBy,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
+    };
+  }
+
+  /**
+   * Initialize all configuration keys with empty values
+   * Only organization.owner can access
+   */
+  @Post('initialize')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Initialize all configuration keys',
+    description:
+      'Creates all 26 configuration keys with empty values for the organization. Skips keys that already exist. Only organization.owner can access.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Configurations initialized successfully',
+    type: InitializeConfigurationsResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - organization.owner only' })
+  async initialize(@CurrentUser() context: RequestContext) {
+    const result = await this.configurationService.initializeAll(context);
+
+    return {
+      success: true,
+      summary: {
+        total: result.total,
+        created: result.created,
+        skipped: result.skipped,
+      },
+      created: result.createdKeys,
+      skipped: result.skippedKeys,
     };
   }
 
@@ -194,7 +226,6 @@ export class ConfigurationController {
       _id: (config as any)._id,
       key: config.key,
       value: config.value,
-      isActive: config.isActive,
       metadata,
       notes: config.notes,
       createdBy: config.createdBy,
@@ -246,7 +277,6 @@ export class ConfigurationController {
       _id: (config as any)._id,
       key: config.key,
       value: config.value,
-      isActive: config.isActive,
       metadata,
       notes: config.notes,
       createdBy: config.createdBy,

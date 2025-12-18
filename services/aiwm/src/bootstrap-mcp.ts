@@ -18,10 +18,14 @@ import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js
 import { randomUUID } from 'node:crypto';
 import { ToolService } from './modules/tool/tool.service';
 import { AgentService } from './modules/agent/agent.service';
+import { ConfigurationService } from './modules/configuration/configuration.service';
+import { ConfigKey as ConfigKeyEnum } from './modules/configuration/enums/config-key.enum';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import * as z from 'zod';
 import { Tool } from './modules/tool/tool.schema';
+import { getBuiltInToolsByCategory } from './mcp/builtin';
+import { ExecutionContext as BuiltInExecutionContext } from './mcp/types';
 
 const logger = new Logger('McpBootstrap');
 const MCP_PORT = process.env.MCP_PORT
@@ -63,6 +67,7 @@ export async function bootstrapMcpServer() {
   const jwtService = app.get(JwtService);
   const toolService = app.get(ToolService);
   const agentService = app.get(AgentService);
+  const configService = app.get(ConfigurationService);
   logger.log('✅ Services injected from NestJS context');
 
   // Step 3: Helper function to validate bearer token
@@ -179,7 +184,7 @@ export async function bootstrapMcpServer() {
   };
 
   // Step 3.1: Function to load and register tools for agent
-  const registerToolsForAgent = async (tokenPayload: any) => {
+  const registerToolsForAgent = async (tokenPayload: any, bearerToken: string) => {
     const { orgId, agentId, userId, roles, groupId } = tokenPayload;
 
     logger.log(`📋 Loading tools for agent: ${agentId} (org: ${orgId})`);
@@ -193,6 +198,26 @@ export async function bootstrapMcpServer() {
       appId: '',
       roles: roles || [],
     };
+
+    // Fetch service URLs from configuration
+    let cbmBaseUrl = 'http://localhost:3001'; // Default fallback
+    try {
+      logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.CBM_BASE_URL} for org: ${orgId}`);
+      const cbmConfig = await configService.findByKey(ConfigKeyEnum.CBM_BASE_URL as any, context);
+
+      logger.debug(`🔍 Config result:`, cbmConfig);
+
+      if (cbmConfig && cbmConfig.value) {
+        cbmBaseUrl = cbmConfig.value;
+        logger.log(`📍 CBM Base URL from config: ${cbmBaseUrl}`);
+      } else {
+        logger.warn(`⚠️  No config found for key: ${ConfigKeyEnum.CBM_BASE_URL}, using default: ${cbmBaseUrl}`);
+      }
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`❌ Error fetching CBM base URL from config:`, errorMsg);
+      logger.warn(`⚠️  Using default CBM Base URL: ${cbmBaseUrl}`);
+    }
 
     // Step 1: Fetch agent to get allowedToolIds
     const agent = await agentService.findById(agentId, context);
@@ -231,9 +256,13 @@ export async function bootstrapMcpServer() {
       },
       context
     );
+    logger.log(`✅ Tool query returned ${findToolResult.pagination.total} total tools`, findToolResult.data.map(t => ({id: (t as any)._id, name: t.name, type: t.type})));
     if (findToolResult) {
       tools = findToolResult.data.filter((tool: any) =>
-        toolObjectIds.some((id) => id.toString() === tool._id.toString())
+        toolObjectIds.some((id) => {
+          logger.debug(`Comparing tool ID ${id.toString()} with tool._id ${tool._id.toString()} -> ${id.toString() === tool._id.toString()}`);
+          return id.toString() === tool._id.toString();
+        })
       );
     }
     logger.log(
@@ -244,6 +273,68 @@ export async function bootstrapMcpServer() {
 
     // Register each tool with MCP server
     for (const tool of tools) {
+      // Handle builtin tools differently - register all sub-tools from category
+      if (tool.type === 'builtin') {
+        // Get all builtin tools in this category (e.g., DocumentManagement)
+        const builtinTools = getBuiltInToolsByCategory(tool.name);
+
+        if (builtinTools.length === 0) {
+          logger.warn(`⚠️  No builtin tools found for category: ${tool.name}`);
+          continue;
+        }
+
+        logger.log(`📦 Registering ${builtinTools.length} builtin tools from category: ${tool.name}`);
+
+        // Register each sub-tool
+        for (const builtinTool of builtinTools) {
+          mcpServer.registerTool(
+            builtinTool.name,
+            {
+              title: builtinTool.name,
+              description: builtinTool.description,
+              inputSchema: builtinTool.inputSchema,
+            },
+            async (args) => {
+              logger.log(`🔧 Executing builtin tool: ${builtinTool.name}`);
+              logger.debug(`Tool args:`, args);
+
+              try {
+                // Build execution context from token payload
+                const executionContext: BuiltInExecutionContext = {
+                  token: bearerToken,
+                  userId: tokenPayload.userId || tokenPayload.sub,
+                  orgId: tokenPayload.orgId,
+                  agentId: tokenPayload.agentId,
+                  groupId: tokenPayload.groupId,
+                  roles: tokenPayload.roles,
+                  cbmBaseUrl: cbmBaseUrl, // Service URLs from configuration
+                };
+
+                return await builtinTool.executor(args, executionContext);
+              } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                logger.error(`Builtin tool execution error for ${builtinTool.name}:`, error);
+                return {
+                  content: [
+                    {
+                      type: 'text' as const,
+                      text: `Error executing builtin tool ${builtinTool.name}: ${errorMessage}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+            }
+          );
+
+          logger.log(`  ✅ Registered: ${builtinTool.name}`);
+        }
+
+        logger.log(`✅ All builtin tools registered for category: ${tool.name}`);
+        continue;
+      }
+
+      // Handle non-builtin tools (api, mcp, custom)
       const inputSchema = tool.schema?.inputSchema || {};
 
       // Convert JSON Schema to Zod schema (simplified)
@@ -277,15 +368,6 @@ export async function bootstrapMcpServer() {
             // Handle different tool types
             if (tool.type === 'api') {
               return await executeApiTool(tool, args, tokenPayload);
-            } else if (tool.type === 'builtin') {
-              return {
-                content: [
-                  {
-                    type: 'text' as const,
-                    text: `Built-in tool ${tool.name} execution not yet implemented`,
-                  },
-                ],
-              };
             } else if (tool.type === 'mcp') {
               return {
                 content: [
@@ -411,10 +493,11 @@ export async function bootstrapMcpServer() {
 
       // Step 3.2.2: Register tools for this agent once (if not already registered)
       const agentKey = `${userContext.orgId}:${userContext.agentId}`;
+      const bearerToken = authHeader?.substring(7) || ''; // Extract token from "Bearer xxx"
 
       if (!registeredAgents.has(agentKey)) {
         try {
-          await registerToolsForAgent(userContext);
+          await registerToolsForAgent(userContext, bearerToken);
           registeredAgents.add(agentKey);
         } catch (error) {
           logger.error('Failed to register tools:', error);
