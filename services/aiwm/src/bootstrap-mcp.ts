@@ -183,23 +183,8 @@ export async function bootstrapMcpServer() {
     };
   };
 
-  // Step 3.1: Function to load and register tools for agent
-  const registerToolsForAgent = async (tokenPayload: any, bearerToken: string) => {
-    const { orgId, agentId, userId, roles, groupId } = tokenPayload;
-
-    logger.log(`📋 Loading tools for agent: ${agentId} (org: ${orgId})`);
-
-    // Build request context from token payload
-    const context: RequestContext = {
-      userId: userId || '',
-      orgId: orgId || '',
-      agentId: agentId || '',
-      groupId: groupId || '',
-      appId: '',
-      roles: roles || [],
-    };
-
-    // Fetch service URLs from configuration
+  // Helper function to fetch service URLs from configuration
+  const fetchServiceUrls = async (orgId: string, context: RequestContext) => {
     let cbmBaseUrl = 'http://localhost:3001'; // Default fallback
     try {
       logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.CBM_BASE_URL} for org: ${orgId}`);
@@ -218,6 +203,25 @@ export async function bootstrapMcpServer() {
       logger.error(`❌ Error fetching CBM base URL from config:`, errorMsg);
       logger.warn(`⚠️  Using default CBM Base URL: ${cbmBaseUrl}`);
     }
+
+    return { cbmBaseUrl };
+  };
+
+  // Step 3.1: Function to load and register tools for agent
+  const registerToolsForAgent = async (tokenPayload: any, bearerToken: string) => {
+    const { orgId, agentId, userId, roles, groupId } = tokenPayload;
+
+    logger.log(`📋 Loading tools for agent: ${agentId} (org: ${orgId})`);
+
+    // Build request context from token payload
+    const context: RequestContext = {
+      userId: userId || '',
+      orgId: orgId || '',
+      agentId: agentId || '',
+      groupId: groupId || '',
+      appId: '',
+      roles: roles || [],
+    };
 
     // Step 1: Fetch agent to get allowedToolIds
     const agent = await agentService.findById(agentId, context);
@@ -299,6 +303,19 @@ export async function bootstrapMcpServer() {
               logger.debug(`Tool args:`, args);
 
               try {
+                // Fetch service URLs dynamically on each execution
+                const context: RequestContext = {
+                  userId: tokenPayload.userId || tokenPayload.sub || '',
+                  orgId: tokenPayload.orgId || '',
+                  agentId: tokenPayload.agentId || '',
+                  groupId: tokenPayload.groupId || '',
+                  appId: '',
+                  roles: tokenPayload.roles || [],
+                };
+
+                const serviceUrls = await fetchServiceUrls(tokenPayload.orgId, context);
+                logger.debug(`🔍 Service URLs fetched for execution:`, serviceUrls);
+
                 // Build execution context from token payload
                 const executionContext: BuiltInExecutionContext = {
                   token: bearerToken,
@@ -307,7 +324,7 @@ export async function bootstrapMcpServer() {
                   agentId: tokenPayload.agentId,
                   groupId: tokenPayload.groupId,
                   roles: tokenPayload.roles,
-                  cbmBaseUrl: cbmBaseUrl, // Service URLs from configuration
+                  cbmBaseUrl: serviceUrls.cbmBaseUrl, // Service URLs from configuration
                 };
 
                 return await builtinTool.executor(args, executionContext);

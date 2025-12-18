@@ -58,14 +58,13 @@ export class ConfigurationService extends BaseService<Configuration> {
     context: RequestContext
   ): Promise<Configuration | null> {
     // BaseService.findOne uses RBAC
-    const config = await this.configModel
-      .findOne({
-        key,
-        deletedAt: null,
-        'owner.orgId': context.orgId,
-      })
-      .exec();
-
+    const filter = {
+      key,
+      isDeleted: false,
+      'owner.orgId': context.orgId,
+    };
+    const config = await this.configModel.findOne(filter).exec();
+    console.log('findByKey filter:', filter);
     if (!config) {
       return null;
     }
@@ -97,7 +96,7 @@ export class ConfigurationService extends BaseService<Configuration> {
       // Update existing using updateOne
       const updateData: any = {
         value: dto.value,
-        updatedBy: context.userId,
+        updatedBy: context,
         updatedAt: new Date(),
       };
       if (dto.notes !== undefined) {
@@ -111,7 +110,7 @@ export class ConfigurationService extends BaseService<Configuration> {
 
       this.logger.info('Configuration updated', {
         key: dto.key,
-        updatedBy: context.userId,
+        updatedBy: context,
       });
 
       // Fetch updated document
@@ -128,7 +127,7 @@ export class ConfigurationService extends BaseService<Configuration> {
 
       this.logger.info('Configuration created', {
         key: dto.key,
-        createdBy: context.userId,
+        createdBy: context,
       });
 
       return created as Configuration;
@@ -146,9 +145,7 @@ export class ConfigurationService extends BaseService<Configuration> {
     const config = await this.findByKey(key, context);
 
     if (!config) {
-      throw new NotFoundException(
-        `Configuration with key '${key}' not found`
-      );
+      throw new NotFoundException(`Configuration with key '${key}' not found`);
     }
 
     // Build update data
@@ -190,9 +187,7 @@ export class ConfigurationService extends BaseService<Configuration> {
     const config = await this.findByKey(key, context);
 
     if (!config) {
-      throw new NotFoundException(
-        `Configuration with key '${key}' not found`
-      );
+      throw new NotFoundException(`Configuration with key '${key}' not found`);
     }
 
     // Soft delete using updateOne
@@ -238,9 +233,7 @@ export class ConfigurationService extends BaseService<Configuration> {
    *
    * @returns Summary of initialization (created vs skipped)
    */
-  async initializeAll(
-    context: RequestContext
-  ): Promise<{
+  async initializeAll(context: RequestContext): Promise<{
     total: number;
     created: number;
     skipped: number;
@@ -332,9 +325,7 @@ export class ConfigurationService extends BaseService<Configuration> {
     switch (metadata.dataType) {
       case 'number':
         if (isNaN(Number(value))) {
-          throw new BadRequestException(
-            `Value for '${key}' must be a number`
-          );
+          throw new BadRequestException(`Value for '${key}' must be a number`);
         }
         if (
           metadata.validation?.min &&
@@ -416,7 +407,9 @@ export class ConfigurationService extends BaseService<Configuration> {
       !metadata.validation.enum.includes(value)
     ) {
       throw new BadRequestException(
-        `Value for '${key}' must be one of: ${metadata.validation.enum.join(', ')}`
+        `Value for '${key}' must be one of: ${metadata.validation.enum.join(
+          ', '
+        )}`
       );
     }
   }
