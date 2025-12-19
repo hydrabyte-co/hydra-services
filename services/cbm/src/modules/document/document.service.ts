@@ -99,10 +99,10 @@ export class DocumentService extends BaseService<Document> {
 
       // Get existing filter fields (excluding search)
       const existingFilter: any = {};
-      if (options.filter) {
-        Object.keys(options.filter).forEach(key => {
+      if (options) {
+        Object.keys(options).forEach(key => {
           if (key !== 'search') {
-            existingFilter[key] = (options.filter as any)[key];
+            existingFilter[key] = (options as any)[key];
           }
         });
       }
