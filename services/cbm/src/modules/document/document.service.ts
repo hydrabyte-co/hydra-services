@@ -84,28 +84,36 @@ export class DocumentService extends BaseService<Document> {
     context: RequestContext
   ): Promise<FindManyResult<Document>> {
     console.log('DocumentService.findAll called with options:', options);
-    // Add search filter if search query is provided
-    const searchQuery = options.search || options.filter?.search;
+
+    // Handle search parameter - convert to MongoDB filter
+    const searchQuery = options.search || (options.filter as any)?.search;
     if (searchQuery && typeof searchQuery === 'string') {
       const searchRegex = new RegExp(searchQuery, 'i');
-      const searchFilter = {
-        $or: [
-          { summary: searchRegex },
-          { content: searchRegex },
-          { labels: options.search }, // Exact match for labels array
-        ],
+
+      // Build search conditions
+      const searchConditions = [
+        { summary: searchRegex },
+        { content: searchRegex },
+        { labels: searchQuery }, // Exact match for labels array
+      ];
+
+      // Get existing filter fields (excluding search)
+      const existingFilter: any = {};
+      if (options.filter) {
+        Object.keys(options.filter).forEach(key => {
+          if (key !== 'search') {
+            existingFilter[key] = (options.filter as any)[key];
+          }
+        });
+      }
+
+      options = {
+        ...existingFilter,
+        $or: searchConditions,
       };
 
-      // Merge search filter with existing filters
-      if (options.filter) {
-        options.filter = {
-          $and: [options.filter, searchFilter],
-        };
-      } else {
-        options.filter = searchFilter;
-      }
+      // Clean up search parameter
       delete options.search;
-      delete options.filter?.search;
     }
 
     const findResult = await super.findAll(options, context);
