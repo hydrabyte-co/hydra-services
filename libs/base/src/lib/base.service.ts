@@ -73,8 +73,8 @@ export class BaseService<Entity> {
     const dataWithOwner = this.enforceOwnership(sanitized, context);
     const dataWithAudit = {
       ...dataWithOwner,
-      createdBy: context.userId || '',
-      updatedBy: context.userId || '',
+      createdBy: context,
+      updatedBy: context,
     };
 
     const created = new this.model(dataWithAudit);
@@ -186,7 +186,7 @@ export class BaseService<Entity> {
     // Add audit trail - who updated this record
     const dataWithAudit = {
       ...sanitizedData,
-      updatedBy: context.userId || '',
+      updatedBy: context,
     };
 
     const updated = await this.model
