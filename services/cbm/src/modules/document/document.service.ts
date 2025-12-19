@@ -66,6 +66,7 @@ export class DocumentService extends BaseService<Document> {
     if (context.orgId) {
       ownerFilter['owner.orgId'] = context.orgId;
     }
+    console.log(`DocumentService.findByIdWithContent called with id: ${id} and context: ${JSON.stringify(context)} and filter: ${JSON.stringify(ownerFilter)}`);
 
     return this.documentModel
       .findOne(ownerFilter)
