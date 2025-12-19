@@ -4,6 +4,13 @@ import { HydratedDocument } from 'mongoose';
 import { UserStatuses } from '../../core/enums/user.enum';
 import { PasswordHashAlgorithms } from '../../core/enums/other.enum';
 
+export interface UserMetadata {
+  discordUserId?: string;
+  discordUsername?: string;
+  telegramUserId?: string;
+  telegramUsername?: string;
+  [key: string]: any;
+}
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -31,6 +38,19 @@ export class User extends BaseSchema {
 
   @Prop({ type: String, enum: Object.values(UserStatuses), default: UserStatuses.Active })
   status: UserStatuses;
+
+  @Prop({ required: false })
+  fullname?: string;
+
+  @Prop({ type: [String], required: false })
+  phonenumbers?: string[];
+
+  @Prop({ required: false })
+  address?: string;
+
+  // Override metadata from BaseSchema with specific type
+  @Prop({ type: Object, required: false, default: {} })
+  metadata: UserMetadata;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
