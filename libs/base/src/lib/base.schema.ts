@@ -30,13 +30,13 @@ export abstract class BaseSchema {
    * User ID who created this record
    * Automatically populated from RequestContext.userId on create
    */
-  @Prop({ type: String, default: '' })
-  createdBy = '';
+  @Prop({ type: Object, default: {} })
+  createdBy = {};
 
   /**
    * User ID who last updated this record
    * Automatically populated from RequestContext.userId on create/update/delete
    */
-  @Prop({ type: String, default: '' })
-  updatedBy = '';
+  @Prop({ type: Object, default: {} })
+  updatedBy = {};
 }

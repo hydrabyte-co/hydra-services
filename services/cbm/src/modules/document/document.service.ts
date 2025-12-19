@@ -66,7 +66,6 @@ export class DocumentService extends BaseService<Document> {
     if (context.orgId) {
       ownerFilter['owner.orgId'] = context.orgId;
     }
-    console.log(`DocumentService.findByIdWithContent called with id: ${id} and context: ${JSON.stringify(context)} and filter: ${JSON.stringify(ownerFilter)}`);
 
     return this.documentModel
       .findOne(ownerFilter)
@@ -84,7 +83,6 @@ export class DocumentService extends BaseService<Document> {
     options: FindManyOptions & { search?: string },
     context: RequestContext
   ): Promise<FindManyResult<Document>> {
-    console.log('DocumentService.findAll called with options:', options);
 
     // Handle search parameter - convert to MongoDB filter
     const searchQuery = options.search || (options.filter as any)?.search;
