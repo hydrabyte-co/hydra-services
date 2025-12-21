@@ -99,6 +99,72 @@ module.exports = {
       listen_timeout: 10000,
     },
     {
+      name: 'core.aiwm.api01',
+      script: './dist/services/aiwm/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '500M',
+
+      // Environment variables from .env file
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3351,
+      },
+
+      // Load .env file
+      env_file: '.env',
+
+      // Logging
+      error_file: './logs/aiwm-api-01-error.log',
+      out_file: './logs/aiwm-api-01-out.log',
+      //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+
+      // Auto restart settings
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+
+      // Advanced settings
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    },
+    {
+      name: 'core.aiwm.api02',
+      script: './dist/services/aiwm/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '500M',
+
+      // Environment variables from .env file
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3352,
+      },
+
+      // Load .env file
+      env_file: '.env',
+
+      // Logging
+      error_file: './logs/aiwm-api-02-error.log',
+      out_file: './logs/aiwm-api-02-out.log',
+      //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+
+      // Auto restart settings
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+
+      // Advanced settings
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    },
+    {
       name: 'core.aiwm.mcp00',
       script: './dist/services/aiwm/main.js',
       instances: 1,
@@ -119,6 +185,74 @@ module.exports = {
       // Logging
       error_file: './logs/aiwm-mcp-00-error.log',
       out_file: './logs/aiwm-mcp-00-out.log',
+      //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+
+      // Auto restart settings
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+
+      // Advanced settings
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    },
+    {
+      name: 'core.aiwm.mcp01',
+      script: './dist/services/aiwm/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '500M',
+
+      // Environment variables from .env file
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3361,
+        MODE: 'mcp',
+      },
+
+      // Load .env file
+      env_file: '.env',
+
+      // Logging
+      error_file: './logs/aiwm-mcp-01-error.log',
+      out_file: './logs/aiwm-mcp-01-out.log',
+      //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+
+      // Auto restart settings
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+
+      // Advanced settings
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    },
+    {
+      name: 'core.aiwm.mcp02',
+      script: './dist/services/aiwm/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '500M',
+
+      // Environment variables from .env file
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3362,
+        MODE: 'mcp',
+      },
+
+      // Load .env file
+      env_file: '.env',
+
+      // Logging
+      error_file: './logs/aiwm-mcp-02-error.log',
+      out_file: './logs/aiwm-mcp-02-out.log',
       //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
 
@@ -165,5 +299,71 @@ module.exports = {
       wait_ready: true,
       listen_timeout: 10000,
     },
+    {
+      name: 'core.cbm.api01',
+      script: './dist/services/cbm/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '500M',
+
+      // Environment variables from .env file
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3361,
+      },
+
+      // Load .env file
+      env_file: '.env',
+
+      // Logging
+      error_file: './logs/cbm-api-01-error.log',
+      out_file: './logs/cbm-api-01-out.log',
+      //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+
+      // Auto restart settings
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+
+      // Advanced settings
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    },
+    {
+      name: 'core.cbm.api02',
+      script: './dist/services/cbm/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '500M',
+
+      // Environment variables from .env file
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3362,
+      },
+
+      // Load .env file
+      env_file: '.env',
+
+      // Logging
+      error_file: './logs/cbm-api-02-error.log',
+      out_file: './logs/cbm-api-02-out.log',
+      //log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+
+      // Auto restart settings
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+
+      // Advanced settings
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 10000,
+    }
   ],
 };
