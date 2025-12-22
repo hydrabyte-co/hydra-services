@@ -57,6 +57,9 @@ export class Work extends BaseSchema {
   @Prop({ maxlength: 1000 })
   reason?: string; // Reason/explanation when work is blocked
 
+  @Prop({ maxlength: 2000 })
+  feedback?: string; // Feedback for review rejection or unblock resolution
+
   @Prop({ type: String })
   parentId?: string; // Parent Work ID (for subtasks)
 

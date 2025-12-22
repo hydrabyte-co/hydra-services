@@ -187,8 +187,8 @@ export async function bootstrapMcpServer() {
   const fetchServiceUrls = async (orgId: string, context: RequestContext) => {
     let cbmBaseUrl = 'http://localhost:3001'; // Default fallback
     try {
-      logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.CBM_BASE_URL} for org: ${orgId}`);
-      const cbmConfig = await configService.findByKey(ConfigKeyEnum.CBM_BASE_URL as any, context);
+      logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.CBM_BASE_API_URL} for org: ${orgId}`);
+      const cbmConfig = await configService.findByKey(ConfigKeyEnum.CBM_BASE_API_URL as any, context);
 
       logger.debug(`🔍 Config result:`, cbmConfig);
 
@@ -196,7 +196,7 @@ export async function bootstrapMcpServer() {
         cbmBaseUrl = cbmConfig.value;
         logger.log(`📍 CBM Base URL from config: ${cbmBaseUrl}`);
       } else {
-        logger.warn(`⚠️  No config found for key: ${ConfigKeyEnum.CBM_BASE_URL}, using default: ${cbmBaseUrl}`);
+        logger.warn(`⚠️  No config found for key: ${ConfigKeyEnum.CBM_BASE_API_URL}, using default: ${cbmBaseUrl}`);
       }
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);

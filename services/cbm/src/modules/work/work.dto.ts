@@ -271,3 +271,67 @@ export class BlockWorkDto {
   @MaxLength(1000)
   reason!: string;
 }
+
+/**
+ * DTO for assigning work and moving to todo
+ */
+export class AssignAndTodoDto {
+  @ApiProperty({
+    description: 'Assignee to assign the work to',
+    type: ReporterAssigneeDto,
+  })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ReporterAssigneeDto)
+  assignee!: ReporterAssigneeDto;
+}
+
+/**
+ * DTO for rejecting work from review
+ */
+export class RejectReviewDto {
+  @ApiProperty({
+    description: 'Feedback explaining why the work was rejected',
+    example: 'Implementation does not meet acceptance criteria. Please add unit tests.',
+    maxLength: 2000,
+  })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  feedback!: string;
+}
+
+/**
+ * DTO for unblocking work with optional feedback
+ */
+export class UnblockWorkDto {
+  @ApiPropertyOptional({
+    description: 'Feedback explaining how the blocker was resolved',
+    example: 'API design finalized. Ready to continue implementation.',
+    maxLength: 2000,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  feedback?: string;
+}
+
+/**
+ * DTO for getting next work for user/agent
+ */
+export class GetNextWorkQueryDto {
+  @ApiProperty({
+    description: 'Assignee type',
+    enum: ['user', 'agent'],
+    example: 'user',
+  })
+  @IsEnum(['user', 'agent'])
+  assigneeType!: 'user' | 'agent';
+
+  @ApiProperty({
+    description: 'Assignee ID',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @IsString()
+  assigneeId!: string;
+}

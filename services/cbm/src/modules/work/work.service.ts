@@ -5,6 +5,7 @@ import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Work } from './work.schema';
 import { CreateWorkDto } from './work.dto';
+import { NotificationService } from '../notification/notification.service';
 
 /**
  * WorkService
@@ -14,7 +15,8 @@ import { CreateWorkDto } from './work.dto';
 @Injectable()
 export class WorkService extends BaseService<Work> {
   constructor(
-    @InjectModel(Work.name) private workModel: Model<Work>
+    @InjectModel(Work.name) private workModel: Model<Work>,
+    private readonly notificationService: NotificationService,
   ) {
     super(workModel);
   }
@@ -39,7 +41,17 @@ export class WorkService extends BaseService<Work> {
     await this.validateAndSetParentId(data, context);
 
     data.status = 'backlog'; // New work always starts with 'backlog' status
-    return super.create(data as CreateWorkDto, context) as Promise<Work>;
+    const work = await super.create(data as CreateWorkDto, context) as Work;
+
+    // Emit notification
+    await this.notificationService.notify({
+      type: 'work.created',
+      workId: (work as any)._id.toString(),
+      work,
+      actor: context,
+    });
+
+    return work;
   }
 
   /**
@@ -254,11 +266,16 @@ export class WorkService extends BaseService<Work> {
       );
     }
 
-    return this.update(
+    const updated = await this.update(
       id,
       { status: 'in_progress' } as any,
       context
-    ) as Promise<Work>;
+    ) as Work;
+
+    // Trigger epic recalculation if this is a task
+    await this.triggerParentEpicRecalculation(updated, context);
+
+    return updated;
   }
 
   /**
@@ -286,20 +303,31 @@ export class WorkService extends BaseService<Work> {
       throw new BadRequestException('Reason is required when blocking work');
     }
 
-    return this.update(
+    const updated = await this.update(
       id,
       { status: 'blocked', reason } as any,
       context
-    ) as Promise<Work>;
+    ) as Work;
+
+    // Emit notification
+    await this.notificationService.notify({
+      type: 'work.blocked',
+      workId: (updated as any)._id.toString(),
+      work: updated,
+      actor: context,
+    });
+
+    return updated;
   }
 
   /**
    * Action: Unblock work
-   * Transition: blocked → in_progress
-   * Clears the reason field when unblocking
+   * Transition: blocked → todo (CHANGED from in_progress)
+   * Clears the reason field and optionally adds feedback
    */
   async unblockWork(
     id: ObjectId,
+    feedback: string | undefined,
     context: RequestContext
   ): Promise<Work> {
     const work = await this.findById(id, context);
@@ -315,7 +343,11 @@ export class WorkService extends BaseService<Work> {
 
     return this.update(
       id,
-      { status: 'in_progress', reason: null } as any,
+      {
+        status: 'todo',  // CHANGED: was 'in_progress'
+        reason: null,    // Clear blocked reason
+        feedback         // Optional feedback
+      } as any,
       context
     ) as Promise<Work>;
   }
@@ -339,11 +371,21 @@ export class WorkService extends BaseService<Work> {
       );
     }
 
-    return this.update(
+    const updated = await this.update(
       id,
       { status: 'review' } as any,
       context
-    ) as Promise<Work>;
+    ) as Work;
+
+    // Emit notification
+    await this.notificationService.notify({
+      type: 'work.review_requested',
+      workId: (updated as any)._id.toString(),
+      work: updated,
+      actor: context,
+    });
+
+    return updated;
   }
 
   /**
@@ -365,11 +407,24 @@ export class WorkService extends BaseService<Work> {
       );
     }
 
-    return this.update(
+    const updated = await this.update(
       id,
       { status: 'done' } as any,
       context
-    ) as Promise<Work>;
+    ) as Work;
+
+    // Emit notification
+    await this.notificationService.notify({
+      type: 'work.completed',
+      workId: (updated as any)._id.toString(),
+      work: updated,
+      actor: context,
+    });
+
+    // Trigger epic recalculation if this is a task
+    await this.triggerParentEpicRecalculation(updated, context);
+
+    return updated;
   }
 
   /**
@@ -391,11 +446,16 @@ export class WorkService extends BaseService<Work> {
       );
     }
 
-    return this.update(
+    const updated = await this.update(
       id,
       { status: 'in_progress' } as any,
       context
-    ) as Promise<Work>;
+    ) as Work;
+
+    // Trigger epic recalculation if this is a task
+    await this.triggerParentEpicRecalculation(updated, context);
+
+    return updated;
   }
 
   /**
@@ -415,9 +475,93 @@ export class WorkService extends BaseService<Work> {
       throw new BadRequestException('Work is already cancelled');
     }
 
-    return this.update(
+    const updated = await this.update(
       id,
       { status: 'cancelled' } as any,
+      context
+    ) as Work;
+
+    // Trigger epic recalculation if this is a task
+    await this.triggerParentEpicRecalculation(updated, context);
+
+    return updated;
+  }
+
+  /**
+   * Action: Assign and move to todo
+   * Transition: backlog → todo
+   * Requires: assignee must be provided
+   */
+  async assignAndTodo(
+    id: ObjectId,
+    assignee: { type: 'user' | 'agent'; id: string },
+    context: RequestContext
+  ): Promise<Work> {
+    const work = await this.findById(id, context);
+    if (!work) {
+      throw new BadRequestException('Work not found');
+    }
+
+    if (work.status !== 'backlog') {
+      throw new BadRequestException(
+        `Cannot assign-and-todo work with status: ${work.status}. Only backlog works can be moved to todo.`
+      );
+    }
+
+    // Validate assignee exists
+    await this.validateEntityExists(assignee.type, assignee.id);
+
+    const updated = await this.update(
+      id,
+      {
+        assignee,
+        status: 'todo'
+      } as any,
+      context
+    ) as Work;
+
+    // Emit notification
+    await this.notificationService.notify({
+      type: 'work.assigned',
+      workId: (updated as any)._id.toString(),
+      work: updated,
+      actor: context,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Action: Reject review
+   * Transition: review → todo
+   * Requires: feedback explaining why work was rejected
+   */
+  async rejectReview(
+    id: ObjectId,
+    feedback: string,
+    context: RequestContext
+  ): Promise<Work> {
+    const work = await this.findById(id, context);
+    if (!work) {
+      throw new BadRequestException('Work not found');
+    }
+
+    if (work.status !== 'review') {
+      throw new BadRequestException(
+        `Cannot reject work with status: ${work.status}. Only review works can be rejected.`
+      );
+    }
+
+    if (!feedback || feedback.trim().length === 0) {
+      throw new BadRequestException('Feedback is required when rejecting review');
+    }
+
+    return this.update(
+      id,
+      {
+        status: 'todo',
+        feedback
+      } as any,
       context
     ) as Promise<Work>;
   }
@@ -443,6 +587,276 @@ export class WorkService extends BaseService<Work> {
 
     return super.softDelete(id, context);
   }
+
+  // =============== Epic Status Management ===============
+
+  /**
+   * Calculate epic status based on child tasks
+   * - in_progress: Default, or when any task is not done/cancelled
+   * - done: All tasks are done
+   * - cancelled: Only when manually cancelled (not auto-calculated)
+   *
+   * @param epicId - Epic ID to calculate status for
+   * @param context - Request context
+   * @returns Calculated status
+   */
+  async calculateEpicStatus(
+    epicId: ObjectId,
+    context: RequestContext
+  ): Promise<'in_progress' | 'done'> {
+    // Verify epic exists and is actually an epic
+    const epic = await this.findById(epicId, context);
+    if (!epic) {
+      throw new BadRequestException('Epic not found');
+    }
+
+    if (epic.type !== 'epic') {
+      throw new BadRequestException('Work is not an epic');
+    }
+
+    // Find all child tasks
+    const tasks = await this.workModel.find({
+      parentId: epicId.toString(),
+      type: 'task',
+      isDeleted: false,
+    });
+
+    // No tasks yet = in_progress
+    if (tasks.length === 0) {
+      return 'in_progress';
+    }
+
+    // All tasks done = done
+    const allDone = tasks.every(t => t.status === 'done');
+    if (allDone) {
+      return 'done';
+    }
+
+    // All tasks done or cancelled, and at least one is done = done
+    const allDoneOrCancelled = tasks.every(t =>
+      t.status === 'done' || t.status === 'cancelled'
+    );
+    const someDone = tasks.some(t => t.status === 'done');
+
+    if (allDoneOrCancelled && someDone) {
+      return 'done';
+    }
+
+    // Default
+    return 'in_progress';
+  }
+
+  /**
+   * Recalculate and update epic status
+   * Should be called whenever a child task changes status
+   *
+   * @param epicId - Epic ID to recalculate
+   * @param context - Request context
+   */
+  async recalculateEpicStatus(
+    epicId: ObjectId,
+    context: RequestContext
+  ): Promise<Work> {
+    const newStatus = await this.calculateEpicStatus(epicId, context);
+
+    // Update epic status directly (bypass normal update restrictions)
+    const updated = await this.workModel.findByIdAndUpdate(
+      epicId,
+      {
+        status: newStatus,
+        updatedBy: context
+      },
+      { new: true }
+    ).exec();
+
+    if (!updated) {
+      throw new BadRequestException('Failed to update epic status');
+    }
+
+    return updated as Work;
+  }
+
+  /**
+   * Helper method to trigger epic recalculation if work has parent epic
+   * @param work - Work that was updated
+   * @param context - Request context
+   */
+  private async triggerParentEpicRecalculation(
+    work: Work,
+    context: RequestContext
+  ): Promise<void> {
+    if (work.type === 'task' && work.parentId) {
+      const parent = await this.findById(
+        new Types.ObjectId(work.parentId) as any,
+        context
+      );
+
+      if (parent && parent.type === 'epic') {
+        await this.recalculateEpicStatus(
+          new Types.ObjectId(work.parentId) as any,
+          context
+        );
+      }
+    }
+  }
+
+  // =============== Dependency Validation ===============
+
+  /**
+   * Validate that all dependencies are resolved (done or cancelled)
+   *
+   * @param work - Work to validate dependencies for
+   * @returns true if all dependencies are resolved or no dependencies exist
+   */
+  private async validateDependencies(work: Work): Promise<boolean> {
+    // No dependencies = always valid
+    if (!work.dependencies || work.dependencies.length === 0) {
+      return true;
+    }
+
+    // Fetch all dependency works
+    const dependencyWorks = await this.workModel.find({
+      _id: { $in: work.dependencies.map(id => new Types.ObjectId(id)) },
+      isDeleted: false,
+    });
+
+    // All dependencies must exist (not deleted)
+    if (dependencyWorks.length !== work.dependencies.length) {
+      return false; // Some dependencies are missing/deleted
+    }
+
+    // All dependencies must be in 'done' or 'cancelled' status
+    const allResolved = dependencyWorks.every(dep =>
+      dep.status === 'done' || dep.status === 'cancelled'
+    );
+
+    return allResolved;
+  }
+
+  // =============== Get Next Work ===============
+
+  /**
+   * Get next work for user/agent based on priority rules
+   * See: docs/cbm/NEXT-WORK-PRIORITY-LOGIC.md
+   */
+  async getNextWork(
+    assigneeType: 'user' | 'agent',
+    assigneeId: string,
+    context: RequestContext
+  ): Promise<{
+    work: Work | null;
+    metadata: {
+      priorityLevel: number;
+      priorityDescription: string;
+      matchedCriteria: string[];
+    };
+  }> {
+    // Priority 1: Assigned subtasks in todo
+    const subtasks = await this.workModel.find({
+      type: 'subtask',
+      'assignee.type': assigneeType,
+      'assignee.id': assigneeId,
+      status: 'todo',
+      isDeleted: false,
+    }).sort({ createdAt: 1 });
+
+    for (const subtask of subtasks) {
+      if (await this.validateDependencies(subtask)) {
+        return {
+          work: subtask,
+          metadata: {
+            priorityLevel: 1,
+            priorityDescription: 'Assigned subtask in todo status',
+            matchedCriteria: ['assigned_to_me', 'subtask', 'status_todo', 'dependencies_met']
+          }
+        };
+      }
+    }
+
+    // Priority 2: Assigned tasks without subtasks in todo
+    const tasks = await this.workModel.find({
+      type: 'task',
+      'assignee.type': assigneeType,
+      'assignee.id': assigneeId,
+      status: 'todo',
+      isDeleted: false,
+    }).sort({ createdAt: 1 });
+
+    for (const task of tasks) {
+      // Check if task has subtasks
+      const hasSubtasks = await this.workModel.exists({
+        type: 'subtask',
+        parentId: task._id.toString(),
+        isDeleted: false
+      });
+
+      if (hasSubtasks) continue; // Skip tasks with subtasks
+
+      // Check dependencies
+      if (await this.validateDependencies(task)) {
+        return {
+          work: task,
+          metadata: {
+            priorityLevel: 2,
+            priorityDescription: 'Assigned task without subtasks in todo status',
+            matchedCriteria: ['assigned_to_me', 'task', 'status_todo', 'no_subtasks', 'dependencies_met']
+          }
+        };
+      }
+    }
+
+    // Priority 3: Reported works in blocked status
+    const blockedWork = await this.workModel.findOne({
+      type: { $in: ['task', 'subtask'] },
+      'reporter.type': assigneeType,
+      'reporter.id': assigneeId,
+      status: 'blocked',
+      isDeleted: false,
+    }).sort({ createdAt: 1 });
+
+    if (blockedWork) {
+      return {
+        work: blockedWork,
+        metadata: {
+          priorityLevel: 3,
+          priorityDescription: 'Reported work in blocked status requiring resolution',
+          matchedCriteria: ['reported_by_me', 'status_blocked']
+        }
+      };
+    }
+
+    // Priority 4: Reported works in review status
+    const reviewWork = await this.workModel.findOne({
+      type: { $in: ['task', 'subtask'] },
+      'reporter.type': assigneeType,
+      'reporter.id': assigneeId,
+      status: 'review',
+      isDeleted: false,
+    }).sort({ createdAt: 1 });
+
+    if (reviewWork) {
+      return {
+        work: reviewWork,
+        metadata: {
+          priorityLevel: 4,
+          priorityDescription: 'Reported work in review status awaiting approval',
+          matchedCriteria: ['reported_by_me', 'status_review']
+        }
+      };
+    }
+
+    // No work found
+    return {
+      work: null,
+      metadata: {
+        priorityLevel: 0,
+        priorityDescription: 'No work available',
+        matchedCriteria: []
+      }
+    };
+  }
+
+  // =============== Agent Triggering ===============
 
   /**
    * Check if work can trigger agent execution

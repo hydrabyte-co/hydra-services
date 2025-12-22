@@ -22,7 +22,15 @@ import {
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { WorkService } from './work.service';
-import { CreateWorkDto, UpdateWorkDto, BlockWorkDto } from './work.dto';
+import {
+  CreateWorkDto,
+  UpdateWorkDto,
+  BlockWorkDto,
+  AssignAndTodoDto,
+  RejectReviewDto,
+  UnblockWorkDto,
+  GetNextWorkQueryDto,
+} from './work.dto';
 
 @ApiTags('Works')
 @ApiBearerAuth()
@@ -124,15 +132,20 @@ export class WorkController {
   @Post(':id/unblock')
   @ApiOperation({
     summary: 'Unblock work',
-    description: 'Transition work from blocked to in_progress status'
+    description: 'Transition work from blocked to todo status with optional feedback'
   })
   @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
   async unblock(
     @Param('id') id: string,
+    @Body() unblockWorkDto: UnblockWorkDto,
     @CurrentUser() context: RequestContext
   ) {
-    return this.workService.unblockWork(new Types.ObjectId(id) as any, context);
+    return this.workService.unblockWork(
+      new Types.ObjectId(id) as any,
+      unblockWorkDto.feedback,
+      context
+    );
   }
 
   @Post(':id/request-review')
@@ -189,6 +202,79 @@ export class WorkController {
     @CurrentUser() context: RequestContext
   ) {
     return this.workService.cancelWork(new Types.ObjectId(id) as any, context);
+  }
+
+  @Post(':id/assign-and-todo')
+  @ApiOperation({
+    summary: 'Assign and move to todo',
+    description: 'Assign work to user/agent and transition from backlog to todo status'
+  })
+  @ApiUpdateErrors()
+  @UseGuards(JwtAuthGuard)
+  async assignAndTodo(
+    @Param('id') id: string,
+    @Body() assignAndTodoDto: AssignAndTodoDto,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.workService.assignAndTodo(
+      new Types.ObjectId(id) as any,
+      assignAndTodoDto.assignee,
+      context
+    );
+  }
+
+  @Post(':id/reject-review')
+  @ApiOperation({
+    summary: 'Reject review',
+    description: 'Reject work from review status and move back to todo with feedback'
+  })
+  @ApiUpdateErrors()
+  @UseGuards(JwtAuthGuard)
+  async rejectReview(
+    @Param('id') id: string,
+    @Body() rejectReviewDto: RejectReviewDto,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.workService.rejectReview(
+      new Types.ObjectId(id) as any,
+      rejectReviewDto.feedback,
+      context
+    );
+  }
+
+  @Post(':id/recalculate-status')
+  @ApiOperation({
+    summary: 'Recalculate epic status',
+    description: 'Manually recalculate epic status based on child tasks. Only applies to epics.'
+  })
+  @ApiUpdateErrors()
+  @UseGuards(JwtAuthGuard)
+  async recalculateStatus(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.workService.recalculateEpicStatus(
+      new Types.ObjectId(id) as any,
+      context
+    );
+  }
+
+  @Get('next-work')
+  @ApiOperation({
+    summary: 'Get next work for user/agent',
+    description: 'Returns the next work item based on priority rules. See docs/cbm/NEXT-WORK-PRIORITY-LOGIC.md'
+  })
+  @ApiReadErrors({ notFound: false })
+  @UseGuards(JwtAuthGuard)
+  async getNextWork(
+    @Query() query: GetNextWorkQueryDto,
+    @CurrentUser() context: RequestContext
+  ) {
+    return this.workService.getNextWork(
+      query.assigneeType,
+      query.assigneeId,
+      context
+    );
   }
 
   @Get(':id/can-trigger')

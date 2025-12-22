@@ -60,11 +60,10 @@ export async function executeCreateWork(
     description?: string;
     type: 'epic' | 'task' | 'subtask';
     projectId?: string;
-    reporter: string;
+    reporter?: string;
     assignee?: string;
     dueDate?: string;
     startAt?: string;
-    status?: string;
     dependencies?: string[];
     parentId?: string;
     documents?: string[];
@@ -74,8 +73,26 @@ export async function executeCreateWork(
   try {
     const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
 
-    // Parse reporter and assignee
-    const parsedReporter = parseReporterAssignee(args.reporter);
+    // Parse reporter - if not provided, use current agent
+    let parsedReporter: { type: 'user' | 'agent'; id: string };
+    if (args.reporter) {
+      parsedReporter = parseReporterAssignee(args.reporter);
+    } else if (context.agentId) {
+      // Default to current agent if no reporter provided
+      parsedReporter = {
+        type: 'agent',
+        id: context.agentId,
+      };
+    } else if (context.userId) {
+      // Fallback to current user if no agent
+      parsedReporter = {
+        type: 'user',
+        id: context.userId,
+      };
+    } else {
+      throw new Error('Reporter must be provided or execution context must have agentId/userId');
+    }
+
     const parsedAssignee = args.assignee
       ? parseReporterAssignee(args.assignee)
       : undefined;
@@ -627,6 +644,109 @@ export async function executeCancelWork(
         {
           type: 'text',
           text: `Error cancelling work: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute assign and move to todo
+ */
+export async function executeAssignAndTodoWork(
+  args: { id: string; assignee: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, assignee } = args;
+
+    // Parse assignee
+    const parsedAssignee = parseReporterAssignee(assignee);
+
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/works/${id}/assign-and-todo`,
+      {
+        method: 'POST',
+        context,
+        body: JSON.stringify({ assignee: parsedAssignee }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeWork(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error assigning and moving work to todo:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error assigning and moving work to todo: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Execute reject review
+ */
+export async function executeRejectReviewForWork(
+  args: { id: string; feedback: string },
+  context: ExecutionContext
+): Promise<ToolResponse> {
+  try {
+    const cbmBaseUrl = context.cbmBaseUrl || 'http://localhost:3001';
+    const { id, feedback } = args;
+
+    const response = await makeServiceRequest(
+      `${cbmBaseUrl}/works/${id}/reject-review`,
+      {
+        method: 'POST',
+        context,
+        body: JSON.stringify({ feedback }),
+      }
+    );
+
+    // Sanitize response to optimize token usage
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const json = await response.json();
+      const sanitized = sanitizeWork(json);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(sanitized, null, 2),
+          },
+        ],
+      };
+    }
+
+    return formatToolResponse(response);
+  } catch (error: any) {
+    logger.error('Error rejecting review for work:', error);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error rejecting review for work: ${error.message}`,
         },
       ],
       isError: true,

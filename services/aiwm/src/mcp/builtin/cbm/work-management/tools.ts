@@ -16,6 +16,8 @@ import {
   executeCompleteWork,
   executeReopenWork,
   executeCancelWork,
+  executeAssignAndTodoWork,
+  executeRejectReviewForWork,
 } from './executors';
 import {
   CreateWorkSchema,
@@ -30,6 +32,8 @@ import {
   CompleteWorkSchema,
   ReopenWorkSchema,
   CancelWorkSchema,
+  AssignAndTodoWorkSchema,
+  RejectReviewForWorkSchema,
 } from './schemas';
 
 /**
@@ -135,5 +139,23 @@ export const WorkManagementTools: ToolDefinition[] = [
     category: 'WorkManagement',
     executor: executeCancelWork,
     inputSchema: CancelWorkSchema,
+  },
+  {
+    name: 'AssignAndTodoWork',
+    description:
+      'Assign work to user/agent and move to todo - transition from backlog to todo status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeAssignAndTodoWork,
+    inputSchema: AssignAndTodoWorkSchema,
+  },
+  {
+    name: 'RejectReviewForWork',
+    description:
+      'Reject work from review with feedback - transition from review to todo status',
+    type: 'builtin',
+    category: 'WorkManagement',
+    executor: executeRejectReviewForWork,
+    inputSchema: RejectReviewForWorkSchema,
   },
 ];

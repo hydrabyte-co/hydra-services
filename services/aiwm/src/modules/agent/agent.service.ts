@@ -260,7 +260,7 @@ export class AgentService extends BaseService<Agent> {
 
     // Build MCP server configuration (HTTP transport format)
     const mcpServers = {
-      'API': {
+      'Builtin': {
         type: 'http',
         url: mcpBaseUrl,
         headers: {

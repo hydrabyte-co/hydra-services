@@ -336,8 +336,8 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
 
   [ConfigKey.CBM_BASE_URL]: {
     key: ConfigKey.CBM_BASE_URL,
-    displayName: 'CBM Base URL',
-    description: 'Base URL for CBM (Core Business Management) service',
+    displayName: 'CBM Base API URL',
+    description: 'Base URL for CBM (Core Business Management) REST API',
     dataType: 'url',
     isRequired: false,
     validation: {

@@ -27,6 +27,16 @@ export async function makeServiceRequest(
 
   logger.log(`📡 Making request: ${fetchOptions.method || 'GET'} ${url}`);
 
+  // Debug: Log request body if present
+  if (fetchOptions.body) {
+    try {
+      const bodyObj = JSON.parse(fetchOptions.body as string);
+      logger.debug(`📤 Request body:`, JSON.stringify(bodyObj, null, 2));
+    } catch {
+      logger.debug(`📤 Request body (raw):`, fetchOptions.body);
+    }
+  }
+
   const response = await fetch(url, {
     ...fetchOptions,
     headers,
@@ -35,6 +45,23 @@ export async function makeServiceRequest(
   logger.log(
     `✅ Response received: ${response.status} ${response.statusText}`
   );
+
+  // Debug: Log response body
+  try {
+    // Clone response to read body without consuming it
+    const clonedResponse = response.clone();
+    const contentType = clonedResponse.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const jsonBody = await clonedResponse.json();
+      logger.debug(`📥 Response body:`, JSON.stringify(jsonBody, null, 2));
+    } else {
+      const textBody = await clonedResponse.text();
+      logger.debug(`📥 Response body (text):`, textBody.substring(0, 500)); // Log first 500 chars
+    }
+  } catch {
+    logger.debug(`⚠️  Could not parse response body for debugging`);
+  }
 
   return response;
 }
