@@ -22,6 +22,7 @@ import { AgentModule } from '../modules/agent/agent.module';
 import { ExecutionModule } from '../modules/execution/execution.module';
 import { ReportsModule } from '../modules/reports/reports.module';
 import { McpModule } from '../modules/mcp/mcp.module';
+import { UtilModule } from '../modules/util/util.module';
 import { QueueModule } from '../queues/queue.module';
 import { ProcessorsModule } from '../queues/processors.module';
 import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
@@ -48,6 +49,7 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
     ExecutionModule,
     ReportsModule,
     McpModule,
+    UtilModule,
     ProcessorsModule,
   ],
   controllers: [AppController],
