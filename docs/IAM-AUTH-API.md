@@ -246,7 +246,7 @@ Content-Type: application/json
 ```json
 {
   "oldPassword": "123zXc_-",
-  "newPassword": "NewPass123!"
+  "newPassword": "..."
 }
 ```
 
@@ -301,7 +301,7 @@ TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 curl -X POST http://localhost:3000/auth/change-password \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"oldPassword":"123zXc_-","newPassword":"NewPass123!"}'
+  -d '{"oldPassword":"123zXc_-","newPassword":"..."}'
 ```
 
 ---

@@ -5,7 +5,7 @@
 
 AIWM_URL="${AIWM_URL:-http://localhost:3003}"
 AGENT_ID="6940db70d67065262c2e17ed"
-AGENT_SECRET="NewPass123!"
+AGENT_SECRET="..."
 
 echo "=== Agent Authentication Debug Test ==="
 echo "AIWM URL: $AIWM_URL"

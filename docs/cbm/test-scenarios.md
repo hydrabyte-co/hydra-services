@@ -18,8 +18,8 @@ This document provides comprehensive test scenarios for the Project and Work mod
 TOKEN=$(curl -s -X POST 'https://api.x-or.cloud/dev/iam-v2/auth/login' \
   -H 'Content-Type: application/json' \
   -d '{
-    "username": "admin@x-or.cloud",
-    "password": "NewPass123!"
+    "username": "username",
+    "password": "..."
   }' | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
 
 echo "Token: $TOKEN"

@@ -103,7 +103,7 @@ Both formats are accepted and will work correctly.
 # Login as universe admin
 TOKEN=$(curl -s -X POST 'http://localhost:3000/auth/login' \
   -H 'Content-Type: application/json' \
-  -d '{"username":"admin@x-or.cloud","password":"NewPass123!"}' \
+  -d '{"username":"username","password":"..."}' \
   | jq -r '.accessToken')
 
 # Get resources from specific organization

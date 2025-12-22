@@ -16,7 +16,7 @@ Trước tiên cần login để lấy JWT token:
 TOKEN=$(curl -s -X POST "http://localhost:3000/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin@x-or.cloud",
+    "username": "username",
     "password": "your-password"
   }' | jq -r '.accessToken')
 

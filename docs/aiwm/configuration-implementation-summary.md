@@ -339,7 +339,7 @@ export class ModelService {
 # 1. Get JWT token
 TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin@x-or.cloud","password":"your-password"}' \
+  -d '{"username":"username","password":"your-password"}' \
   | jq -r '.token')
 
 # 2. Create configuration

@@ -114,15 +114,33 @@ export class CreateModelDto {
   provider?: string;
 
   @ApiPropertyOptional({
-    description: 'API endpoint URL (required if deploymentType=api-based)',
-    example: 'https://api.openai.com/v1',
+    description:
+      'API endpoint base URL (required if deploymentType=api-based).\n\n' +
+      'Provide base URL without specific paths. Paths will be appended by clients.\n\n' +
+      '**Examples by Provider:**\n' +
+      '- OpenAI: `https://api.openai.com`\n' +
+      '- Anthropic: `https://api.anthropic.com`\n' +
+      '- Google: `https://generativelanguage.googleapis.com`\n' +
+      '- Azure OpenAI: `https://{resource}.openai.azure.com`\n\n' +
+      '**Client Usage:**\n' +
+      '```\n' +
+      'POST /deployments/{id}/inference/v1/chat/completions\n' +
+      '→ Proxies to: {apiEndpoint}/v1/chat/completions\n' +
+      '```',
+    example: 'https://api.openai.com',
   })
   @ValidateIf((o) => o.deploymentType === 'api-based')
   @IsString()
   apiEndpoint?: string;
 
   @ApiPropertyOptional({
-    description: 'Model identifier in provider API (required if deploymentType=api-based)',
+    description:
+      'Model identifier in provider API (required if deploymentType=api-based).\n\n' +
+      'This is the exact model name/ID as recognized by the AI provider.\n\n' +
+      '**Examples:**\n' +
+      '- OpenAI: `gpt-4-turbo-2024-11-20`, `gpt-3.5-turbo`\n' +
+      '- Anthropic: `claude-3-5-sonnet-20241022`, `claude-3-opus-20240229`\n' +
+      '- Google: `gemini-pro`, `gemini-pro-vision`',
     example: 'gpt-4-turbo-2024-11-20',
   })
   @ValidateIf((o) => o.deploymentType === 'api-based')
@@ -130,19 +148,43 @@ export class CreateModelDto {
   modelIdentifier?: string;
 
   @ApiPropertyOptional({
-    description: 'API authentication and configuration (required if deploymentType=api-based)',
+    description:
+      'API authentication and configuration (required if deploymentType=api-based).\n\n' +
+      '**Standard Keys:**\n' +
+      '- `apiKey`: API key for Bearer authentication (OpenAI, Google)\n' +
+      '- `x-api-key`: API key for x-api-key header (Anthropic)\n' +
+      '- `organization`: Organization ID (OpenAI)\n' +
+      '- `anthropic-version`: API version (Anthropic)\n\n' +
+      '**Custom Headers:**\n' +
+      'Prefix with `header-` to add custom headers:\n' +
+      '- `header-X-Custom`: Adds `X-Custom` header\n\n' +
+      '**Examples:**\n' +
+      '```json\n' +
+      '// OpenAI\n' +
+      '{\n' +
+      '  "apiKey": "sk-proj-...",\n' +
+      '  "organization": "org-..."\n' +
+      '}\n\n' +
+      '// Anthropic\n' +
+      '{\n' +
+      '  "x-api-key": "sk-ant-...",\n' +
+      '  "anthropic-version": "2023-06-01"\n' +
+      '}\n\n' +
+      '// Google\n' +
+      '{\n' +
+      '  "apiKey": "AIza..."\n' +
+      '}\n' +
+      '```',
     example: {
-      apiKey: 'sk-...',
+      apiKey: 'sk-proj-...',
       organization: 'org-...',
-      customHeader: 'value',
-      rateLimit: '100'
     },
   })
   @IsOptional()
   @IsObject()
   apiConfig?: Record<string, string>;
 
-  // Status is auto-initialized: self-hosted → 'queued', api-based → 'validating'
+  // Status is auto-initialized: self-hosted → 'queued', api-based → 'active'
   // Common optional fields
 
   @ApiPropertyOptional({

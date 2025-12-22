@@ -171,16 +171,36 @@ export class DeploymentController {
 
   @All(':id/inference/*')
   @ApiOperation({
-    summary: 'Proxy requests to deployment inference endpoint',
+    summary: 'Unified inference endpoint for both API-based and self-hosted deployments',
     description:
-      'Forwards all HTTP requests to the model inference endpoint. ' +
-      'Preserves method, headers, body, and query parameters. ' +
-      'Example: POST /deployments/{id}/inference/v1/chat/completions',
+      '**For API-based deployments:**\n' +
+      '- Automatically injects model credentials from deployment config\n' +
+      '- Forwards request to AI provider (OpenAI, Anthropic, Google, etc.)\n' +
+      '- Path is appended to model.apiEndpoint\n\n' +
+      '**For self-hosted deployments:**\n' +
+      '- Forwards to container endpoint (vLLM, Triton)\n' +
+      '- TODO: Will be implemented in Phase 2\n\n' +
+      '**Usage Examples:**\n' +
+      '```bash\n' +
+      '# OpenAI-style chat completion\n' +
+      'POST /deployments/{id}/inference/v1/chat/completions\n' +
+      'Body: {\n' +
+      '  "messages": [{"role": "user", "content": "Hello"}],\n' +
+      '  "temperature": 0.7\n' +
+      '}\n\n' +
+      '# Anthropic-style messages\n' +
+      'POST /deployments/{id}/inference/v1/messages\n' +
+      'Body: {\n' +
+      '  "messages": [{"role": "user", "content": "Hello"}],\n' +
+      '  "max_tokens": 1024\n' +
+      '}\n' +
+      '```\n\n' +
+      '**Note:** Request body format depends on the target AI provider.',
   })
-  @ApiResponse({ status: 200, description: 'Request proxied successfully' })
-  @ApiResponse({ status: 400, description: 'Deployment not running or no endpoint' })
+  @ApiResponse({ status: 200, description: 'Inference completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request or deployment not ready' })
   @ApiResponse({ status: 404, description: 'Deployment not found' })
-  @ApiResponse({ status: 502, description: 'Endpoint unreachable or proxy error' })
+  @ApiResponse({ status: 502, description: 'AI provider unreachable' })
   @ApiResponse({ status: 504, description: 'Request timeout' })
   async proxyInference(
     @Param('id') id: string,
@@ -188,55 +208,34 @@ export class DeploymentController {
     @Res() res: Response,
     @CurrentUser() context: RequestContext,
   ) {
-    try {
-      // 1. Get deployment details (includes resource, node, and built endpoint)
-      const { deployment, endpoint } = await this.deploymentService.getDeploymentDetails(id);
+    // Extract path after /inference
+    const basePath = `/deployments/${id}/inference`;
+    const originalUrl = req.originalUrl || req.url;
+    const pathIndex = originalUrl.indexOf(basePath);
 
-      // 2. Check if deployment is running
-      if (deployment.status !== 'running') {
-        return res.status(400).json({
-          statusCode: 400,
-          message: `Deployment is not running (status: ${deployment.status})`,
-          error: 'Bad Request',
-        });
-      }
-
-      // 3. Extract path after /inference
-      const basePath = `/deployments/${id}/inference`;
-      const originalUrl = req.originalUrl || req.url;
-      const pathIndex = originalUrl.indexOf(basePath);
-
-      if (pathIndex === -1) {
-        return res.status(500).json({
-          statusCode: 500,
-          message: 'Failed to extract target path',
-          error: 'Internal Server Error',
-        });
-      }
-
-      const targetPath = originalUrl.substring(pathIndex + basePath.length);
-
-      // 4. Build target URL from resolved endpoint
-      const targetUrl = `${endpoint}${targetPath}`;
-
-      // 5. Proxy request
-      await this.proxyService.proxyRequest(targetUrl, req, res, {
-        timeout: 300000, // 5 minutes for inference
-      });
-    } catch (error: any) {
-      // Handle errors from getDeploymentDetails
-      if (error.name === 'NotFoundException') {
-        return res.status(404).json({
-          statusCode: 404,
-          message: error.message,
-          error: 'Not Found',
-        });
-      }
+    if (pathIndex === -1) {
       return res.status(500).json({
         statusCode: 500,
-        message: error.message || 'Internal server error',
+        message: 'Failed to extract target path',
         error: 'Internal Server Error',
       });
+    }
+
+    const targetPath = originalUrl.substring(pathIndex + basePath.length);
+
+    // Proxy request using new unified service method
+    try {
+      await this.deploymentService.proxyInference(id, targetPath, req, res, context);
+    } catch (error: any) {
+      // Handle NestJS exceptions (only if response not already sent)
+      if (!res.headersSent) {
+        const status = error.status || 500;
+        res.status(status).json({
+          statusCode: status,
+          message: error.message || 'Internal server error',
+          error: error.name || 'Error',
+        });
+      }
     }
   }
 }

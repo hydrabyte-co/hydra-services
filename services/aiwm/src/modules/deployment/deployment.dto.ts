@@ -43,19 +43,25 @@ export class CreateDeploymentDto {
   @IsString()
   modelId!: string;
 
-  @ApiProperty({
-    description: 'Node ID to deploy on (MongoDB ObjectId as string)',
+  @ApiPropertyOptional({
+    description:
+      'Node ID to deploy on (MongoDB ObjectId as string). ' +
+      'Required for self-hosted deployments, should NOT be provided for API-based deployments.',
     example: '507f1f77bcf86cd799439012',
   })
+  @IsOptional()
   @IsString()
-  nodeId!: string;
+  nodeId?: string;
 
-  @ApiProperty({
-    description: 'Resource ID of inference container (MongoDB ObjectId as string)',
+  @ApiPropertyOptional({
+    description:
+      'Resource ID of inference container (MongoDB ObjectId as string). ' +
+      'Required for self-hosted deployments, should NOT be provided for API-based deployments.',
     example: '507f1f77bcf86cd799439013',
   })
+  @IsOptional()
   @IsString()
-  resourceId!: string;
+  resourceId?: string;
 
   @ApiPropertyOptional({
     description: 'Deployment status',

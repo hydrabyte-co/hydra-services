@@ -20,8 +20,8 @@ get_token() {
     echo -e "${YELLOW}=== Getting Access Token from IAM ===${NC}"
     cat > /tmp/login.json << 'EOF'
 {
-  "username": "admin@x-or.cloud",
-  "password": "NewPass123!"
+  "username": "username",
+  "password": "..."
 }
 EOF
 

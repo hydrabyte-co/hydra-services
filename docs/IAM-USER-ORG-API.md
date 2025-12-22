@@ -269,7 +269,7 @@ Change password for the authenticated user.
 ```json
 {
   "oldPassword": "123zXc_-",
-  "newPassword": "NewPass123!"
+  "newPassword": "..."
 }
 ```
 
@@ -296,7 +296,7 @@ curl -X POST http://localhost:3000/auth/change-password \
   -H "Content-Type: application/json" \
   -d '{
     "oldPassword": "123zXc_-",
-    "newPassword": "NewPass123!"
+    "newPassword": "..."
   }'
 ```
 

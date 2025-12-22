@@ -10,7 +10,7 @@
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin@x-or.cloud",
+    "username": "username",
     "password": "your_password"
   }'
 
@@ -609,7 +609,7 @@ echo "\nDone!"
 # Your token may have expired, get a new one:
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin@x-or.cloud", "password": "your_password"}'
+  -d '{"username": "username", "password": "your_password"}'
 ```
 
 ### 404 Not Found

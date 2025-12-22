@@ -400,7 +400,7 @@ ForbiddenException: This endpoint requires universe-level permissions. Only syst
 ```bash
 # 1. Login as universe.owner
 TOKEN=$(curl -s -X POST 'http://localhost:3000/auth/login' \
-  -d '{"username":"admin@x-or.cloud","password":"NewPass123!"}' | jq -r '.accessToken')
+  -d '{"username":"username","password":"..."}' | jq -r '.accessToken')
 
 # 2. Test universe-only endpoint (should succeed)
 curl -X GET "http://localhost:3000/organizations" \

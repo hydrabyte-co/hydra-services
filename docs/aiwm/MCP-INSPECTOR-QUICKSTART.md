@@ -262,7 +262,7 @@ Once connected, you should see **7 DocumentManagement tools**:
 ```bash
 curl -s -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin@x-or.cloud","password":"NewPass123!"}' \
+  -d '{"username":"username","password":"..."}' \
   | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])"
 ```
 

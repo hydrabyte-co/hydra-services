@@ -24,8 +24,8 @@ echo -e "${BLUE}Step 1: Login to get token${NC}"
 LOGIN_RESPONSE=$(curl -s -X POST "$IAM_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin@x-or.cloud",
-    "password": "NewPass123!"
+    "username": "username",
+    "password": "..."
   }')
 
 TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])" 2>/dev/null)

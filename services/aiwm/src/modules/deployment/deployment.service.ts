@@ -3,9 +3,15 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  NotImplementedException,
+  BadGatewayException,
+  GatewayTimeoutException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
+import { Request, Response } from 'express';
+import axios from 'axios';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Deployment } from './deployment.schema';
@@ -15,7 +21,7 @@ import { Resource } from '../resource/resource.schema';
 
 /**
  * DeploymentService
- * Manages deployment entities for deploying models on GPU nodes
+ * Manages deployment entities for both API-based and self-hosted models
  * Extends BaseService for automatic CRUD operations
  */
 @Injectable()
@@ -32,9 +38,9 @@ export class DeploymentService extends BaseService<Deployment> {
 
   /**
    * Override create method to validate model, node, and resource before deployment
-   * - Model must exist and status = 'active'
-   * - Node must exist and status = 'online'
-   * - Resource must exist and resourceType = 'inference-container'
+   * Supports both API-based and self-hosted deployments:
+   * - API-based: Only requires modelId (status='active'), no nodeId/resourceId
+   * - Self-hosted: Requires modelId (status='active'), nodeId (status='online'), resourceId (type='inference-container')
    */
   async create(
     createData: Partial<Deployment>,
@@ -42,13 +48,11 @@ export class DeploymentService extends BaseService<Deployment> {
   ): Promise<Deployment | null> {
     const { modelId, nodeId, resourceId } = createData;
 
-    if (!modelId || !nodeId || !resourceId) {
-      throw new BadRequestException(
-        'modelId, nodeId, and resourceId are required'
-      );
+    // 1. Validate Model exists and is active
+    if (!modelId) {
+      throw new BadRequestException('modelId is required');
     }
 
-    // Validate Model exists and is active
     const model = await this.modelModel
       .findById(modelId)
       .where('isDeleted')
@@ -66,53 +70,73 @@ export class DeploymentService extends BaseService<Deployment> {
       );
     }
 
-    // Validate Node exists and is online
-    const node = await this.nodeModel
-      .findById(nodeId)
-      .where('isDeleted')
-      .equals(false)
-      .lean()
-      .exec();
+    // 2. Type-specific validation based on model.deploymentType
+    if (model.deploymentType === 'self-hosted') {
+      // Self-hosted: Require nodeId + resourceId
+      if (!nodeId || !resourceId) {
+        throw new BadRequestException(
+          'nodeId and resourceId are required for self-hosted deployments'
+        );
+      }
 
-    if (!node) {
-      throw new BadRequestException(`Node with ID ${nodeId} not found`);
-    }
+      // Validate Node exists and is online
+      const node = await this.nodeModel
+        .findById(nodeId)
+        .where('isDeleted')
+        .equals(false)
+        .lean()
+        .exec();
 
-    if (node.status !== 'online') {
-      throw new BadRequestException(
-        `Node "${node.name}" must be 'online' to create deployment. Current status: ${node.status}`
-      );
-    }
+      if (!node) {
+        throw new BadRequestException(`Node with ID ${nodeId} not found`);
+      }
 
-    // Validate Resource exists and is inference-container
-    const resource = await this.resourceModel
-      .findById(resourceId)
-      .where('isDeleted')
-      .equals(false)
-      .lean()
-      .exec();
+      if (node.status !== 'online') {
+        throw new BadRequestException(
+          `Node "${node.name}" must be 'online' to create deployment. Current status: ${node.status}`
+        );
+      }
 
-    if (!resource) {
-      throw new BadRequestException(
-        `Resource with ID ${resourceId} not found`
-      );
-    }
+      // Validate Resource exists and is inference-container
+      const resource = await this.resourceModel
+        .findById(resourceId)
+        .where('isDeleted')
+        .equals(false)
+        .lean()
+        .exec();
 
-    if (resource.resourceType !== 'inference-container') {
-      throw new BadRequestException(
-        `Resource "${resource.name}" must be of type 'inference-container'. Current type: ${resource.resourceType}`
-      );
-    }
+      if (!resource) {
+        throw new BadRequestException(
+          `Resource with ID ${resourceId} not found`
+        );
+      }
 
-    // Set default status to 'queued' if not provided
-    if (!createData.status) {
+      if (resource.resourceType !== 'inference-container') {
+        throw new BadRequestException(
+          `Resource "${resource.name}" must be of type 'inference-container'. Current type: ${resource.resourceType}`
+        );
+      }
+
+      // Set status to 'queued' (worker will deploy later)
       createData.status = 'queued';
+
+    } else if (model.deploymentType === 'api-based') {
+      // API-based: No nodeId/resourceId required
+      if (nodeId || resourceId) {
+        throw new BadRequestException(
+          'nodeId and resourceId should not be provided for API-based deployments'
+        );
+      }
+
+      // Set status to 'running' immediately (no container deployment needed)
+      createData.status = 'running';
     }
 
-    // Call parent create method
+    // 3. Create deployment
     const deployment = await super.create(createData, context);
 
-    // TODO: Emit event to queue for deployment process
+    // 4. Emit event to queue for monitoring/logging
+    // TODO: Uncomment when queue processors are ready
     // await this.deploymentProducer.emitDeploymentCreated(deployment);
 
     return deployment as Deployment;
@@ -450,5 +474,249 @@ export class DeploymentService extends BaseService<Deployment> {
     const endpoint = await this.getDeploymentEndpoint(deploymentId);
 
     return { deployment, resource, node, endpoint };
+  }
+
+  /**
+   * Proxy inference request to appropriate endpoint
+   * Supports both API-based and self-hosted deployments
+   */
+  async proxyInference(
+    deploymentId: string,
+    path: string,
+    req: Request,
+    res: Response,
+    context: RequestContext
+  ): Promise<void> {
+    // 1. Get deployment
+    const deployment = await this.deploymentModel
+      .findById(deploymentId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!deployment) {
+      throw new NotFoundException(`Deployment with ID ${deploymentId} not found`);
+    }
+
+    if (deployment.status !== 'running') {
+      throw new BadRequestException(
+        `Deployment is not running. Current status: ${deployment.status}`
+      );
+    }
+
+    // 2. Get model
+    const model = await this.modelModel
+      .findById(deployment.modelId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!model) {
+      throw new NotFoundException(`Model not found for deployment`);
+    }
+
+    // TODO Phase 3: Apply PII redaction
+    // const sanitizedBody = await this.piiService.redact(req.body, context);
+
+    // TODO Phase 3: Apply Guardrails validation
+    // if (deployment.guardrailId) {
+    //   await this.guardrailService.validate(sanitizedBody, deployment.guardrailId, context);
+    // }
+
+    // 3. Route based on deployment type
+    if (model.deploymentType === 'api-based') {
+      await this.proxyToAPIProvider(model, deployment, path, req, res);
+    } else if (model.deploymentType === 'self-hosted') {
+      await this.proxyToSelfHosted(deployment, path, req, res);
+    }
+  }
+
+  /**
+   * Proxy to AI Provider (OpenAI, Anthropic, Google, etc.)
+   */
+  private async proxyToAPIProvider(
+    model: ModelEntity,
+    deployment: any, // Using any to access _id
+    path: string,
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    const { apiEndpoint, apiConfig, modelIdentifier } = model;
+
+    if (!apiEndpoint || !apiConfig) {
+      throw new BadRequestException('Model API configuration is incomplete');
+    }
+
+    // Build target URL (provider-specific)
+    let targetUrl: string;
+    const apiKey = apiConfig.apiKey;
+
+    if (!apiKey) {
+      throw new BadRequestException('API key is required in model configuration');
+    }
+
+    // Google uses model ID in path
+    if (model.provider === 'google') {
+      // Path format: /v1beta/models/{modelId}:generateContent
+      // User sends: /v1beta/models/gemini-pro:generateContent
+      // We inject modelIdentifier into path
+      let finalPath = path;
+
+      // If path contains generic model placeholder or doesn't contain model ID
+      if (modelIdentifier && !path.includes(modelIdentifier)) {
+        // Replace pattern like /models/{model}: or /models/MODEL:
+        finalPath = path.replace(/\/models\/[^:\/]+:/i, `/models/${modelIdentifier}:`);
+      }
+
+      targetUrl = `${apiEndpoint}${finalPath}`;
+    } else {
+      // Standard URL building for OpenAI, Anthropic
+      targetUrl = `${apiEndpoint}${path}`;
+    }
+
+    this.logger.info(
+      `Proxying to API provider: ${model.provider} - ${targetUrl}`
+    );
+
+    // Build headers with authentication
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add provider-specific authentication (fixed per provider)
+    switch (model.provider) {
+      case 'openai':
+        // OpenAI uses Bearer token authentication
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        // Optional: Organization header
+        if (apiConfig.organization) {
+          headers['OpenAI-Organization'] = apiConfig.organization;
+        }
+        break;
+
+      case 'anthropic':
+        // Anthropic uses x-api-key header
+        headers['x-api-key'] = apiKey;
+        // Required: API version
+        headers['anthropic-version'] = apiConfig['anthropic-version'] || '2023-06-01';
+        break;
+
+      case 'google':
+        // Google uses x-goog-api-key header
+        headers['x-goog-api-key'] = apiKey;
+        break;
+
+      default:
+        // Generic Bearer token for unknown providers
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        break;
+    }
+
+    // Add custom headers (prefixed with 'header-')
+    Object.keys(apiConfig).forEach(key => {
+      if (key.startsWith('header-')) {
+        const headerName = key.replace('header-', '');
+        headers[headerName] = apiConfig[key];
+      }
+    });
+
+    // Prepare request body (provider-specific)
+    let requestBody = { ...req.body };
+
+    if (model.provider === 'google') {
+      // Google doesn't use 'model' field in request body (it's in the URL path)
+      delete requestBody.model;
+    } else {
+      // OpenAI, Anthropic, others use 'model' field in body
+      delete requestBody.model; // Remove user-provided model parameter
+      if (modelIdentifier) {
+        requestBody.model = modelIdentifier;
+      }
+    }
+
+    try {
+      // Make request to AI provider
+      const startTime = Date.now();
+      const response = await axios({
+        method: req.method,
+        url: targetUrl,
+        data: requestBody,
+        headers,
+        timeout: 300000, // 5 minutes
+        validateStatus: () => true, // Accept all status codes (forward errors)
+        maxRedirects: 5,
+      });
+
+      const duration = Date.now() - startTime;
+
+      // Log success/failure
+      this.logger.info(
+        `Provider response: ${response.status} - Duration: ${duration}ms`
+      );
+
+      // Update usage stats (async, don't block response)
+      this.updateUsageStats(deployment._id, response.data).catch(err => {
+        this.logger.error(`Failed to update usage stats: ${err.message}`);
+      });
+
+      // Forward response to client (transparent)
+      res.status(response.status);
+      res.json(response.data);
+
+    } catch (error: any) {
+      this.logger.error(`Provider request failed: ${error.message}`);
+
+      // Forward error from provider (transparent)
+      if (error.response) {
+        res.status(error.response.status).json(error.response.data);
+      } else if (error.code === 'ECONNREFUSED') {
+        throw new BadGatewayException('AI provider is unreachable');
+      } else if (error.code === 'ETIMEDOUT') {
+        throw new GatewayTimeoutException('Request to AI provider timed out');
+      } else {
+        throw new BadGatewayException('Failed to connect to AI provider');
+      }
+    }
+  }
+
+  /**
+   * Proxy to self-hosted container endpoint
+   * TODO Phase 2: Implement with worker integration
+   */
+  private async proxyToSelfHosted(
+    deployment: Deployment,
+    path: string,
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    // TODO Phase 2: Get container endpoint from Resource + Node
+    // const endpoint = await this.getDeploymentEndpoint(deployment._id.toString());
+    // const targetUrl = `${endpoint}${path}`;
+    // await this.proxyService.proxyRequest(targetUrl, req, res, { timeout: 300000 });
+
+    throw new NotImplementedException(
+      'Self-hosted deployment inference is not yet implemented. ' +
+      'This will be available in Phase 2 with worker integration.'
+    );
+  }
+
+  /**
+   * Update deployment usage statistics
+   */
+  private async updateUsageStats(
+    deploymentId: ObjectId,
+    responseData: any
+  ): Promise<void> {
+    const usage = responseData.usage || {};
+    const totalTokens = usage.total_tokens || usage.input_tokens + usage.output_tokens || 0;
+
+    await this.deploymentModel.findByIdAndUpdate(deploymentId, {
+      $inc: {
+        requestCount: 1,
+        totalTokens: totalTokens,
+      },
+    });
   }
 }

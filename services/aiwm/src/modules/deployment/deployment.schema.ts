@@ -6,14 +6,14 @@ export type DeploymentDocument = Deployment & Document;
 
 /**
  * Deployment - Model Deployment Records
- * Simplified MVP version for deploying self-hosted models on GPU nodes
+ * Supports both API-based and self-hosted model deployments
  * Uses MongoDB _id as the primary identifier
  */
 @Schema({ timestamps: true })
 export class Deployment extends BaseSchema {
   // Core fields
   @Prop({ required: true, maxlength: 100 })
-  name!: string; // e.g., "Llama 3.1 8B - Production"
+  name!: string; // e.g., "Llama 3.1 8B - Production", "GPT-4 Production"
 
   @Prop({ required: true, maxlength: 500 })
   description!: string;
@@ -22,11 +22,12 @@ export class Deployment extends BaseSchema {
   @Prop({ required: true })
   modelId!: string; // Model to deploy (MongoDB ObjectId as string)
 
-  @Prop({ required: true })
-  nodeId!: string; // GPU node for deployment (MongoDB ObjectId as string)
+  // Self-hosted specific fields (optional - only required for self-hosted deployments)
+  @Prop()
+  nodeId?: string; // GPU node for deployment (MongoDB ObjectId as string)
 
-  @Prop({ required: true })
-  resourceId!: string; // Inference container resource (MongoDB ObjectId as string)
+  @Prop()
+  resourceId?: string; // Inference container resource (MongoDB ObjectId as string)
 
   // Status lifecycle
   @Prop({
@@ -54,6 +55,23 @@ export class Deployment extends BaseSchema {
   @Prop()
   lastHealthCheck?: Date; // Last successful health check
 
+  // Usage tracking (for both API-based and self-hosted)
+  @Prop({ default: 0 })
+  requestCount?: number; // Total number of inference requests
+
+  @Prop({ default: 0 })
+  totalTokens?: number; // Total tokens consumed (from provider usage field)
+
+  @Prop({ default: 0 })
+  totalCost?: number; // Total cost in USD (optional, for future cost tracking)
+
+  // TODO Phase 3: PII & Guardrails
+  // @Prop()
+  // guardrailId?: string; // Optional guardrail override for this deployment
+  //
+  // @Prop({ default: true })
+  // piiEnabled?: boolean; // Enable/disable PII redaction for this deployment
+
   // BaseSchema provides: owner, createdBy, updatedBy, deletedAt, metadata, timestamps
   // _id is automatically provided by MongoDB
 }
@@ -63,6 +81,8 @@ export const DeploymentSchema = SchemaFactory.createForClass(Deployment);
 // Indexes for performance
 DeploymentSchema.index({ status: 1 });
 DeploymentSchema.index({ modelId: 1 });
-DeploymentSchema.index({ nodeId: 1 });
-DeploymentSchema.index({ resourceId: 1 });
+DeploymentSchema.index({ modelId: 1, status: 1 }); // Compound index for queries
+DeploymentSchema.index({ nodeId: 1 }); // Sparse index (only for self-hosted)
+DeploymentSchema.index({ resourceId: 1 }); // Sparse index (only for self-hosted)
+DeploymentSchema.index({ requestCount: -1 }); // For top deployments query
 DeploymentSchema.index({ name: 'text', description: 'text' }); // Text search

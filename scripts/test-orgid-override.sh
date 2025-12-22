@@ -17,8 +17,8 @@ RESPONSE=$(curl -s -X POST 'https://api.x-or.cloud/dev/iam-v2/auth/login' \
   -H 'Content-Type: application/json' \
   -d @- <<'EOFLOGIN'
 {
-  "username": "admin@x-or.cloud",
-  "password": "NewPass123!"
+  "username": "username",
+  "password": "..."
 }
 EOFLOGIN
 )

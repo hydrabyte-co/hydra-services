@@ -57,8 +57,8 @@ export class ModelService extends BaseService<ModelEntity> {
 
   /**
    * Override create method to set initial status based on deploymentType
-   * - self-hosted models start with 'queued'
-   * - api-based models start with 'validating'
+   * - self-hosted models start with 'queued' (waiting for download)
+   * - api-based models start with 'active' (ready immediately, no pre-validation)
    */
   async create(
     createData: Partial<ModelEntity>,
@@ -67,9 +67,9 @@ export class ModelService extends BaseService<ModelEntity> {
     // Set initial status based on deploymentType
     if (!createData.status) {
       if (createData.deploymentType === 'self-hosted') {
-        createData.status = 'queued';
+        createData.status = 'queued'; // Will be downloaded by worker later
       } else if (createData.deploymentType === 'api-based') {
-        createData.status = 'validating';
+        createData.status = 'active'; // Ready immediately (lazy validation at inference time)
       }
     }
 
@@ -158,7 +158,7 @@ export class ModelService extends BaseService<ModelEntity> {
     }
 
     // Validate current status allows activation
-    const allowedStatuses = ['inactive', 'validating', 'downloaded', 'deploying'];
+    const allowedStatuses = ['inactive', 'downloaded', 'deploying'];
     if (!allowedStatuses.includes(model.status)) {
       throw new BadRequestException(
         `Cannot activate model "${model.name}" from status '${model.status}'. Current status must be one of: ${allowedStatuses.join(', ')}`

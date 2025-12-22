@@ -704,7 +704,7 @@ Tất cả endpoints yêu cầu role **`universe.owner`** trong JWT token.
 ```json
 {
   "sub": "68dcf365f6a92c0d4911b619",
-  "username": "admin@x-or.cloud",
+  "username": "username",
   "status": "active",
   "roles": ["universe.owner"],
   "orgId": "",
@@ -931,8 +931,8 @@ new Date(expiresAt).toLocaleDateString()
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin@x-or.cloud",
-    "password": "NewPass123!"
+    "username": "username",
+    "password": "..."
   }'
 
 # Lưu token vào biến

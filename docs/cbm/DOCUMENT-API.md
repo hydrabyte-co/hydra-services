@@ -688,7 +688,7 @@ All endpoints require JWT authentication via `Authorization: Bearer <token>` hea
 # Login to get token
 curl -X POST http://api.x-or.cloud/dev/iam-v2/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin@x-or.cloud","password":"YourPassword"}'
+  -d '{"username":"username","password":"YourPassword"}'
 
 # Response
 {

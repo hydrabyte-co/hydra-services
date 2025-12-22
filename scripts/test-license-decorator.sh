@@ -13,8 +13,8 @@ echo "Step 1: Login to get access token..."
 RESPONSE=$(curl -s -X POST 'http://localhost:3000/auth/login' \
   -H 'Content-Type: application/json' \
   -d '{
-    "username": "admin@x-or.cloud",
-    "password": "NewPass123!"
+    "username": "username",
+    "password": "..."
   }')
 
 TOKEN=$(echo "$RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")

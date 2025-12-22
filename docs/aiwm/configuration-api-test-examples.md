@@ -16,7 +16,7 @@ All CRUD endpoints require JWT authentication. Get a token from IAM service:
 TOKEN=$(curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin@x-or.cloud",
+    "username": "username",
     "password": "your-password"
   }' | jq -r '.token')
 
@@ -379,7 +379,7 @@ curl -X GET "http://localhost:3003/configurations-metadata/smtp.port" | jq
 echo "1. Getting JWT token..."
 TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin@x-or.cloud","password":"your-password"}' \
+  -d '{"username":"username","password":"your-password"}' \
   | jq -r '.token')
 
 if [ -z "$TOKEN" ]; then

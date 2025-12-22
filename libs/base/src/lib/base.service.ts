@@ -85,6 +85,9 @@ export class BaseService<Entity> {
       updatedBy: context,
     };
 
+    delete dataWithAudit.createdBy['licenses'];
+    delete dataWithAudit.updatedBy['licenses'];
+
     const created = new this.model(dataWithAudit);
     const saved = await created.save();
 

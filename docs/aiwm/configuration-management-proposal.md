@@ -476,7 +476,7 @@ GET /configurations/s3.secret_key/history
       "action": "update",
       "oldValue": "********",
       "newValue": "********",
-      "changedBy": "admin@x-or.cloud",
+      "changedBy": "username",
       "reason": "Rotate secret key for security",
       "timestamp": "2025-12-03T12:00:00.000Z",
       "ipAddress": "192.168.1.100"
@@ -485,7 +485,7 @@ GET /configurations/s3.secret_key/history
       "_id": "675a1b2c3d4e5f6a7b8c9d11",
       "action": "create",
       "newValue": "********",
-      "changedBy": "admin@x-or.cloud",
+      "changedBy": "username",
       "reason": "Initial setup",
       "timestamp": "2025-12-01T10:00:00.000Z"
     }
