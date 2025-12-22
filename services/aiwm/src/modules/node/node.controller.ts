@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Query, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors } from '@hydrabyte/base';
+import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors, RequireUniverseRole } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { NodeService } from './node.service';
@@ -17,6 +17,7 @@ export class NodeController {
   @ApiResponse({ status: 201, description: 'Node registered successfully' })
   @ApiCreateErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async create(
     @Body() createNodeDto: CreateNodeDto,
     @CurrentUser() context: RequestContext,
@@ -59,6 +60,7 @@ export class NodeController {
   @ApiResponse({ status: 200, description: 'Node updated successfully' })
   @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async update(
     @Param('id') id: string,
     @Body() updateNodeDto: UpdateNodeDto,
@@ -83,6 +85,7 @@ export class NodeController {
   })
   @ApiReadErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async generateToken(
     @Param('id') id: string,
     @Body() body: GenerateTokenDto,
@@ -96,6 +99,7 @@ export class NodeController {
   @ApiResponse({ status: 200, description: 'Node deleted successfully' })
   @ApiDeleteErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async remove(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext,

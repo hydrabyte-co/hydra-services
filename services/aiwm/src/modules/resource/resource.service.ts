@@ -21,6 +21,11 @@ export class ResourceService extends BaseService<Resource> {
    * Override findAll to include statistics by status
    */
   async findAll(options: FindManyOptions, context: RequestContext): Promise<FindManyResult<Resource>> {
+    if(options.filter){
+      if(options.filter.resourceType === 'container'){
+        options.filter.resourceType = { $in: ['application-container','inference-container','system-container'] };
+      }
+    }
     const findResult = await super.findAll(options, context);
 
     // Aggregate statistics by status

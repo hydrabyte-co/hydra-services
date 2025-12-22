@@ -20,6 +20,7 @@ import {
   ApiReadErrors,
   ApiUpdateErrors,
   ApiDeleteErrors,
+  RequireUniverseRole,
 } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
@@ -43,6 +44,7 @@ export class ResourceController {
   })
   @ApiCreateErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async create(
     @Body() createResourceDto: CreateResourceDto,
     @CurrentUser() context: RequestContext
@@ -113,6 +115,7 @@ export class ResourceController {
   })
   @ApiUpdateErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async update(
     @Param('id') id: string,
     @Body() updateResourceDto: UpdateResourceDto,
@@ -125,6 +128,7 @@ export class ResourceController {
   @ApiOperation({ summary: 'Soft delete resource by ID' })
   @ApiDeleteErrors()
   @UseGuards(JwtAuthGuard)
+  @RequireUniverseRole()
   async remove(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext
