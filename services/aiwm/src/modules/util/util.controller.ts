@@ -5,7 +5,8 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, ApiCreateErrors } from '@hydrabyte/base';
+import { JwtAuthGuard, ApiCreateErrors, CurrentUser } from '@hydrabyte/base';
+import { RequestContext } from '@hydrabyte/shared';
 import { UtilService } from './util.service';
 import {
   GenerateTextRequestDto,
@@ -34,7 +35,8 @@ export class UtilController {
   @ApiCreateErrors()
   async generateText(
     @Body() request: GenerateTextRequestDto,
+    @CurrentUser() context: RequestContext,
   ): Promise<GenerateTextResponseDto> {
-    return this.utilService.generateText(request);
+    return this.utilService.generateText(request, context);
   }
 }

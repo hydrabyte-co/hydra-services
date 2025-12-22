@@ -1,8 +1,8 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { ConfigService } from '../configuration/config.service';
-import { ConfigKey } from '@hydrabyte/shared';
+import { ConfigurationService } from '../configuration/configuration.service';
+import { ConfigKey, RequestContext } from '@hydrabyte/shared';
 import {
   OpenAIResponseRequest,
   OpenAIResponseData,
@@ -20,7 +20,7 @@ export class UtilService {
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
+    private readonly configurationService: ConfigurationService,
   ) {}
 
   /**
@@ -28,19 +28,20 @@ export class UtilService {
    */
   async generateText(
     request: GenerateTextRequestDto,
+    context: RequestContext,
   ): Promise<GenerateTextResponseDto> {
     const { fieldDescription, userInput, maxLength } = request;
 
     // Get OpenAI API key from configuration
     this.logger.debug(`Fetching config key: ${ConfigKey.OPENAI_API_KEY}`);
-    const apiKey = await this.configService.getString(ConfigKey.OPENAI_API_KEY);
+    const config = await this.configurationService.findByKey(
+      ConfigKey.OPENAI_API_KEY,
+      context,
+    );
+    const apiKey = config?.value;
     this.logger.debug(`API Key retrieved: ${apiKey ? '***' + apiKey.slice(-4) : 'null'}`);
 
     if (!apiKey) {
-      // Log cache stats for debugging
-      const cacheStats = this.configService.getCacheStats();
-      this.logger.error(`Config cache stats: ${JSON.stringify(cacheStats)}`);
-
       throw new HttpException(
         {
           error: {
@@ -48,8 +49,7 @@ export class UtilService {
             message: 'OpenAI API key not configured',
             details: {
               configKey: ConfigKey.OPENAI_API_KEY,
-              cacheSize: cacheStats.size,
-              cacheKeys: cacheStats.keys,
+              orgId: context.orgId,
             },
           },
         },
