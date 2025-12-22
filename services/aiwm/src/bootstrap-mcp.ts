@@ -30,7 +30,7 @@ import { ExecutionContext as BuiltInExecutionContext } from './mcp/types';
 const logger = new Logger('McpBootstrap');
 const MCP_PORT = process.env.MCP_PORT
   ? parseInt(process.env.PORT || process.env.MCP_PORT, 10)
-  : 3306;
+  : 3355;
 
 export async function bootstrapMcpServer() {
   logger.log('=== Step 1: Starting NestJS Application Context ===');
