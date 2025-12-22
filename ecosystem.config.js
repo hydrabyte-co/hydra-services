@@ -12,6 +12,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3300,
+        SERVICE_NAME: 'iam',
       },
 
       // Load .env file
@@ -44,6 +45,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3301,
+        SERVICE_NAME: 'iam',
       },
 
       // Load .env file
@@ -76,6 +78,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3310,
+        SERVICE_NAME: 'noti',
       },
 
       // Load .env file
@@ -109,6 +112,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3350,
+        SERVICE_NAME: 'aiwm',
       },
 
       // Load .env file
@@ -142,6 +146,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3351,
+        SERVICE_NAME: 'aiwm',
       },
 
       // Load .env file
@@ -175,6 +180,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3352,
+        SERVICE_NAME: 'aiwm',
       },
 
       // Load .env file
@@ -209,6 +215,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3355,
         MODE: 'mcp',
+        SERVICE_NAME: 'aiwm',
       },
 
       // Load .env file
@@ -243,6 +250,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3356,
         MODE: 'mcp',
+        SERVICE_NAME: 'aiwm',
       },
 
       // Load .env file
@@ -277,6 +285,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3357,
         MODE: 'mcp',
+        SERVICE_NAME: 'aiwm',
       },
 
       // Load .env file
@@ -310,6 +319,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3360,
+        SERVICE_NAME: 'cbm',
       },
 
       // Load .env file
@@ -343,6 +353,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3361,
+        SERVICE_NAME: 'cbm',
       },
 
       // Load .env file
@@ -376,6 +387,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3362,
+        SERVICE_NAME: 'cbm',
       },
 
       // Load .env file
