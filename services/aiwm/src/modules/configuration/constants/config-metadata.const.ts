@@ -278,7 +278,8 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
     dataType: 'string',
     isRequired: false,
     validation: {
-      pattern: '^sk-[A-Za-z0-9]{32,}$',
+      pattern: '^sk-[A-Za-z0-9_-]+$',
+      minLength: 20,
     },
     example: 'sk-proj-...',
   },
@@ -290,7 +291,8 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
     dataType: 'string',
     isRequired: false,
     validation: {
-      pattern: '^sk-ant-[A-Za-z0-9-_]{32,}$',
+      pattern: '^sk-ant-[A-Za-z0-9_-]+$',
+      minLength: 20,
     },
     example: 'sk-ant-api03-...',
   },
@@ -302,7 +304,8 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
     dataType: 'string',
     isRequired: false,
     validation: {
-      pattern: '^gsk_[A-Za-z0-9]{32,}$',
+      pattern: '^gsk_[A-Za-z0-9_-]+$',
+      minLength: 20,
     },
     example: 'gsk_...',
   },

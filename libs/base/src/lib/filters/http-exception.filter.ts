@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Error as MongooseError } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -33,7 +34,9 @@ export interface ErrorResponse {
  * Features:
  * - Consistent error format across all endpoints
  * - Correlation ID generation for request tracking
- * - Validation error extraction from class-validator
+ * - Validation error extraction from class-validator and Mongoose
+ * - Mongoose ValidationError → 400 Bad Request
+ * - Mongoose CastError → 400 Bad Request
  * - Proper logging of all exceptions
  * - HTTP status code detection
  *
@@ -87,6 +90,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return exception.getStatus();
     }
 
+    // Handle Mongoose validation errors as 400 Bad Request
+    if (exception instanceof MongooseError.ValidationError) {
+      return HttpStatus.BAD_REQUEST;
+    }
+
+    // Handle Mongoose cast errors (invalid ObjectId, etc.) as 400 Bad Request
+    if (exception instanceof MongooseError.CastError) {
+      return HttpStatus.BAD_REQUEST;
+    }
+
     // Default to 500 Internal Server Error for unknown exceptions
     return HttpStatus.INTERNAL_SERVER_ERROR;
   }
@@ -113,6 +126,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return exception.message;
     }
 
+    // Handle Mongoose validation errors
+    if (exception instanceof MongooseError.ValidationError) {
+      return 'Validation failed';
+    }
+
+    // Handle Mongoose cast errors
+    if (exception instanceof MongooseError.CastError) {
+      return `Invalid ${exception.path}: ${exception.value}`;
+    }
+
     // For unknown errors, return generic message (don't expose internal details)
     if (exception instanceof Error) {
       return 'Internal server error';
@@ -122,22 +145,34 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   }
 
   /**
-   * Extract validation errors from class-validator exceptions
+   * Extract validation errors from class-validator and Mongoose exceptions
    */
   private getValidationErrors(exception: unknown): string[] | undefined {
-    if (!(exception instanceof HttpException)) {
-      return undefined;
+    // Handle class-validator errors
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse();
+
+      if (typeof response === 'object' && 'message' in response) {
+        const msg = (response as any).message;
+
+        // class-validator returns errors as string array
+        if (Array.isArray(msg)) {
+          return msg;
+        }
+      }
     }
 
-    const response = exception.getResponse();
+    // Handle Mongoose validation errors
+    if (exception instanceof MongooseError.ValidationError) {
+      const errors: string[] = [];
 
-    if (typeof response === 'object' && 'message' in response) {
-      const msg = (response as any).message;
-
-      // class-validator returns errors as string array
-      if (Array.isArray(msg)) {
-        return msg;
+      // Extract individual field errors
+      for (const field in exception.errors) {
+        const error = exception.errors[field];
+        errors.push(`${field}: ${error.message}`);
       }
+
+      return errors.length > 0 ? errors : undefined;
     }
 
     return undefined;
