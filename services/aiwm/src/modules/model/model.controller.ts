@@ -18,6 +18,7 @@ import {
   ApiReadErrors,
   ApiUpdateErrors,
   ApiDeleteErrors,
+  RequireUniverseRole,
 } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
@@ -39,6 +40,7 @@ export class ModelController {
   @Post()
   @ApiOperation({ summary: 'Create a new model' })
   @ApiCreateErrors()
+  @RequireUniverseRole()
   async create(
     @Body() createDto: CreateModelDto,
     @CurrentUser() context: RequestContext
@@ -74,6 +76,7 @@ export class ModelController {
   @Put(':id')
   @ApiOperation({ summary: 'Update a model' })
   @ApiUpdateErrors()
+  @RequireUniverseRole()
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateModelDto,

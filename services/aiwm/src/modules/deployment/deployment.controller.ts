@@ -16,7 +16,7 @@ import {
   All,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors } from '@hydrabyte/base';
+import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors, RequireUniverseRole } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Request, Response } from 'express';
 import { DeploymentService } from './deployment.service';
@@ -37,6 +37,7 @@ export class DeploymentController {
   @ApiOperation({ summary: 'Create a new deployment' })
   @ApiResponse({ status: 201, description: 'Deployment created successfully with status "queued"' })
   @ApiCreateErrors()
+  @RequireUniverseRole()
   async create(
     @Body() createDto: CreateDeploymentDto,
     @CurrentUser() context: RequestContext,
@@ -73,6 +74,7 @@ export class DeploymentController {
   @ApiOperation({ summary: 'Update deployment' })
   @ApiResponse({ status: 200, description: 'Deployment updated successfully. Status transitions are validated.' })
   @ApiUpdateErrors()
+  @RequireUniverseRole()
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateDeploymentDto,
@@ -89,6 +91,7 @@ export class DeploymentController {
   @ApiOperation({ summary: 'Soft delete deployment' })
   @ApiResponse({ status: 200, description: 'Deployment deleted successfully. Cannot delete running/deploying deployments.' })
   @ApiDeleteErrors()
+  @RequireUniverseRole()
   async delete(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext,
