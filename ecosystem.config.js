@@ -175,7 +175,7 @@ module.exports = {
       // Environment variables from .env file
       env: {
         NODE_ENV: 'production',
-        PORT: 3360,
+        PORT: 3355,
         MODE: 'mcp',
       },
 
@@ -209,7 +209,7 @@ module.exports = {
       // Environment variables from .env file
       env: {
         NODE_ENV: 'production',
-        PORT: 3361,
+        PORT: 3356,
         MODE: 'mcp',
       },
 
@@ -243,7 +243,7 @@ module.exports = {
       // Environment variables from .env file
       env: {
         NODE_ENV: 'production',
-        PORT: 3362,
+        PORT: 3357,
         MODE: 'mcp',
       },
 
