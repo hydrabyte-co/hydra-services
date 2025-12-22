@@ -16,7 +16,7 @@ import {
   All,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors, RequireUniverseRole } from '@hydrabyte/base';
+import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors, RequireUniverseRole, UniverseRoleGuard } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Request, Response } from 'express';
 import { DeploymentService } from './deployment.service';
@@ -26,7 +26,6 @@ import { ProxyService } from './proxy.service';
 @ApiTags('Deployments')
 @ApiBearerAuth()
 @Controller('deployments')
-@UseGuards(JwtAuthGuard)
 export class DeploymentController {
   constructor(
     private readonly deploymentService: DeploymentService,
@@ -38,6 +37,7 @@ export class DeploymentController {
   @ApiResponse({ status: 201, description: 'Deployment created successfully with status "queued"' })
   @ApiCreateErrors()
   @RequireUniverseRole()
+    @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async create(
     @Body() createDto: CreateDeploymentDto,
     @CurrentUser() context: RequestContext,
@@ -75,6 +75,7 @@ export class DeploymentController {
   @ApiResponse({ status: 200, description: 'Deployment updated successfully. Status transitions are validated.' })
   @ApiUpdateErrors()
   @RequireUniverseRole()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateDeploymentDto,
@@ -92,6 +93,7 @@ export class DeploymentController {
   @ApiResponse({ status: 200, description: 'Deployment deleted successfully. Cannot delete running/deploying deployments.' })
   @ApiDeleteErrors()
   @RequireUniverseRole()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async delete(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext,

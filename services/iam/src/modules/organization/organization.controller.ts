@@ -47,9 +47,8 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'Create organization', description: 'Create a new organization' })
   @ApiResponse({ status: 201, description: 'Organization created successfully' })
   @ApiCreateErrors()
-  @UseGuards(JwtAuthGuard)
   @RequireUniverseRole()
-  @UniverseScopeOnly()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async create(
     @Body() createDTO: CreateOrganizationDTO,
     @CurrentUser() context: RequestContext
@@ -93,9 +92,8 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'Update organization', description: 'Update organization information' })
   @ApiResponse({ status: 200, description: 'Organization updated successfully' })
   @ApiUpdateErrors()
-  @UseGuards(JwtAuthGuard)
   @RequireUniverseRole()
-  @UniverseScopeOnly()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async update(
     @Param('id') id: string,
     @Body() updateDTO: UpdateOrganizationDTO,
@@ -112,9 +110,8 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'Delete organization', description: 'Soft delete an organization' })
   @ApiResponse({ status: 200, description: 'Organization deleted successfully' })
   @ApiDeleteErrors()
-  @UseGuards(JwtAuthGuard)
   @RequireUniverseRole()
-  @UniverseScopeOnly()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async delete(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext

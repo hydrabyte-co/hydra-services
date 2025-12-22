@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
   JwtAuthGuard,
+  UniverseRoleGuard,
   CurrentUser,
   PaginationQueryDto,
   ApiCreateErrors,
@@ -19,6 +20,7 @@ import {
   ApiUpdateErrors,
   ApiDeleteErrors,
   RequireUniverseRole,
+  UniverseScopeOnly,
 } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
@@ -33,7 +35,6 @@ import { CreateModelDto, UpdateModelDto } from './model.dto';
 @ApiTags('Models')
 @ApiBearerAuth()
 @Controller('models')
-@UseGuards(JwtAuthGuard)
 export class ModelController {
   constructor(private readonly modelService: ModelService) {}
 
@@ -41,6 +42,7 @@ export class ModelController {
   @ApiOperation({ summary: 'Create a new model' })
   @ApiCreateErrors()
   @RequireUniverseRole()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async create(
     @Body() createDto: CreateModelDto,
     @CurrentUser() context: RequestContext
@@ -77,6 +79,7 @@ export class ModelController {
   @ApiOperation({ summary: 'Update a model' })
   @ApiUpdateErrors()
   @RequireUniverseRole()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateModelDto,
@@ -88,6 +91,8 @@ export class ModelController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a model (soft delete)' })
   @ApiDeleteErrors()
+  @RequireUniverseRole()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async delete(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext

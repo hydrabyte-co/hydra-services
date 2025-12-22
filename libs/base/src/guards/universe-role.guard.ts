@@ -57,7 +57,7 @@ export class UniverseRoleGuard implements CanActivate {
     const hasUniverseRole = roles.some((role: string) =>
       String(role).startsWith('universe.'),
     );
-
+    console.log('UniverseRoleGuard - User Roles:', roles, 'Has Universe Role:', hasUniverseRole);
     if (!hasUniverseRole) {
       throw new ForbiddenException(
         'This endpoint requires universe-level permissions. Only system administrators can access this resource.',

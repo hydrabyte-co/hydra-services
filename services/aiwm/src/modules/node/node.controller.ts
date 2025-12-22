@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Query, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors, RequireUniverseRole } from '@hydrabyte/base';
+import { JwtAuthGuard, CurrentUser, PaginationQueryDto, ApiCreateErrors, ApiReadErrors, ApiUpdateErrors, ApiDeleteErrors, RequireUniverseRole, UniverseRoleGuard } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Types } from 'mongoose';
 import { NodeService } from './node.service';
@@ -59,8 +59,8 @@ export class NodeController {
   @ApiOperation({ summary: 'Update node', description: 'Update node information' })
   @ApiResponse({ status: 200, description: 'Node updated successfully' })
   @ApiUpdateErrors()
-  @UseGuards(JwtAuthGuard)
   @RequireUniverseRole()
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async update(
     @Param('id') id: string,
     @Body() updateNodeDto: UpdateNodeDto,
@@ -98,8 +98,8 @@ export class NodeController {
   @ApiOperation({ summary: 'Delete node', description: 'Soft delete a node' })
   @ApiResponse({ status: 200, description: 'Node deleted successfully' })
   @ApiDeleteErrors()
-  @UseGuards(JwtAuthGuard)
   @RequireUniverseRole()
+    @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async remove(
     @Param('id') id: string,
     @CurrentUser() context: RequestContext,
