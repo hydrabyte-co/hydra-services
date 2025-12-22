@@ -1,8 +1,8 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, ObjectId } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
-import { PredefinedRole, RequestContext } from '@hydrabyte/shared';
+import { RequestContext } from '@hydrabyte/shared';
 import { User } from './user.schema';
 import { PasswordHashAlgorithms } from '../../core/enums/other.enum';
 import {
@@ -84,6 +84,52 @@ export class UsersService extends BaseService<User> {
     };
     user.roles = data.roles || [];
     return await super.create(user, context);
+  }
+
+  /**
+   * Override softDelete to prevent self-deletion and protect last org owner
+   */
+  async softDelete(
+    id: ObjectId,
+    context: RequestContext
+  ): Promise<User | null> {
+    this.logger.debug('User soft delete requested', {
+      targetUserId: id.toString(),
+      currentUserId: context.userId,
+    });
+
+    // Prevent user from deleting themselves
+    if (id.toString() === context.userId) {
+      this.logger.warn('Self-deletion attempt blocked', {
+        userId: context.userId,
+      });
+      throw new ForbiddenException('Self-deletion is not allowed for security reasons');
+    }
+
+    // Find the target user to check if they are an organization owner
+    const targetUser = await this.model.findById(id).exec();
+    if (targetUser && targetUser.roles?.includes('organization.owner')) {
+      // Count how many organization owners exist in this org
+      const orgOwnerCount = await this.model.countDocuments({
+        'owner.orgId': context.orgId,
+        roles: 'organization.owner',
+        isDeleted: false,
+      }).exec();
+
+      if (orgOwnerCount <= 1) {
+        this.logger.warn('Attempted to delete last organization owner', {
+          targetUserId: id.toString(),
+          currentUserId: context.userId,
+          orgId: context.orgId,
+        });
+        throw new ForbiddenException(
+          'Cannot delete the last organization owner. Please assign another owner first.'
+        );
+      }
+    }
+
+    // Call parent softDelete method
+    return super.softDelete(id, context);
   }
 
   /**
