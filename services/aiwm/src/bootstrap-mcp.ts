@@ -470,6 +470,9 @@ export async function bootstrapMcpServer() {
   // Step 2.2: Setup Express app with Streamable HTTP transport
   const expressApp = createMcpExpressApp();
 
+  // Trust proxy - required when behind nginx/load balancer
+  expressApp.set('trust proxy', true);
+
   // Enable CORS for MCP Inspector direct mode
   expressApp.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
