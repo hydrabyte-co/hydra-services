@@ -468,7 +468,23 @@ export async function bootstrapMcpServer() {
   };
 
   // Step 2.2: Setup Express app with Streamable HTTP transport
-  const expressApp = createMcpExpressApp();
+  // Host header validation - allow localhost, 127.0.0.1, and any custom domains
+  // Get allowed hosts from environment variable or use permissive defaults
+  const allowedHosts = process.env.MCP_ALLOWED_HOSTS
+    ? process.env.MCP_ALLOWED_HOSTS.split(',')
+    : ['localhost', '127.0.0.1', '[::1]', 'test.local', 'api.x-or.cloud']; // Default: localhost + test.local
+
+  // Create Express app with host validation
+  // If ALLOW_ALL_HOSTS is set, don't pass allowedHosts to disable validation
+  const expressApp = process.env.ALLOW_ALL_HOSTS === 'true'
+    ? createMcpExpressApp()
+    : createMcpExpressApp({ allowedHosts });
+
+  if (process.env.ALLOW_ALL_HOSTS === 'true') {
+    logger.warn('⚠️  Host validation DISABLED - all hosts allowed (not recommended for production)');
+  } else {
+    logger.log(`🔒 Host validation enabled for: ${allowedHosts.join(', ')}`);
+  }
 
   // Trust proxy - required when behind nginx/load balancer
   expressApp.set('trust proxy', true);
