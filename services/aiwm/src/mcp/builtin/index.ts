@@ -4,6 +4,8 @@
 
 import { ToolDefinition } from '../types';
 import { DocumentManagementTools, WorkManagementTools } from './cbm';
+import { UserManagementTools } from './iam';
+import { AgentManagementTools } from './aiwm';
 
 /**
  * All builtin tools from all services
@@ -11,6 +13,8 @@ import { DocumentManagementTools, WorkManagementTools } from './cbm';
 export const BuiltInTools: ToolDefinition[] = [
   ...DocumentManagementTools,
   ...WorkManagementTools,
+  ...UserManagementTools,
+  ...AgentManagementTools,
   // Future: ProjectManagementTools, etc.
 ];
 

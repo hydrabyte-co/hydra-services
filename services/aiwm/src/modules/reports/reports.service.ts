@@ -70,7 +70,7 @@ export class ReportsService {
 
     // Nodes statistics
     const nodes = await this.nodeModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const nodesByStatus = this.groupByField(nodes, 'status');
@@ -127,7 +127,7 @@ export class ReportsService {
 
     // Resources statistics
     const resources = await this.resourceModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const resourcesByStatus = this.groupByField(resources, 'status');
@@ -194,7 +194,7 @@ export class ReportsService {
 
     // Models statistics
     const models = await this.modelModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const modelsByStatus = this.groupByField(models, 'status');
@@ -206,14 +206,14 @@ export class ReportsService {
 
     // Deployments statistics
     const deployments = await this.deploymentModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const deploymentsByStatus = this.groupByField(deployments, 'status');
 
     // Agents statistics
     const agents = await this.agentModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const agentsByStatus = this.groupByField(agents, 'status');
@@ -223,7 +223,7 @@ export class ReportsService {
 
     // Executions statistics
     const executions = await this.executionModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const executionsByStatus = this.groupByField(executions, 'status');
@@ -285,11 +285,11 @@ export class ReportsService {
     context: RequestContext
   ): Promise<any> {
     const nodes = await this.nodeModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const resources = await this.resourceModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const nodesByStatus = this.groupByField(nodes, 'status');
@@ -370,16 +370,16 @@ export class ReportsService {
   private async getWorkloadMetrics(context: RequestContext): Promise<any> {
     const [models, deployments, agents, executions] = await Promise.all([
       this.modelModel
-        .find({ deletedAt: null, 'owner.orgId': context.orgId })
+        .find({ isDeleted: false, 'owner.orgId': context.orgId })
         .exec(),
       this.deploymentModel
-        .find({ deletedAt: null, 'owner.orgId': context.orgId })
+        .find({ isDeleted: false, 'owner.orgId': context.orgId })
         .exec(),
       this.agentModel
-        .find({ deletedAt: null, 'owner.orgId': context.orgId })
+        .find({ isDeleted: false, 'owner.orgId': context.orgId })
         .exec(),
       this.executionModel
-        .find({ deletedAt: null, 'owner.orgId': context.orgId })
+        .find({ isDeleted: false, 'owner.orgId': context.orgId })
         .exec(),
     ]);
 
@@ -439,7 +439,7 @@ export class ReportsService {
 
   private async getHealthMetrics(context: RequestContext): Promise<any> {
     const nodes = await this.nodeModel
-      .find({ deletedAt: null, 'owner.orgId': context.orgId })
+      .find({ isDeleted: false, 'owner.orgId': context.orgId })
       .exec();
 
     const issues = [];

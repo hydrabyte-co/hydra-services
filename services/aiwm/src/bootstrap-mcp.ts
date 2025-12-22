@@ -186,6 +186,10 @@ export async function bootstrapMcpServer() {
   // Helper function to fetch service URLs from configuration
   const fetchServiceUrls = async (orgId: string, context: RequestContext) => {
     let cbmBaseUrl = 'http://localhost:3001'; // Default fallback
+    let iamBaseUrl = 'http://localhost:3000'; // Default fallback
+    let aiwmBaseUrl = 'http://localhost:3003'; // Default fallback
+
+    // Fetch CBM Base URL
     try {
       logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.CBM_BASE_API_URL} for org: ${orgId}`);
       const cbmConfig = await configService.findByKey(ConfigKeyEnum.CBM_BASE_API_URL as any, context);
@@ -204,7 +208,41 @@ export async function bootstrapMcpServer() {
       logger.warn(`⚠️  Using default CBM Base URL: ${cbmBaseUrl}`);
     }
 
-    return { cbmBaseUrl };
+    // Fetch IAM Base URL
+    try {
+      logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.IAM_BASE_API_URL} for org: ${orgId}`);
+      const iamConfig = await configService.findByKey(ConfigKeyEnum.IAM_BASE_API_URL as any, context);
+
+      if (iamConfig && iamConfig.value) {
+        iamBaseUrl = iamConfig.value;
+        logger.log(`📍 IAM Base URL from config: ${iamBaseUrl}`);
+      } else {
+        logger.warn(`⚠️  No config found for key: ${ConfigKeyEnum.IAM_BASE_API_URL}, using default: ${iamBaseUrl}`);
+      }
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`❌ Error fetching IAM base URL from config:`, errorMsg);
+      logger.warn(`⚠️  Using default IAM Base URL: ${iamBaseUrl}`);
+    }
+
+    // Fetch AIWM Base URL
+    try {
+      logger.debug(`🔍 Fetching config key: ${ConfigKeyEnum.AIWM_BASE_API_URL} for org: ${orgId}`);
+      const aiwmConfig = await configService.findByKey(ConfigKeyEnum.AIWM_BASE_API_URL as any, context);
+
+      if (aiwmConfig && aiwmConfig.value) {
+        aiwmBaseUrl = aiwmConfig.value;
+        logger.log(`📍 AIWM Base URL from config: ${aiwmBaseUrl}`);
+      } else {
+        logger.warn(`⚠️  No config found for key: ${ConfigKeyEnum.AIWM_BASE_API_URL}, using default: ${aiwmBaseUrl}`);
+      }
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error(`❌ Error fetching AIWM base URL from config:`, errorMsg);
+      logger.warn(`⚠️  Using default AIWM Base URL: ${aiwmBaseUrl}`);
+    }
+
+    return { cbmBaseUrl, iamBaseUrl, aiwmBaseUrl };
   };
 
   // Step 3.1: Function to load and register tools for agent
@@ -325,6 +363,8 @@ export async function bootstrapMcpServer() {
                   groupId: tokenPayload.groupId,
                   roles: tokenPayload.roles,
                   cbmBaseUrl: serviceUrls.cbmBaseUrl, // Service URLs from configuration
+                  iamBaseUrl: serviceUrls.iamBaseUrl,
+                  aiwmBaseUrl: serviceUrls.aiwmBaseUrl,
                 };
 
                 return await builtinTool.executor(args, executionContext);

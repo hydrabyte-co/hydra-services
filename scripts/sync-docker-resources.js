@@ -19,7 +19,7 @@ function createBaseFields(userId, orgId) {
     },
     createdBy: userId,
     updatedBy: userId,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };

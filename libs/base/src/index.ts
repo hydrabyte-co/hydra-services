@@ -10,3 +10,4 @@ export * from './guards';
 export * from './dto';
 export * from './lib/filters';
 export * from './lib/middleware';
+export * from './utils/query-parser.util';

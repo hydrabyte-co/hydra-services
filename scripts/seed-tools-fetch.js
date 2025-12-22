@@ -155,7 +155,7 @@ if (existing) {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     metadata: {
       notes: 'Pre-start container with: docker run -d -p 3210:3210 --name mcp-fetch -e MCP_TRANSPORT=sse -e PORT=3210 mcp/fetch:latest',
       transportDeprecationNote: 'SSE transport is deprecated as of MCP protocol 2024-11-05. Consider using HTTP transport for future compatibility.',

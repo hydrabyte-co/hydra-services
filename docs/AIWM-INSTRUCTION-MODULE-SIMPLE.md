@@ -195,7 +195,7 @@ PUT    /api/agents/:agentId
   createdAt: ISODate("2025-11-16T10:00:00Z"),
   updatedAt: ISODate("2025-11-16T10:00:00Z"),
   isDeleted: false,
-  deletedAt: null
+  isDeleted: false
 }
 ```
 

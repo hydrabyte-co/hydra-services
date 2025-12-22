@@ -128,7 +128,7 @@ export class NodeService extends BaseService<Node> {
    * Find node by MongoDB _id (used by WebSocket gateway)
    */
   async findByObjectId(id: Types.ObjectId): Promise<Node | null> {
-    return await this.model.findOne({ _id: id, deletedAt: null }).exec();
+    return await this.model.findOne({ _id: id, isDeleted: false }).exec();
   }
 
   /**

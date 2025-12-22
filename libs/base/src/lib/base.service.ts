@@ -1,5 +1,10 @@
 import { Model, ObjectId, PipelineStage } from 'mongoose';
-import { RequestContext, createRoleBasedPermissions, createLogger, logDebug } from '@hydrabyte/shared';
+import {
+  RequestContext,
+  createRoleBasedPermissions,
+  createLogger,
+  logDebug,
+} from '@hydrabyte/shared';
 import { ForbiddenException } from '@nestjs/common';
 
 export interface FindManyResult<T> {
@@ -62,7 +67,10 @@ export class BaseService<Entity> {
 
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowWrite) {
-      this.logger.warn('Create permission denied', { userId: context.userId, roles: context.roles });
+      this.logger.warn('Create permission denied', {
+        userId: context.userId,
+        roles: context.roles,
+      });
       throw new ForbiddenException('You do not have permission to create.');
     }
 
@@ -80,7 +88,10 @@ export class BaseService<Entity> {
     const created = new this.model(dataWithAudit);
     const saved = await created.save();
 
-    this.logger.info('Entity created', { id: (saved as any)._id, userId: context.userId });
+    this.logger.info('Entity created', {
+      id: (saved as any)._id,
+      userId: context.userId,
+    });
 
     // Remove internal fields and password from result
     const obj = saved.toObject ? saved.toObject() : saved;
@@ -94,16 +105,25 @@ export class BaseService<Entity> {
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<Entity>> {
-    this.logger.debug('Finding entities', { page: options.page, limit: options.limit, userId: context.userId });
+    this.logger.debug('Finding entities', {
+      page: options.page,
+      limit: options.limit,
+      userId: context.userId,
+    });
 
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowRead) {
-      this.logger.warn('Read permission denied', { userId: context.userId, roles: context.roles });
+      this.logger.warn('Read permission denied', {
+        userId: context.userId,
+        roles: context.roles,
+      });
       throw new ForbiddenException('You do not have permission to read.');
     }
 
     const { sort, page = 1, limit = 10 } = options;
-    const filter = {...options as any};
+    const filter = options.filter
+      ? { ...(options.filter as any) }
+      : {...(options as any)};
     delete filter['isDeleted']; // Ensure isDeleted is not set by user filter
     delete filter['deletedAt']; // Ensure deletedAt is not set by user filter
     delete filter['owner']; // Ensure owner is not set by user filter
@@ -129,7 +149,12 @@ export class BaseService<Entity> {
       this.model.countDocuments(finalFilter).exec(),
     ]);
 
-    this.logger.info('Entities retrieved', { count: data.length, total, page, userId: context.userId });
+    this.logger.info('Entities retrieved', {
+      count: data.length,
+      total,
+      page,
+      userId: context.userId,
+    });
 
     return { data, pagination: { page, limit, total }, statistics: { total } };
   }
@@ -138,11 +163,17 @@ export class BaseService<Entity> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Entity | null> {
-    this.logger.debug('Finding entity by ID', { id: id.toString(), userId: context.userId });
+    this.logger.debug('Finding entity by ID', {
+      id: id.toString(),
+      userId: context.userId,
+    });
 
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowRead) {
-      this.logger.warn('Read permission denied', { userId: context.userId, roles: context.roles });
+      this.logger.warn('Read permission denied', {
+        userId: context.userId,
+        roles: context.roles,
+      });
       throw new ForbiddenException('You do not have permission to read.');
     }
 
@@ -166,11 +197,17 @@ export class BaseService<Entity> {
     updateData: Partial<Entity>,
     context: RequestContext
   ): Promise<Entity | null> {
-    this.logger.debug('Updating entity', { id: id.toString(), userId: context.userId });
+    this.logger.debug('Updating entity', {
+      id: id.toString(),
+      userId: context.userId,
+    });
 
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowWrite) {
-      this.logger.warn('Update permission denied', { userId: context.userId, roles: context.roles });
+      this.logger.warn('Update permission denied', {
+        userId: context.userId,
+        roles: context.roles,
+      });
       throw new ForbiddenException('You do not have permission to update.');
     }
 
@@ -195,7 +232,10 @@ export class BaseService<Entity> {
       .exec();
 
     if (updated) {
-      this.logger.info('Entity updated', { id: id.toString(), userId: context.userId });
+      this.logger.info('Entity updated', {
+        id: id.toString(),
+        userId: context.userId,
+      });
     } else {
       this.logger.warn('Entity not found for update', { id: id.toString() });
     }
@@ -228,11 +268,17 @@ export class BaseService<Entity> {
     id: ObjectId,
     context: RequestContext
   ): Promise<Entity | null> {
-    this.logger.debug('Soft deleting entity', { id: id.toString(), userId: context.userId });
+    this.logger.debug('Soft deleting entity', {
+      id: id.toString(),
+      userId: context.userId,
+    });
 
     const permissions = createRoleBasedPermissions(context);
     if (!permissions.allowDelete) {
-      this.logger.warn('Delete permission denied', { userId: context.userId, roles: context.roles });
+      this.logger.warn('Delete permission denied', {
+        userId: context.userId,
+        roles: context.roles,
+      });
       throw new ForbiddenException('You do not have permission to delete.');
     }
 
@@ -252,7 +298,10 @@ export class BaseService<Entity> {
       .exec();
 
     if (updated) {
-      this.logger.info('Entity soft deleted', { id: id.toString(), userId: context.userId });
+      this.logger.info('Entity soft deleted', {
+        id: id.toString(),
+        userId: context.userId,
+      });
     } else {
       this.logger.warn('Entity not found for deletion', { id: id.toString() });
     }

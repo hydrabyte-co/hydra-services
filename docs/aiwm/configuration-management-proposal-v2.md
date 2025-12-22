@@ -683,7 +683,7 @@ export class ConfigService {
     const config = await this.configModel.findOne({
       key,
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     });
 
     if (!config) {
@@ -713,7 +713,7 @@ export class ConfigService {
   async getAll(): Promise<Record<string, any>> {
     const configs = await this.configModel.find({
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     });
 
     const result: Record<string, any> = {};

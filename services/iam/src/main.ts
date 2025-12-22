@@ -6,7 +6,7 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { GlobalExceptionFilter } from '@hydrabyte/base';
+import { GlobalExceptionFilter, customQueryParser } from '@hydrabyte/base';
 import { SERVICE_CONFIG } from '@hydrabyte/shared';
 import { AppModule } from './app.module';
 
@@ -15,6 +15,11 @@ async function bootstrap() {
   SERVICE_CONFIG.iam.mongodbUri = `${process.env.MONGODB_URI}/${SERVICE_CONFIG.iam.name}`;
 
   const app = await NestFactory.create(AppModule);
+
+  // Configure Express to use custom query parser
+  // Supports: filter[search]=123, filter.search=123, filter[metadata.discordUserId]=123
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('query parser', customQueryParser);
 
   // Global exception filter for standardized error responses
   app.useGlobalFilters(new GlobalExceptionFilter());

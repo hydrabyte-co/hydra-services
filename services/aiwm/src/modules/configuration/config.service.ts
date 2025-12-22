@@ -143,7 +143,7 @@ export class ConfigService implements OnModuleInit {
       .findOne({
         key,
         isActive: true,
-        deletedAt: null,
+        isDeleted: false,
       })
       .exec();
 
@@ -204,7 +204,7 @@ export class ConfigService implements OnModuleInit {
       const configs = await this.configModel
         .find({
           isActive: true,
-          deletedAt: null,
+          isDeleted: false,
         })
         .exec();
 

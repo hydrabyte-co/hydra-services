@@ -6,12 +6,17 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { GlobalExceptionFilter } from '@hydrabyte/base';
+import { GlobalExceptionFilter, customQueryParser } from '@hydrabyte/base';
 import { AppModule } from './app/app.module';
 import { WsJwtAdapter } from './modules/node/ws-jwt.adapter';
 
 export async function bootstrapApiServer() {
   const app = await NestFactory.create(AppModule);
+
+  // Configure Express to use custom query parser
+  // Supports: filter[search]=123, filter.search=123, filter[metadata.discordUserId]=123
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('query parser', customQueryParser);
 
   // Use WebSocket adapter with JWT authentication
   app.useWebSocketAdapter(new WsJwtAdapter(app));

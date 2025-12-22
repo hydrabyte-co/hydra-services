@@ -21,7 +21,7 @@ function createBaseFields(userId, orgId, labels = {}) {
     },
     createdBy: userId,
     updatedBy: userId,
-    deletedAt: null,
+    isDeleted: false,
     isDeleted: false,
     metadata: {
       labels: labels

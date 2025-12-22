@@ -51,9 +51,10 @@ export enum ConfigKey {
   GROQ_API_KEY = 'llm.groq.api_key',
 
   // ==========================================
-  // Service Integrations (3 keys)
+  // Service Integrations (4 keys)
   // ==========================================
   AIWM_BASE_API_URL = 'aiwm.base_api_url',
   AIWM_BASE_MCP_URL = 'aiwm.base_mcp_url',
-  CBM_BASE_URL = 'cbm.base_url',
+  CBM_BASE_API_URL = 'cbm.base_api_url',
+  IAM_BASE_API_URL = 'iam.base_api_url',
 }

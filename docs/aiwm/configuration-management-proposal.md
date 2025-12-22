@@ -533,7 +533,7 @@ export class ConfigService {
     const config = await this.configModel.findOne({
       key,
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     });
 
     if (!config) {
@@ -569,7 +569,7 @@ export class ConfigService {
     const configs = await this.configModel.find({
       category,
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     });
 
     const result: Record<string, any> = {};

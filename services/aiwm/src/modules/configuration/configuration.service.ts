@@ -87,7 +87,7 @@ export class ConfigurationService extends BaseService<Configuration> {
     const existing = await this.configModel
       .findOne({
         key: dto.key,
-        deletedAt: null,
+        isDeleted: false,
         'owner.orgId': context.orgId,
       })
       .exec();
@@ -250,11 +250,11 @@ export class ConfigurationService extends BaseService<Configuration> {
         const existing = await this.configModel
           .findOne({
             key,
-            deletedAt: null,
+            isDeleted: false,
             'owner.orgId': context.orgId,
           })
           .exec();
-
+        this.logger.debug('Checking existing configuration', { key, orgId: context.orgId, existing: existing });
         if (existing) {
           skippedKeys.push(key);
           continue;
@@ -276,7 +276,8 @@ export class ConfigurationService extends BaseService<Configuration> {
           updatedBy: context.userId,
         });
 
-        await newConfig.save({ validateBeforeSave: false });
+        const createResult = await newConfig.save({ validateBeforeSave: false });
+        this.logger.debug('Creating new configuration', { key, orgId: context.orgId, createResult });
         createdKeys.push(key);
       } catch (error: any) {
         // Handle duplicate key error gracefully (E11000)

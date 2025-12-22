@@ -83,7 +83,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -178,7 +178,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -273,7 +273,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -370,7 +370,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -465,7 +465,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -566,7 +566,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -669,7 +669,7 @@ try {
     },
     createdBy: USER_ID,
     updatedBy: USER_ID,
-    deletedAt: null,
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };

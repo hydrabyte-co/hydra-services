@@ -334,8 +334,8 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
     example: 'http://localhost:3004',
   },
 
-  [ConfigKey.CBM_BASE_URL]: {
-    key: ConfigKey.CBM_BASE_URL,
+  [ConfigKey.CBM_BASE_API_URL]: {
+    key: ConfigKey.CBM_BASE_API_URL,
     displayName: 'CBM Base API URL',
     description: 'Base URL for CBM (Core Business Management) REST API',
     dataType: 'url',
@@ -344,5 +344,17 @@ export const CONFIG_METADATA: Record<ConfigKey, ConfigKeyMetadata> = {
       pattern: '^https?://.+',
     },
     example: 'http://localhost:3001',
+  },
+
+  [ConfigKey.IAM_BASE_API_URL]: {
+    key: ConfigKey.IAM_BASE_API_URL,
+    displayName: 'IAM Base API URL',
+    description: 'Base URL for IAM (Identity & Access Management) REST API',
+    dataType: 'url',
+    isRequired: false,
+    validation: {
+      pattern: '^https?://.+',
+    },
+    example: 'http://localhost:3000',
   },
 };

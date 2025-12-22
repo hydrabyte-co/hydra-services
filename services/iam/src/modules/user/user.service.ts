@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, ObjectId } from 'mongoose';
 import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
@@ -12,6 +12,7 @@ import {
 import { CreateUserData, ChangePasswordDto } from './user.dto';
 @Injectable()
 export class UsersService extends BaseService<User> {
+
   constructor(@InjectModel(User.name) userModel: Model<User>) {
     super(userModel);
   }
@@ -23,6 +24,14 @@ export class UsersService extends BaseService<User> {
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<User>> {
+    if (options.filter) {
+      if (options.filter['fullname']) {
+        options.filter['fullname'] = { $regex: options.filter['fullname'], $options: 'i' };
+      }
+      if (options.filter['address']) {
+        options.filter['address'] = { $regex: options.filter['address'], $options: 'i' };
+      }
+    }
     const findResult = await super.findAll(options, context);
     // Aggregate statistics by status
     const statusStats = await super.aggregate(

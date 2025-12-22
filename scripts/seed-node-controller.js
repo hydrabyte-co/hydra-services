@@ -22,7 +22,7 @@ function createBaseFields(userId, orgId) {
     },
     createdBy: userId,
     updatedBy: userId,
-    deletedAt: null,
+    isDeleted: false,
     metadata: {},
     createdAt: new Date(),
     updatedAt: new Date()

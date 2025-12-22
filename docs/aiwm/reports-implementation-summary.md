@@ -111,7 +111,7 @@ Module aggregates data from:
 - Users only see their organization's data
 
 ✅ **Soft Delete Support**
-- All queries filter `deletedAt: null`
+- All queries filter `isDeleted: false`
 
 ---
 

@@ -68,6 +68,14 @@ export class AgentService extends BaseService<Agent> {
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<Agent>> {
+    if(options.filter) {
+      if (options.filter['name']) {
+        options.filter['name'] = { $regex: options.filter['name'], $options: 'i' };
+      }
+      if (options.filter['description']) {
+        options.filter['description'] = { $regex: options.filter['description'], $options: 'i' };
+      }
+    }
     const findResult = await super.findAll(options, context);
 
     // Aggregate statistics by status

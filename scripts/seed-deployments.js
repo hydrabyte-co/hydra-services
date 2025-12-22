@@ -93,7 +93,7 @@ resources.forEach((resource, idx) => {
       },
       createdBy: USER_ID,
       updatedBy: USER_ID,
-      deletedAt: null,
+      isDeleted: false,
       metadata: {},
       createdAt: new Date(),
       updatedAt: new Date()

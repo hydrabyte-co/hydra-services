@@ -183,7 +183,7 @@ agents.forEach((agent, index) => {
       },
       createdBy: USER_ID,
       updatedBy: USER_ID,
-      deletedAt: null,
+      isDeleted: false,
       metadata: {},
       isDeleted: false,
       createdAt: new Date(),
