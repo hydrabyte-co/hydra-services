@@ -18,6 +18,9 @@ import { Deployment } from './deployment.schema';
 import { Model as ModelEntity } from '../model/model.schema';
 import { Node } from '../node/node.schema';
 import { Resource } from '../resource/resource.schema';
+import { ConfigurationService } from '../configuration/configuration.service';
+import { ConfigKey } from '@hydrabyte/shared';
+import { EndpointInfoDto } from './deployment.dto';
 
 /**
  * DeploymentService
@@ -31,7 +34,8 @@ export class DeploymentService extends BaseService<Deployment> {
     @InjectModel(ModelEntity.name)
     private readonly modelModel: Model<ModelEntity>,
     @InjectModel(Node.name) private readonly nodeModel: Model<Node>,
-    @InjectModel(Resource.name) private readonly resourceModel: Model<Resource>
+    @InjectModel(Resource.name) private readonly resourceModel: Model<Resource>,
+    private readonly configurationService: ConfigurationService
   ) {
     super(deploymentModel);
   }
@@ -700,6 +704,188 @@ export class DeploymentService extends BaseService<Deployment> {
       'Self-hosted deployment inference is not yet implemented. ' +
       'This will be available in Phase 2 with worker integration.'
     );
+  }
+
+  /**
+   * Build endpoint integration information for a deployment
+   * Returns URL, headers, sample body, and integration guide
+   */
+  async buildEndpointInfo(
+    deploymentId: string,
+    context: RequestContext
+  ): Promise<EndpointInfoDto> {
+    // Get deployment
+    const deployment = await this.deploymentModel
+      .findById(deploymentId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!deployment) {
+      throw new NotFoundException(`Deployment with ID ${deploymentId} not found`);
+    }
+
+    // Get model
+    const model = await this.modelModel
+      .findById(deployment.modelId)
+      .where('isDeleted')
+      .equals(false)
+      .lean()
+      .exec();
+
+    if (!model) {
+      throw new NotFoundException(`Model not found for deployment`);
+    }
+
+    // Get base API URL from configuration
+    const baseApiUrlConfig = await this.configurationService.findByKey(
+      ConfigKey.AIWM_BASE_API_URL,
+      context
+    );
+    const baseApiUrl = baseApiUrlConfig?.value || 'http://localhost:3003';
+
+    // Determine the inference path based on provider
+    let aiProviderPath = '/v1/chat/completions'; // Default OpenAI-style
+    let sampleBody: Record<string, any> = {};
+    let providerName = 'AI Provider';
+    let providerDocsUrl = '';
+
+    if (model.deploymentType === 'api-based') {
+      providerName = this.getProviderDisplayName(model.provider || 'unknown');
+
+      switch (model.provider) {
+        case 'openai':
+          aiProviderPath = '/v1/chat/completions';
+          sampleBody = {
+            messages: [{ role: 'user', content: 'Hello, how are you?' }],
+            temperature: 0.7,
+            max_tokens: 1000,
+          };
+          providerDocsUrl = 'https://platform.openai.com/docs/api-reference';
+          break;
+
+        case 'anthropic':
+          aiProviderPath = '/v1/messages';
+          sampleBody = {
+            messages: [{ role: 'user', content: 'Hello, how are you?' }],
+            max_tokens: 1024,
+            temperature: 0.7,
+          };
+          providerDocsUrl = 'https://docs.anthropic.com/en/api/messages';
+          break;
+
+        case 'google':
+          aiProviderPath = `/v1beta/models/${model.modelIdentifier || 'gemini-pro'}:generateContent`;
+          sampleBody = {
+            contents: [{
+              parts: [{ text: 'Hello, how are you?' }],
+            }],
+          };
+          providerDocsUrl = 'https://ai.google.dev/api/rest';
+          break;
+
+        default:
+          aiProviderPath = '/v1/chat/completions';
+          sampleBody = {
+            messages: [{ role: 'user', content: 'Hello, how are you?' }],
+          };
+          providerDocsUrl = '';
+          break;
+      }
+    } else {
+      // Self-hosted deployment
+      providerName = 'Self-Hosted';
+      aiProviderPath = '/v1/chat/completions'; // vLLM/Triton typically use OpenAI-compatible API
+      sampleBody = {
+        messages: [{ role: 'user', content: 'Hello, how are you?' }],
+        temperature: 0.7,
+        max_tokens: 1000,
+      };
+      providerDocsUrl = 'https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html';
+    }
+
+    // Build full URL
+    const url = `${baseApiUrl}/deployments/${deploymentId}/inference${aiProviderPath}`;
+
+    // Build headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer <ACCESS_TOKEN>',
+    };
+
+    // Build integration guide
+    const description = this.buildIntegrationGuide(
+      model,
+      url,
+      providerName,
+      providerDocsUrl,
+      sampleBody
+    );
+
+    return {
+      url,
+      headers,
+      body: sampleBody,
+      description,
+    };
+  }
+
+  /**
+   * Get display name for provider
+   */
+  private getProviderDisplayName(provider: string): string {
+    const providerNames: Record<string, string> = {
+      openai: 'OpenAI',
+      anthropic: 'Anthropic (Claude)',
+      google: 'Google (Gemini)',
+      azure: 'Azure OpenAI',
+      cohere: 'Cohere',
+    };
+    return providerNames[provider] || provider;
+  }
+
+  /**
+   * Build integration guide in markdown format
+   */
+  private buildIntegrationGuide(
+    model: any,
+    url: string,
+    providerName: string,
+    providerDocsUrl: string,
+    sampleBody: Record<string, any>
+  ): string {
+    const modelInfo = model.deploymentType === 'api-based'
+      ? `**${providerName}** provider with model \`${model.modelIdentifier || model.name}\``
+      : `**Self-Hosted** model \`${model.name}\``;
+
+    let guide = `## Integration Guide\n\n`;
+    guide += `This deployment uses ${modelInfo}.\n\n`;
+
+    guide += `### Authentication\n`;
+    guide += `- Use \`ACCESS_TOKEN\` which can be either:\n`;
+    guide += `  - **USER_ACCESS_TOKEN**: Personal user token from IAM login\n`;
+    guide += `  - **APP_ACCESS_TOKEN**: Application service token\n\n`;
+
+    if (providerDocsUrl) {
+      guide += `### Provider Documentation\n`;
+      guide += `For detailed API specifications and examples, visit the official [${providerName} Documentation](${providerDocsUrl}).\n\n`;
+    }
+
+    guide += `### Example Request\n`;
+    guide += `\`\`\`bash\n`;
+    guide += `curl -X POST \\\n`;
+    guide += `  '${url}' \\\n`;
+    guide += `  -H 'Content-Type: application/json' \\\n`;
+    guide += `  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \\\n`;
+    guide += `  -d '${JSON.stringify(sampleBody, null, 2).replace(/\n/g, '\n  ')}'\n`;
+    guide += `\`\`\`\n\n`;
+
+    guide += `### Response Format\n`;
+    guide += `The response format depends on the AI provider. `;
+    guide += `Please refer to the provider documentation for detailed response schemas.\n`;
+
+    return guide;
   }
 
   /**

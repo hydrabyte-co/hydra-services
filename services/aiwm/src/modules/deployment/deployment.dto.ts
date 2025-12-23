@@ -9,6 +9,7 @@ import {
   Min,
   Max,
   IsDateString,
+  IsObject,
 } from 'class-validator';
 
 /**
@@ -128,4 +129,56 @@ export class UpdateDeploymentDto {
 
   // Note: Container info (containerId, containerName, dockerImage, containerPort, endpoint, gpuDevice)
   // are retrieved from the linked Resource via resourceId and should not be updated directly
+}
+
+/**
+ * DTO for endpoint integration information (virtual field)
+ * Provides integration details for calling the deployment inference endpoint
+ */
+export class EndpointInfoDto {
+  @ApiProperty({
+    description: 'Full inference endpoint URL',
+    example: 'https://api.x-or.cloud/dev/aiwm-v2/deployments/507f1f77bcf86cd799439011/inference/v1/chat/completions',
+  })
+  url!: string;
+
+  @ApiProperty({
+    description: 'Required HTTP headers for the request',
+    example: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer <ACCESS_TOKEN>',
+    },
+  })
+  headers!: Record<string, string>;
+
+  @ApiProperty({
+    description: 'Sample request body (provider-specific format)',
+    example: {
+      messages: [{ role: 'user', content: 'Hello, how are you?' }],
+      temperature: 0.7,
+    },
+  })
+  body!: Record<string, any>;
+
+  @ApiProperty({
+    description: 'Integration guide in markdown format',
+    example:
+      '## Integration Guide\n\n' +
+      'This deployment uses **OpenAI** provider with model `gpt-4-turbo`.\n\n' +
+      '### Authentication\n' +
+      '- Use `ACCESS_TOKEN` which can be either:\n' +
+      '  - **USER_ACCESS_TOKEN**: Personal user token from IAM login\n' +
+      '  - **APP_ACCESS_TOKEN**: Application service token\n\n' +
+      '### Provider Documentation\n' +
+      'For detailed API specifications and examples, visit the official [OpenAI API Documentation](https://platform.openai.com/docs).\n\n' +
+      '### Example Request\n' +
+      '```bash\n' +
+      'curl -X POST \\\n' +
+      '  https://api.x-or.cloud/dev/aiwm-v2/deployments/507f1f77bcf86cd799439011/inference/v1/chat/completions \\\n' +
+      '  -H "Content-Type: application/json" \\\n' +
+      '  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \\\n' +
+      '  -d \'{"messages":[{"role":"user","content":"Hello!"}]}\'\n' +
+      '```',
+  })
+  description!: string;
 }

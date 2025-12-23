@@ -59,7 +59,14 @@ export class DeploymentController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get deployment by ID' })
+  @ApiOperation({
+    summary: 'Get deployment by ID',
+    description: 'Returns a single deployment with a virtual "endpoint" field containing integration details (URL, headers, sample body, and markdown guide for API integration).'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Deployment with endpoint integration information',
+  })
   @ApiReadErrors()
   async findById(
     @Param('id') id: string,
@@ -69,7 +76,14 @@ export class DeploymentController {
     if (!deployment) {
       throw new NotFoundException(`Deployment with ID ${id} not found`);
     }
-    return deployment;
+
+    // Add virtual endpoint field
+    const endpointInfo = await this.deploymentService.buildEndpointInfo(id, context);
+
+    return {
+      ...deployment,
+      endpoint: endpointInfo,
+    };
   }
 
   @Put(':id')

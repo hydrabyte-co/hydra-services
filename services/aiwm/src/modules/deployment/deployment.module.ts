@@ -7,6 +7,7 @@ import { Deployment, DeploymentSchema } from './deployment.schema';
 import { Model, ModelSchema } from '../model/model.schema';
 import { Node, NodeSchema } from '../node/node.schema';
 import { Resource, ResourceSchema } from '../resource/resource.schema';
+import { ConfigurationModule } from '../configuration/configuration.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Resource, ResourceSchema } from '../resource/resource.schema';
       { name: Node.name, schema: NodeSchema },
       { name: Resource.name, schema: ResourceSchema },
     ]),
+    ConfigurationModule,
   ],
   controllers: [DeploymentController],
   providers: [DeploymentService, ProxyService],
