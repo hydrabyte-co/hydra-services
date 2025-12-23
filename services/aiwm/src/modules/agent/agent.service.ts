@@ -170,9 +170,105 @@ export class AgentService extends BaseService<Agent> {
   }
 
   /**
+   * Get agent configuration for managed agents
+   * Requires user authentication, returns config without issuing new JWT
+   */
+  async getAgentConfig(
+    agentId: string,
+    context: RequestContext
+  ): Promise<AgentConnectResponseDto> {
+    // Find agent
+    const agent = await this.agentModel
+      .findOne({ _id: new Types.ObjectId(agentId), isDeleted: false })
+      .exec();
+
+    if (!agent) {
+      throw new NotFoundException(`Agent with ID ${agentId} not found`);
+    }
+
+    // Verify user has access to this agent (same org)
+    if (agent.owner.orgId !== context.orgId) {
+      throw new UnauthorizedException('Not authorized to access this agent');
+    }
+
+    // Build instruction
+    const instruction = await this.buildInstructionForAgent(agent);
+
+    // Get allowed tools
+    const tools = await this.getAllowedTools(agent);
+
+    // Get AIWM base URL from configuration
+    const aiwmBaseUrlConfig = await this.configurationService.findByKey(
+      ConfigKey.AIWM_BASE_MCP_URL as any,
+      context
+    );
+    const mcpBaseUrl = aiwmBaseUrlConfig?.value || process.env.AIWM_BASE_URL || 'http://localhost:3306';
+
+    // Build MCP server configuration (use user's token for MCP calls)
+    // Note: Frontend will need to include user's JWT token when calling MCP
+    const mcpServers = {
+      'Builtin': {
+        type: 'http',
+        url: mcpBaseUrl,
+        headers: {
+          Authorization: `Bearer <USER_ACCESS_TOKEN>`, // Placeholder - frontend replaces with actual token
+        },
+      },
+    };
+
+    // Prepare response (no accessToken for managed agents - they don't get agent JWT)
+    const response: AgentConnectResponseDto = {
+      accessToken: '', // Empty - managed agents use user's JWT token
+      expiresIn: 0,
+      refreshToken: null,
+      refreshExpiresIn: 0,
+      tokenType: 'bearer',
+      mcpServers,
+      instruction,
+      settings: agent.settings || {},
+    };
+
+    // For managed agents, populate deployment info
+    if (agent.type === 'managed' && agent.deploymentId) {
+      try {
+        // Use DeploymentService to build complete endpoint info
+        const endpointInfo = await this.deploymentService.buildEndpointInfo(
+          agent.deploymentId,
+          context
+        );
+
+        // Get deployment and model for provider info
+        const deployment = await this.agentModel.db.collection('deployments').findOne({
+          _id: new Types.ObjectId(agent.deploymentId)
+        });
+
+        if (deployment && deployment.modelId) {
+          const model = await this.agentModel.db.collection('models').findOne({
+            _id: new Types.ObjectId(deployment.modelId)
+          });
+
+          if (model && model.deploymentType === 'api-based') {
+            response.deployment = {
+              id: deployment._id.toString(),
+              provider: model.provider,
+              model: model.modelIdentifier,
+              apiEndpoint: endpointInfo.url, // Full inference endpoint
+            };
+          }
+        }
+      } catch (error) {
+        this.logger.warn('Failed to populate deployment info', { error: error.message });
+        // Continue without deployment info - non-critical
+      }
+    }
+
+    return response;
+  }
+
+  /**
    * Agent connection/authentication endpoint
    * Validates agentId + secret, returns JWT token + config
-   * Only works for autonomous agents
+   * For autonomous agents only
    */
   async connect(
     agentId: string,

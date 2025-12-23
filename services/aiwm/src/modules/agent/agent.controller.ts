@@ -90,10 +90,30 @@ export class AgentController {
     return { message: 'Agent deleted successfully' };
   }
 
+  @Get(':id/config')
+  @ApiOperation({
+    summary: 'Get agent configuration (for managed agents)',
+    description: 'Get complete configuration for managed agent including deployment endpoint, MCP tools, and instruction. Requires user JWT token.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent configuration retrieved successfully',
+    type: AgentConnectResponseDto
+  })
+  @ApiResponse({ status: 403, description: 'Not authorized to access this agent' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @UseGuards(JwtAuthGuard)
+  async getConfig(
+    @Param('id') id: string,
+    @CurrentUser() context: RequestContext,
+  ): Promise<AgentConnectResponseDto> {
+    return this.agentService.getAgentConfig(id, context);
+  }
+
   @Post(':id/connect')
   @ApiOperation({
-    summary: 'Agent connection/authentication',
-    description: 'Public endpoint for agent to connect and authenticate. Returns JWT token + instruction + tools config.'
+    summary: 'Agent connection/authentication (for autonomous agents)',
+    description: 'Public endpoint for autonomous agent to connect and authenticate using secret. Returns JWT token + instruction + tools config.'
   })
   @ApiResponse({
     status: 200,
