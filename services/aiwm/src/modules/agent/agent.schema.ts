@@ -36,8 +36,8 @@ export class Agent extends BaseSchema {
   @Prop({ type: String, ref: 'Deployment' })
   deploymentId?: string; // For managed agents - link to LLM deployment
 
-  @Prop({ required: true, type: String, ref: 'Node' })
-  nodeId: string;
+  @Prop({ required: false, type: String, ref: 'Node' })
+  nodeId?: string; // Optional - only for autonomous agents running on specific nodes
 
   @Prop({
     type: String,

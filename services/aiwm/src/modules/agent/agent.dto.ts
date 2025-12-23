@@ -43,10 +43,10 @@ export class CreateAgentDto {
   @IsString()
   guardrailId?: string;
 
-  @ApiProperty({ description: 'Node ID where agent runs', example: 'node-gpu-001' })
+  @ApiPropertyOptional({ description: 'Node ID where agent runs (required for autonomous agents)', required: false })
   @IsString()
   @IsOptional()
-  nodeId: string;
+  nodeId?: string;
 
   @ApiPropertyOptional({ description: 'Agent tags', required: false, type: [String] })
   @IsOptional()
