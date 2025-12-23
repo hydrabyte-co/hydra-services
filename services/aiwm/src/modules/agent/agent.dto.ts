@@ -45,6 +45,7 @@ export class CreateAgentDto {
 
   @ApiProperty({ description: 'Node ID where agent runs', example: 'node-gpu-001' })
   @IsString()
+  @IsOptional()
   nodeId: string;
 
   @ApiPropertyOptional({ description: 'Agent tags', required: false, type: [String] })
