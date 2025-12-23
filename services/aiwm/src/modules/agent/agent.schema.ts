@@ -33,8 +33,18 @@ export class Agent extends BaseSchema {
   @Prop({ type: String, ref: 'Guardrail' })
   guardrailId?: string;
 
+  @Prop({ type: String, ref: 'Deployment' })
+  deploymentId?: string; // For managed agents - link to LLM deployment
+
   @Prop({ required: true, type: String, ref: 'Node' })
   nodeId: string;
+
+  @Prop({
+    type: String,
+    enum: ['organization.owner', 'organization.editor', 'organization.viewer'],
+    default: 'organization.viewer'
+  })
+  role: string; // RBAC role for agent to access MCP tools
 
   @Prop({ default: [] })
   tags: string[];

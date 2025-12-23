@@ -123,10 +123,24 @@ export class UpdateAgentDto {
   @IsString()
   guardrailId?: string;
 
+  @ApiPropertyOptional({ description: 'Deployment ID (for managed agents)', required: false })
+  @IsOptional()
+  @IsString()
+  deploymentId?: string;
+
   @ApiPropertyOptional({ description: 'Node ID', required: false })
   @IsOptional()
   @IsString()
   nodeId?: string;
+
+  @ApiPropertyOptional({
+    description: 'RBAC role for agent to access MCP tools',
+    enum: ['organization.owner', 'organization.editor', 'organization.viewer'],
+    required: false
+  })
+  @IsOptional()
+  @IsEnum(['organization.owner', 'organization.editor', 'organization.viewer'])
+  role?: string;
 
   @ApiPropertyOptional({ description: 'Agent tags', required: false, type: [String] })
   @IsOptional()
@@ -208,6 +222,23 @@ export class AgentConnectResponseDto {
 
   @ApiProperty({ description: 'Agent runtime settings/configuration' })
   settings: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Deployment configuration (for managed agents only)',
+    required: false,
+    example: {
+      id: '507f1f77bcf86cd799439011',
+      provider: 'anthropic',
+      model: 'claude-3-5-sonnet-20241022',
+      apiEndpoint: 'https://api.anthropic.com/v1/messages'
+    }
+  })
+  deployment?: {
+    id: string;
+    provider: string;
+    model: string;
+    apiEndpoint: string;
+  };
 }
 
 /**

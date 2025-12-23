@@ -9,6 +9,7 @@ import { Instruction, InstructionSchema } from '../instruction/instruction.schem
 import { Tool, ToolSchema } from '../tool/tool.schema';
 import { QueueModule } from '../../queues/queue.module';
 import { ConfigurationModule } from '../configuration/configuration.module';
+import { DeploymentModule } from '../deployment/deployment.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ConfigurationModule } from '../configuration/configuration.module';
     }),
     QueueModule,
     ConfigurationModule,
+    DeploymentModule, // Import to access DeploymentService
   ],
   controllers: [AgentController],
   providers: [AgentService],

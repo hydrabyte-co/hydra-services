@@ -25,6 +25,7 @@ import {
 import { AgentProducer } from '../../queues/producers/agent.producer';
 import { ConfigurationService } from '../configuration/configuration.service';
 import { ConfigKey } from '../configuration/enums/config-key.enum';
+import { DeploymentService } from '../deployment/deployment.service';
 
 @Injectable()
 export class AgentService extends BaseService<Agent> {
@@ -34,7 +35,8 @@ export class AgentService extends BaseService<Agent> {
     @InjectModel(Tool.name) private toolModel: Model<Tool>,
     private readonly jwtService: JwtService,
     private readonly agentProducer: AgentProducer,
-    private readonly configurationService: ConfigurationService
+    private readonly configurationService: ConfigurationService,
+    private readonly deploymentService: DeploymentService
   ) {
     super(agentModel as any);
   }
@@ -186,10 +188,9 @@ export class AgentService extends BaseService<Agent> {
       throw new NotFoundException(`Agent with ID ${agentId} not found`);
     }
 
-    // Only autonomous agents can connect
-    if (agent.type !== 'autonomous') {
-      throw new BadRequestException('Only autonomous agents can connect via this endpoint');
-    }
+    // Both autonomous and managed agents can connect
+    // autonomous: background agents (Discord, etc.)
+    // managed: user-controlled agents (chat UI)
 
     // Check if agent is suspended
     if (agent.status === 'suspended') {
@@ -205,15 +206,15 @@ export class AgentService extends BaseService<Agent> {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Extract roles from settings (flat field with backward compatibility)
-    const agentRoles = (agent.settings as any).auth_roles || ['agent'];
+    // Extract roles from agent.role field or settings (backward compatibility)
+    const agentRoles = agent.role ? [agent.role] : ((agent.settings as any).auth_roles || ['organization.viewer']);
 
     // Generate JWT token with IAM-compatible payload
     const payload = {
       sub: agentId,                          // Agent ID as userId
       username: `agent:${agentId}`,          // Format: agent:<agentId>
       status: agent.status,                  // Agent status
-      roles: agentRoles,                     // From settings.auth_roles or default ['agent']
+      roles: agentRoles,                     // From agent.role or settings.auth_roles
       orgId: agent.owner.orgId,              // Owner organization ID
       groupId: '',                           // Empty for agents
       agentId: agentId,                      // Same as sub
@@ -277,8 +278,8 @@ export class AgentService extends BaseService<Agent> {
       },
     };
 
-    // Return IAM TokenData-compatible structure with agent-specific additions
-    return {
+    // Prepare response
+    const response: AgentConnectResponseDto = {
       accessToken: token,
       expiresIn: expiresInSeconds,
       refreshToken: null,                    // Not implemented for agents
@@ -288,6 +289,42 @@ export class AgentService extends BaseService<Agent> {
       instruction,
       settings: agent.settings || {},
     };
+
+    // For managed agents, populate deployment info
+    if (agent.type === 'managed' && agent.deploymentId) {
+      try {
+        // Use DeploymentService to build complete endpoint info
+        const endpointInfo = await this.deploymentService.buildEndpointInfo(
+          agent.deploymentId,
+          { orgId: agent.owner.orgId } as RequestContext
+        );
+
+        // Get deployment and model for provider info
+        const deployment = await this.agentModel.db.collection('deployments').findOne({
+          _id: new Types.ObjectId(agent.deploymentId)
+        });
+
+        if (deployment && deployment.modelId) {
+          const model = await this.agentModel.db.collection('models').findOne({
+            _id: new Types.ObjectId(deployment.modelId)
+          });
+
+          if (model && model.deploymentType === 'api-based') {
+            response.deployment = {
+              id: deployment._id.toString(),
+              provider: model.provider,
+              model: model.modelIdentifier,
+              apiEndpoint: endpointInfo.url, // Use endpoint from buildEndpointInfo
+            };
+          }
+        }
+      } catch (error) {
+        this.logger.warn('Failed to populate deployment info', { error: error.message });
+        // Continue without deployment info - non-critical
+      }
+    }
+
+    return response;
   }
 
   /**
