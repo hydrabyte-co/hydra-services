@@ -191,8 +191,8 @@ export class AgentService extends BaseService<Agent> {
       throw new UnauthorizedException('Not authorized to access this agent');
     }
 
-    // Build instruction
-    const instruction = await this.buildInstructionForAgent(agent);
+    // Build instruction object (new format)
+    const instruction = await this.buildInstructionObjectForAgent(agent);
 
     // Get allowed tools
     const tools = await this.getAllowedTools(agent);
@@ -333,8 +333,8 @@ export class AgentService extends BaseService<Agent> {
     // Calculate expiresIn seconds (24 hours)
     const expiresInSeconds = 24 * 60 * 60;
 
-    // Build instruction (MVP: just return agent instruction)
-    const instruction = await this.buildInstructionForAgent(agent);
+    // Build instruction object (new format)
+    const instruction = await this.buildInstructionObjectForAgent(agent);
 
     // Get allowed tools
     const tools = await this.getAllowedTools(agent);
@@ -424,7 +424,47 @@ export class AgentService extends BaseService<Agent> {
   }
 
   /**
-   * Build merged instruction for agent
+   * Build instruction object for agent (new format)
+   * Returns structured instruction with id, systemPrompt, and guidelines
+   */
+  private async buildInstructionObjectForAgent(agent: Agent): Promise<{
+    id: string;
+    systemPrompt: string;
+    guidelines: string[];
+  }> {
+    if (!agent.instructionId) {
+      return {
+        id: '',
+        systemPrompt: 'No instruction configured for this agent.',
+        guidelines: []
+      };
+    }
+
+    const instruction = await this.instructionModel
+      .findOne({ _id: agent.instructionId, isDeleted: false })
+      .exec();
+
+    if (!instruction) {
+      this.logger.warn('Instruction not found for agent', {
+        agentId: (agent as any)._id,
+        instructionId: agent.instructionId,
+      });
+      return {
+        id: '',
+        systemPrompt: 'Instruction not found.',
+        guidelines: []
+      };
+    }
+
+    return {
+      id: (instruction as any)._id.toString(),
+      systemPrompt: instruction.systemPrompt,
+      guidelines: instruction.guidelines || []
+    };
+  }
+
+  /**
+   * Build merged instruction for agent (legacy format - for backward compatibility)
    * MVP: Just return agent's instruction content
    * TODO: Future - merge global + agent-specific + context instructions
    */

@@ -217,8 +217,19 @@ export class AgentConnectResponseDto {
     headers: Record<string, string>;
   }>;
 
-  @ApiProperty({ description: 'Merged instruction text for agent' })
-  instruction: string;
+  @ApiProperty({
+    description: 'Instruction object for agent',
+    example: {
+      id: '507f1f77bcf86cd799439011',
+      systemPrompt: 'You are a helpful customer support agent...',
+      guidelines: ['Be polite and professional', 'Always verify customer identity']
+    }
+  })
+  instruction: {
+    id: string;
+    systemPrompt: string;
+    guidelines: string[];
+  };
 
   @ApiProperty({ description: 'Agent runtime settings/configuration' })
   settings: Record<string, unknown>;
