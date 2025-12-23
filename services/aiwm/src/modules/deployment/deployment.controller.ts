@@ -37,7 +37,7 @@ export class DeploymentController {
   @ApiResponse({ status: 201, description: 'Deployment created successfully with status "queued"' })
   @ApiCreateErrors()
   @RequireUniverseRole()
-    @UseGuards(JwtAuthGuard, UniverseRoleGuard)
+  @UseGuards(JwtAuthGuard, UniverseRoleGuard)
   async create(
     @Body() createDto: CreateDeploymentDto,
     @CurrentUser() context: RequestContext,
@@ -47,6 +47,7 @@ export class DeploymentController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'List all deployments with pagination' })
   @ApiReadErrors({ notFound: false })
   async findAll(
@@ -57,6 +58,7 @@ export class DeploymentController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get deployment by ID' })
   @ApiReadErrors()
   async findById(
@@ -102,6 +104,7 @@ export class DeploymentController {
   }
 
   @Post(':id/start')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Start a deployment' })
   @ApiResponse({ status: 200, description: 'Deployment start initiated. Status changed to "deploying".' })
   @ApiUpdateErrors()
@@ -113,6 +116,7 @@ export class DeploymentController {
   }
 
   @Post(':id/stop')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Stop a running deployment' })
   @ApiResponse({ status: 200, description: 'Deployment stop initiated. Status changed to "stopping".' })
   @ApiUpdateErrors()
@@ -128,6 +132,7 @@ export class DeploymentController {
   // ========================================================================
 
   @Get(':id/api-spec')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Get OpenAPI specification from deployment endpoint',
     description: 'Fetches the OpenAPI spec from the model inference endpoint (endpoint/openapi.json)',
@@ -175,6 +180,7 @@ export class DeploymentController {
   }
 
   @All(':id/inference/*')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Unified inference endpoint for both API-based and self-hosted deployments',
     description:

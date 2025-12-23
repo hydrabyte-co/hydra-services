@@ -56,6 +56,7 @@ export class ModelController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get all models with pagination' })
   @ApiReadErrors({ notFound: false })
   async findAll(
@@ -66,6 +67,7 @@ export class ModelController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get model by ID' })
   @ApiReadErrors()
   async findById(
@@ -76,6 +78,7 @@ export class ModelController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Update a model' })
   @ApiUpdateErrors()
   @RequireUniverseRole()
@@ -89,6 +92,7 @@ export class ModelController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete a model (soft delete)' })
   @ApiDeleteErrors()
   @RequireUniverseRole()
@@ -101,6 +105,7 @@ export class ModelController {
   }
 
   @Post(':id/activate')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Activate a model (change status to active)' })
   @ApiUpdateErrors()
   async activate(
@@ -111,6 +116,7 @@ export class ModelController {
   }
 
   @Post(':id/deactivate')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Deactivate a model (change status to inactive)' })
   @ApiUpdateErrors()
   async deactivate(
