@@ -241,6 +241,7 @@ export class AgentConnectResponseDto {
       id: '507f1f77bcf86cd799439011',
       provider: 'anthropic',
       model: 'claude-3-5-sonnet-20241022',
+      baseAPIEndpoint: 'https://api.x-or.cloud/deployments/507f1f77bcf86cd799439011/inference',
       apiEndpoint: 'https://api.anthropic.com/v1/messages'
     }
   })
@@ -248,7 +249,8 @@ export class AgentConnectResponseDto {
     id: string;
     provider: string;
     model: string;
-    apiEndpoint: string;
+    baseAPIEndpoint: string; // Base proxy endpoint: .../deployments/{id}/inference
+    apiEndpoint: string; // Provider-specific endpoint with path
   };
 }
 

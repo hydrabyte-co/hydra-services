@@ -248,11 +248,20 @@ export class AgentService extends BaseService<Agent> {
           });
 
           if (model && model.deploymentType === 'api-based') {
+            // Get base API URL from configuration
+            const baseApiUrlConfig = await this.configurationService.findByKey(
+              ConfigKey.AIWM_BASE_API_URL as any,
+              context
+            );
+            const baseApiUrl = baseApiUrlConfig?.value || 'http://localhost:3003';
+            const baseAPIEndpoint = `${baseApiUrl}/deployments/${agent.deploymentId}/inference`;
+
             response.deployment = {
               id: deployment._id.toString(),
               provider: model.provider,
               model: model.modelIdentifier,
-              apiEndpoint: endpointInfo.url, // Full inference endpoint
+              baseAPIEndpoint, // Base proxy endpoint without provider path
+              apiEndpoint: endpointInfo.url, // Full inference endpoint with provider path
             };
           }
         }
@@ -406,11 +415,20 @@ export class AgentService extends BaseService<Agent> {
           });
 
           if (model && model.deploymentType === 'api-based') {
+            // Get base API URL from configuration
+            const baseApiUrlConfig = await this.configurationService.findByKey(
+              ConfigKey.AIWM_BASE_API_URL as any,
+              { orgId: agent.owner.orgId } as RequestContext
+            );
+            const baseApiUrl = baseApiUrlConfig?.value || 'http://localhost:3003';
+            const baseAPIEndpoint = `${baseApiUrl}/deployments/${agent.deploymentId}/inference`;
+
             response.deployment = {
               id: deployment._id.toString(),
               provider: model.provider,
               model: model.modelIdentifier,
-              apiEndpoint: endpointInfo.url, // Use endpoint from buildEndpointInfo
+              baseAPIEndpoint, // Base proxy endpoint without provider path
+              apiEndpoint: endpointInfo.url, // Full inference endpoint with provider path
             };
           }
         }
