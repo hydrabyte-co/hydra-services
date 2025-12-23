@@ -1,7 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { sign, verify } from 'jsonwebtoken';
 import { TokenData } from './auth.entity';
-import { LoginData } from './auth.dto';
+import { LoginData, UpdateProfileDto, ProfileResponseDto } from './auth.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AccessTokenTypes } from '../../core/enums/other.enum';
@@ -116,23 +116,31 @@ export class AuthService {
   /**
    * Get user profile by user ID
    * @param userId - User ID from JWT token
-   * @returns User profile without password
+   * @returns User profile with only selected fields
    */
-  async getProfile(userId: string): Promise<Partial<User>> {
+  async getProfile(userId: string): Promise<ProfileResponseDto> {
     const user = await this.userRepo
       .findOne({
         _id: userId,
         status: UserStatuses.Active,
         isDeleted: false,
       })
-      .select('-password -isDeleted -deletedAt')
+      .select('_id username fullname phonenumbers address metadata')
+      .lean()
       .exec();
 
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    return {
+      _id: user._id.toString(),
+      username: user.username,
+      fullname: user.fullname,
+      phonenumbers: user.phonenumbers,
+      address: user.address,
+      metadata: user.metadata,
+    };
   }
 
   /**
@@ -308,6 +316,54 @@ export class AuthService {
         message: 'Logged out successfully',
       };
     }
+  }
+
+  /**
+   * Update user profile (fullname, phonenumbers, address only)
+   * @param userId - User ID from JWT token
+   * @param updateData - Profile data to update
+   * @returns Updated user profile with only selected fields
+   */
+  async updateProfile(
+    userId: string,
+    updateData: UpdateProfileDto
+  ): Promise<ProfileResponseDto> {
+    // Find user
+    const user = await this.userRepo.findOne({
+      _id: userId,
+      status: UserStatuses.Active,
+      isDeleted: false,
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update only allowed fields
+    const updateFields: any = {};
+
+    if (updateData.fullname !== undefined) {
+      updateFields.fullname = updateData.fullname;
+    }
+
+    if (updateData.phonenumbers !== undefined) {
+      updateFields.phonenumbers = updateData.phonenumbers;
+    }
+
+    if (updateData.address !== undefined) {
+      updateFields.address = updateData.address;
+    }
+
+    updateFields.updatedAt = new Date();
+
+    // Update user
+    await this.userRepo.updateOne(
+      { _id: userId },
+      { $set: updateFields }
+    );
+
+    // Return updated profile
+    return this.getProfile(userId);
   }
 
   /**

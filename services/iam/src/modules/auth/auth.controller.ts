@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   UseGuards,
   Request,
   UsePipes,
@@ -17,10 +18,9 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginData, ChangeUserPasswordData, RefreshTokenData } from './auth.dto';
+import { LoginData, ChangeUserPasswordData, RefreshTokenData, UpdateProfileDto, ProfileResponseDto } from './auth.dto';
 import { TokenData } from './auth.entity';
 import { JwtAuthGuard } from '@hydrabyte/base';
-import { User } from '../user/user.schema';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -56,12 +56,28 @@ export class AuthController {
   @Get('profile')
   @ApiOperation({ summary: 'Get user profile', description: 'Get current authenticated user profile' })
   @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ status: 200, description: 'Profile retrieved successfully' })
+  @ApiResponse({ status: 200, description: 'Profile retrieved successfully', type: ProfileResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @UseGuards(JwtAuthGuard)
-  async getProfile(@Request() req): Promise<Partial<User>> {
+  async getProfile(@Request() req): Promise<ProfileResponseDto> {
     const userId = req.user.sub || req.user.userId;
     return this.authService.getProfile(userId);
+  }
+
+  @Patch('profile')
+  @ApiOperation({ summary: 'Update user profile', description: 'Update current user profile (fullname, phonenumbers, address only)' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Profile updated successfully', type: ProfileResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  async updateProfile(
+    @Body() updateData: UpdateProfileDto,
+    @Request() req
+  ): Promise<ProfileResponseDto> {
+    const userId = req.user.sub || req.user.userId;
+    return this.authService.updateProfile(userId, updateData);
   }
 
   @Post('change-password')
