@@ -77,11 +77,18 @@ export class DeploymentController {
       throw new NotFoundException(`Deployment with ID ${id} not found`);
     }
 
+    // Convert Mongoose document to plain object
+    const deploymentObj = (deployment as any).toObject ? (deployment as any).toObject() : deployment;
+
     // Add virtual endpoint field
-    const endpointInfo = await this.deploymentService.buildEndpointInfo(id, context);
+    let endpointInfo = null;
+    if (deploymentObj) {
+      delete deploymentObj.endpoint; // Remove existing endpoint if any
+      endpointInfo = await this.deploymentService.buildEndpointInfo(id, context);
+    }
 
     return {
-      ...deployment,
+      ...deploymentObj,
       endpoint: endpointInfo,
     };
   }
