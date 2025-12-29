@@ -289,3 +289,13 @@ export class AgentCredentialsResponseDto {
   @ApiProperty({ description: 'Installation script (placeholder/sample)' })
   installScript: string;
 }
+
+/**
+ * DTO for agent disconnect
+ */
+export class AgentDisconnectDto {
+  @ApiPropertyOptional({ description: 'Reason for disconnection', required: false })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}

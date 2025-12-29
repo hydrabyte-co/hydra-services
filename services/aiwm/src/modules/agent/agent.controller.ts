@@ -11,6 +11,7 @@ import {
   AgentConnectResponseDto,
   AgentHeartbeatDto,
   AgentCredentialsResponseDto,
+  AgentDisconnectDto,
 } from './agent.dto';
 
 @ApiTags('agents')
@@ -143,6 +144,22 @@ export class AgentController {
     @CurrentUser() context: RequestContext,
   ) {
     return this.agentService.heartbeat(id, heartbeatDto);
+  }
+
+  @Post(':id/disconnect')
+  @ApiOperation({
+    summary: 'Agent disconnect',
+    description: 'Gracefully disconnect agent and log disconnect event. Requires agent JWT token.'
+  })
+  @ApiResponse({ status: 200, description: 'Agent disconnected successfully' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @UseGuards(JwtAuthGuard)
+  async disconnect(
+    @Param('id') id: string,
+    @Body() disconnectDto: AgentDisconnectDto,
+    @CurrentUser() context: RequestContext,
+  ) {
+    return this.agentService.disconnect(id, disconnectDto);
   }
 
   @Post(':id/credentials/regenerate')

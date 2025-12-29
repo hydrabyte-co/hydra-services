@@ -108,7 +108,7 @@ export class ConfigurationService extends BaseService<Configuration> {
         { $set: updateData }
       );
 
-      this.logger.info('Configuration updated', {
+      this.logger.log('Configuration updated', {
         key: dto.key,
         updatedBy: context,
       });
@@ -125,7 +125,7 @@ export class ConfigurationService extends BaseService<Configuration> {
         context
       );
 
-      this.logger.info('Configuration created', {
+      this.logger.log('Configuration created', {
         key: dto.key,
         createdBy: context,
       });
@@ -170,7 +170,7 @@ export class ConfigurationService extends BaseService<Configuration> {
       { $set: updateData }
     );
 
-    this.logger.info('Configuration updated', {
+    this.logger.log('Configuration updated', {
       key,
       updatedBy: context.userId,
     });
@@ -201,7 +201,7 @@ export class ConfigurationService extends BaseService<Configuration> {
       }
     );
 
-    this.logger.info('Configuration deleted', {
+    this.logger.log('Configuration deleted', {
       key,
       deletedBy: context.userId,
     });
@@ -295,7 +295,7 @@ export class ConfigurationService extends BaseService<Configuration> {
       }
     }
 
-    this.logger.info('Configuration initialization completed', {
+    this.logger.log('Configuration initialization completed', {
       total: allKeys.length,
       created: createdKeys.length,
       skipped: skippedKeys.length,

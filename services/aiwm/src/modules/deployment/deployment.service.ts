@@ -580,7 +580,7 @@ export class DeploymentService extends BaseService<Deployment> {
       targetUrl = `${apiEndpoint}${path}`;
     }
 
-    this.logger.info(
+    this.logger.log(
       `Proxying to API provider: ${model.provider} - ${targetUrl}`
     );
 
@@ -656,7 +656,7 @@ export class DeploymentService extends BaseService<Deployment> {
       const duration = Date.now() - startTime;
 
       // Log success/failure
-      this.logger.info(
+      this.logger.log(
         `Provider response: ${response.status} - Duration: ${duration}ms`
       );
 

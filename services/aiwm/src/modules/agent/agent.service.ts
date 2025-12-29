@@ -153,7 +153,7 @@ export class AgentService extends BaseService<Agent> {
     const saved = await super.create(createAgentDto, context);
 
     // Business-specific logging with details
-    this.logger.info('Agent created with details', {
+    this.logger.log('Agent created with details', {
       id: (saved as any)._id,
       name: saved.name,
       status: saved.status,
@@ -357,7 +357,7 @@ export class AgentService extends BaseService<Agent> {
       }
     );
 
-    this.logger.info('Agent connected successfully', {
+    this.logger.log('Agent connected successfully', {
       agentId,
       name: agent.name,
       username: payload.username,
@@ -570,6 +570,38 @@ export class AgentService extends BaseService<Agent> {
   }
 
   /**
+   * Agent disconnect endpoint
+   * Logs disconnect event and clears lastConnectedAt
+   */
+  async disconnect(
+    agentId: string,
+    disconnectDto: { reason?: string }
+  ): Promise<{ success: boolean }> {
+    const agent = await this.agentModel
+      .findOne({ _id: new Types.ObjectId(agentId), isDeleted: false })
+      .exec();
+
+    if (!agent) {
+      throw new NotFoundException(`Agent with ID ${agentId} not found`);
+    }
+
+    // Update agent - clear lastConnectedAt to indicate disconnected
+    await this.agentModel.updateOne(
+      { _id: agent._id },
+      { $set: { lastConnectedAt: null } }
+    );
+
+    this.logger.log('Agent disconnected', {
+      agentId,
+      name: agent.name,
+      reason: disconnectDto.reason || 'No reason provided',
+      lastHeartbeat: agent.lastHeartbeatAt,
+    });
+
+    return { success: true };
+  }
+
+  /**
    * Regenerate agent credentials (admin only)
    * Returns new secret + env config + install script
    * Only works for autonomous agents
@@ -601,7 +633,7 @@ export class AgentService extends BaseService<Agent> {
       { $set: { secret: hashedSecret } }
     );
 
-    this.logger.info('Agent credentials regenerated', {
+    this.logger.log('Agent credentials regenerated', {
       agentId,
       regeneratedBy: context.userId,
     });
@@ -609,8 +641,8 @@ export class AgentService extends BaseService<Agent> {
     // Build env config snippet
     const envConfig = this.buildEnvConfig(agentId, newSecret, agent);
 
-    // Build install script (placeholder/sample)
-    const installScript = this.buildInstallScript(agentId, newSecret, agent);
+    // Build install script (async now)
+    const installScript = await this.buildInstallScript(agentId, newSecret, agent);
 
     return {
       agentId,
@@ -695,53 +727,263 @@ CLAUDE_RESUME=${resume}
   }
 
   /**
-   * Build installation script (placeholder/sample)
-   * TODO: Implement complete installation script with actual deployment logic
+   * Build installation script
+   * Full production-ready script with NVM, Node.js, systemd/PM2 setup
    */
-  private buildInstallScript(
+  private async buildInstallScript(
     agentId: string,
     secret: string,
     agent: Agent
-  ): string {
+  ): Promise<string> {
     const baseUrl = process.env.AIWM_PUBLIC_URL || 'https://api.x-or.cloud/dev/aiwm';
 
-    return `#!/bin/bash
+    // Get download URL from configuration
+    let downloadBaseUrl = 'https://cdn.x-or.cloud/agents'; // default
+    try {
+      const downloadConfig = await this.configurationService.findByKey(
+        'agent.download.base_url' as any, // ConfigKey enum might not be built yet
+        {
+          orgId: agent.owner.orgId || agent.owner as any,
+          userId: agent.createdBy as any,
+          agentId: '',
+          groupId: '',
+          appId: '',
+          roles: []
+        } as any
+      );
+      if (downloadConfig?.value) {
+        downloadBaseUrl = downloadConfig.value;
+      }
+    } catch (error) {
+      // Fallback to default if config not found
+      this.logger.warn('Failed to load AGENT_DOWNLOAD_BASE_URL config, using default', error);
+    }
+    const downloadUrl = `${downloadBaseUrl}/xora-cc-agent-latest.tar.gz`;
+
+    return String.raw`#!/bin/bash
 # ============================================
-# Agent Installation Script (PLACEHOLDER)
+# Agent Installation Script
 # ============================================
-# Agent: ${agent.name}
-# Agent ID: ${agentId}
-# Generated: ${new Date().toISOString()}
-#
-# TODO: This is a placeholder/sample script
-# TODO: Implement actual installation logic
+# Auto-generated for Agent: ${agent.name}
+# Generated at: ${new Date().toISOString()}
+# AIWM Controller: ${baseUrl}
 # ============================================
 
-echo "Installing agent: ${agent.name}"
+set -e  # Exit on any error
 
-# Step 1: Clone agent repository
-# TODO: Replace with actual repository URL
-# git clone https://github.com/your-org/agent-repo.git
-# cd agent-repo
+# ===== CONFIGURATION =====
+AGENT_ID="${agentId}"
+AGENT_SECRET="${secret}"
+CONTROLLER_URL="${baseUrl}"
+DOWNLOAD_URL="${downloadUrl}"
+INSTALL_DIR="/opt/xora-agent"
+SERVICE_NAME="xora-agent"
+PROCESS_MANAGER="\${PROCESS_MANAGER:-systemd}"  # systemd or pm2
 
-# Step 2: Install dependencies
-# npm install
+# ===== COLOR OUTPUT =====
+RED='\\033[0;31m'
+GREEN='\\033[0;32m'
+YELLOW='\\033[1;33m'
+NC='\\033[0m' # No Color
 
-# Step 3: Configure environment
-cat > .env << 'EOF'
+print_info() {
+    echo -e "\${GREEN}[INFO]\${NC} \$1"
+}
+
+print_warn() {
+    echo -e "\${YELLOW}[WARN]\${NC} \$1"
+}
+
+print_error() {
+    echo -e "\${RED}[ERROR]\${NC} \$1"
+}
+
+# ===== SYSTEM CHECKS =====
+print_info "Checking system requirements..."
+
+# Check OS
+if [[ ! -f /etc/lsb-release ]] && [[ ! -f /etc/debian_version ]]; then
+    print_error "This script only supports Ubuntu/Debian systems"
+    exit 1
+fi
+
+# Check if running as root
+if [[ \$EUID -eq 0 ]]; then
+    print_error "Please do NOT run this script as root"
+    exit 1
+fi
+
+# ===== INSTALL NVM & NODE.JS =====
+print_info "Installing NVM (Node Version Manager)..."
+
+# Check if NVM already installed
+if [ -s "\$HOME/.nvm/nvm.sh" ]; then
+    print_warn "NVM already installed, skipping..."
+else
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+
+    # Load NVM
+    export NVM_DIR="\$HOME/.nvm"
+    [ -s "\$NVM_DIR/nvm.sh" ] && \\. "\$NVM_DIR/nvm.sh"
+fi
+
+# Install Node.js 24
+print_info "Installing Node.js 24..."
+nvm install 24
+nvm use 24
+
+# Verify installation
+NODE_VERSION=\$(node -v)
+NPM_VERSION=\$(npm -v)
+print_info "Node.js version: \$NODE_VERSION"
+print_info "npm version: \$NPM_VERSION"
+
+# ===== CREATE INSTALL DIRECTORY =====
+print_info "Creating installation directory: \$INSTALL_DIR"
+sudo mkdir -p \$INSTALL_DIR
+sudo chown \$USER:\$USER \$INSTALL_DIR
+
+# ===== DOWNLOAD AGENT BINARY =====
+print_info "Downloading agent from: \$DOWNLOAD_URL"
+cd /tmp
+wget -O xora-agent.tar.gz "\$DOWNLOAD_URL"
+
+print_info "Extracting agent files..."
+tar -xzf xora-agent.tar.gz -C \$INSTALL_DIR
+rm xora-agent.tar.gz
+
+# ===== CREATE .ENV FILE =====
+print_info "Creating .env configuration..."
+
+cat > \$INSTALL_DIR/.env <<EOF
+# ===== AIWM INTEGRATION =====
 AIWM_ENABLED=true
-AIWM_BASE_URL=${baseUrl}
-AIWM_AGENT_ID=${agentId}
-AIWM_AGENT_SECRET=${secret}
-AGENT_NAME=${agent.name}
+AIWM_BASE_URL=\$CONTROLLER_URL
+AIWM_AGENT_ID=\$AGENT_ID
+AIWM_AGENT_SECRET=\$AGENT_SECRET
 
-# Platform configuration (customize as needed)
-# DISCORD_TOKEN=your_token
-# TELEGRAM_BOT_TOKEN=your_token
+# ===== LOGGING =====
+LOG_LEVEL=info
+LOG_FILE=./logs/agent.log
+
+# ===== Other configurations will be loaded from AIWM =====
+# Instruction, tools, Discord/Telegram settings are managed centrally
 EOF
 
-# Step 4: Build and start
-# npm run build
+chmod 600 \$INSTALL_DIR/.env
+
+# ===== INSTALL DEPENDENCIES =====
+print_info "Installing dependencies..."
+cd \$INSTALL_DIR
+npm install --production
+
+# ===== SETUP PROCESS MANAGER =====
+if [[ "\$PROCESS_MANAGER" == "pm2" ]]; then
+    print_info "Setting up PM2 process manager..."
+
+    # Install PM2 globally
+    npm install -g pm2
+
+    # Create PM2 ecosystem file
+    cat > \$INSTALL_DIR/ecosystem.config.js <<EOF
+module.exports = {
+  apps: [{
+    name: '\$SERVICE_NAME',
+    script: './dist/index.js',
+    cwd: '\$INSTALL_DIR',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production'
+    }
+  }]
+};
+EOF
+
+    # Start with PM2
+    pm2 start ecosystem.config.js
+    pm2 save
+    pm2 startup | tail -n 1 | bash
+
+    print_info "PM2 configured and started"
+
+else
+    print_info "Setting up systemd service..."
+
+    # Create systemd service file
+    sudo tee /etc/systemd/system/\$SERVICE_NAME.service > /dev/null <<EOF
+[Unit]
+Description=Xora AI Agent
+After=network.target
+
+[Service]
+Type=simple
+User=\$USER
+WorkingDirectory=\$INSTALL_DIR
+ExecStart=\$(which node) \$INSTALL_DIR/dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=\$SERVICE_NAME
+
+# Load NVM environment
+Environment="PATH=\$HOME/.nvm/versions/node/v24.*/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Reload systemd, enable and start service
+    sudo systemctl daemon-reload
+    sudo systemctl enable \$SERVICE_NAME
+    sudo systemctl start \$SERVICE_NAME
+
+    print_info "Systemd service configured and started"
+fi
+
+# ===== VERIFY INSTALLATION =====
+sleep 5
+print_info "Verifying installation..."
+
+if [[ "\$PROCESS_MANAGER" == "pm2" ]]; then
+    pm2 status \$SERVICE_NAME
+else
+    sudo systemctl status \$SERVICE_NAME --no-pager
+fi
+
+# ===== INSTALLATION COMPLETE =====
+echo ""
+echo "============================================"
+print_info "✓ Agent installation completed successfully!"
+echo "============================================"
+echo ""
+echo "Agent ID: \$AGENT_ID"
+echo "Installation Directory: \$INSTALL_DIR"
+echo "Process Manager: \$PROCESS_MANAGER"
+echo ""
+
+if [[ "\$PROCESS_MANAGER" == "pm2" ]]; then
+    echo "Useful commands:"
+    echo "  pm2 status              # View agent status"
+    echo "  pm2 logs \$SERVICE_NAME  # View logs"
+    echo "  pm2 restart \$SERVICE_NAME  # Restart agent"
+    echo "  pm2 stop \$SERVICE_NAME  # Stop agent"
+else
+    echo "Useful commands:"
+    echo "  sudo systemctl status \$SERVICE_NAME   # View agent status"
+    echo "  sudo journalctl -u \$SERVICE_NAME -f  # View logs"
+    echo "  sudo systemctl restart \$SERVICE_NAME  # Restart agent"
+    echo "  sudo systemctl stop \$SERVICE_NAME     # Stop agent"
+fi
+
+echo ""
+print_warn "IMPORTANT: Agent secret has been saved to \$INSTALL_DIR/.env"
+print_warn "Keep this file secure and do NOT share it!"
+echo ""
 # npm start
 
 echo "Installation script placeholder - implement actual logic"
@@ -774,7 +1016,7 @@ echo "Installation script placeholder - implement actual logic"
 
     if (updated) {
       // Business-specific logging with details
-      this.logger.info('Agent updated with details', {
+      this.logger.log('Agent updated with details', {
         id: (updated as any)._id,
         name: updated.name,
         status: updated.status,
@@ -800,7 +1042,7 @@ echo "Installation script placeholder - implement actual logic"
 
     if (result) {
       // Business-specific logging
-      this.logger.info('Agent soft deleted with details', {
+      this.logger.log('Agent soft deleted with details', {
         id,
         deletedBy: context.userId,
       });

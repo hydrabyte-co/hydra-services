@@ -9,6 +9,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { GlobalExceptionFilter, customQueryParser } from '@hydrabyte/base';
 import { AppModule } from './app/app.module';
 import { WsJwtAdapter } from './modules/node/ws-jwt.adapter';
+import { RedisIoAdapter } from './modules/chat/redis-io.adapter';
 
 export async function bootstrapApiServer() {
   const app = await NestFactory.create(AppModule);
@@ -18,8 +19,12 @@ export async function bootstrapApiServer() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('query parser', customQueryParser);
 
-  // Use WebSocket adapter with JWT authentication
-  app.useWebSocketAdapter(new WsJwtAdapter(app));
+  // Use Redis WebSocket adapter for horizontal scaling (chat)
+  // Note: WsJwtAdapter is used for /ws/node namespace (node management)
+  // RedisIoAdapter is used for /chat namespace (chat functionality)
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   // Global exception filter for standardized error responses
   app.useGlobalFilters(new GlobalExceptionFilter());
@@ -55,7 +60,8 @@ export async function bootstrapApiServer() {
 
   Logger.log(`🚀 AIWM Service is running on: http://localhost:${port}`);
   Logger.log(`📚 API Documentation available at: http://localhost:${port}/api-docs`);
-  Logger.log(`🔌 WebSocket Gateway: ws://localhost:${port}/ws/node`);
-  Logger.log(`📊 Redis: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
+  Logger.log(`🔌 Node WebSocket Gateway: ws://localhost:${port}/ws/node`);
+  Logger.log(`💬 Chat WebSocket Gateway: ws://localhost:${port}/chat`);
+  Logger.log(`📊 Redis: ${process.env.REDIS_URL || 'redis://localhost:6379'}`);
   Logger.log(`💾 MongoDB: ${process.env.MONGODB_URI}`);
 }

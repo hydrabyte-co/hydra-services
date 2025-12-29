@@ -61,7 +61,7 @@ export class NodeService extends BaseService<Node> {
     const saved = await super.create(createNodeDto, context);
 
     // Business-specific logging with details
-    this.logger.info('Node created with details', {
+    this.logger.log('Node created with details', {
       id: (saved as any)._id,
       name: saved.name,
       role: saved.role,
@@ -90,7 +90,7 @@ export class NodeService extends BaseService<Node> {
 
     if (updated) {
       // Business-specific logging with details
-      this.logger.info('Node updated with details', {
+      this.logger.log('Node updated with details', {
         id: (updated as any)._id,
         name: updated.name,
         role: updated.role,
@@ -114,7 +114,7 @@ export class NodeService extends BaseService<Node> {
 
     if (result) {
       // Business-specific logging
-      this.logger.info('Node soft deleted with details', {
+      this.logger.log('Node soft deleted with details', {
         id,
         deletedBy: context.userId,
       });
@@ -180,7 +180,7 @@ export class NodeService extends BaseService<Node> {
     // Generate installation script
     const installScript = this.generateInstallScript(token, node);
 
-    this.logger.info(
+    this.logger.log(
       `Token generated for node ${id} (expires: ${expiresAt.toISOString()})`
     );
 

@@ -48,10 +48,17 @@ export enum ConfigKey {
   ANTHROPIC_API_KEY = 'llm.anthropic.api_key',
   GROQ_API_KEY = 'llm.groq.api_key',
   // ==========================================
-  // Serivce Integrations End
+  // Service Integrations
   // ==========================================
   AIWM_BASE_API_URL = 'aiwm.base_api_url',
   AIWM_BASE_MCP_URL = 'aiwm.base_mcp_url',
   CBM_BASE_API_URL = 'cbm.base_api_url',
   IAM_BASE_API_URL = 'iam.base_api_url',
+
+  // ==========================================
+  // Agent Deployment (1 key)
+  // ==========================================
+  AGENT_DOWNLOAD_BASE_URL = 'agent.download.base_url',
+  // Example: 'https://cdn.x-or.cloud/agents'
+  // Agents will download from: {baseUrl}/xora-cc-agent-latest.tar.gz
 }

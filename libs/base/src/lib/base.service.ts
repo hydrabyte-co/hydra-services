@@ -91,7 +91,7 @@ export class BaseService<Entity> {
     const created = new this.model(dataWithAudit);
     const saved = await created.save();
 
-    this.logger.info('Entity created', {
+    this.logger.log('Entity created', {
       id: (saved as any)._id,
       userId: context.userId,
     });
@@ -152,7 +152,7 @@ export class BaseService<Entity> {
       this.model.countDocuments(finalFilter).exec(),
     ]);
 
-    this.logger.info('Entities retrieved', {
+    this.logger.log('Entities retrieved', {
       count: data.length,
       total,
       page,
@@ -235,7 +235,7 @@ export class BaseService<Entity> {
       .exec();
 
     if (updated) {
-      this.logger.info('Entity updated', {
+      this.logger.log('Entity updated', {
         id: id.toString(),
         userId: context.userId,
       });
@@ -301,7 +301,7 @@ export class BaseService<Entity> {
       .exec();
 
     if (updated) {
-      this.logger.info('Entity soft deleted', {
+      this.logger.log('Entity soft deleted', {
         id: id.toString(),
         userId: context.userId,
       });
@@ -348,7 +348,7 @@ export class BaseService<Entity> {
 
       const result = await this.model.aggregate(finalPipeline).exec();
 
-      this.logger.info('Aggregation completed', {
+      this.logger.log('Aggregation completed', {
         resultCount: result.length,
         userId: context.userId,
       });

@@ -23,6 +23,9 @@ import { ExecutionModule } from '../modules/execution/execution.module';
 import { ReportsModule } from '../modules/reports/reports.module';
 import { McpModule } from '../modules/mcp/mcp.module';
 import { UtilModule } from '../modules/util/util.module';
+import { ConversationModule } from '../modules/conversation/conversation.module';
+import { MessageModule } from '../modules/message/message.module';
+import { ChatModule } from '../modules/chat/chat.module';
 import { QueueModule } from '../queues/queue.module';
 import { ProcessorsModule } from '../queues/processors.module';
 import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
@@ -50,6 +53,9 @@ import { COMMON_CONFIG, SERVICE_CONFIG } from '@hydrabyte/shared';
     ReportsModule,
     McpModule,
     UtilModule,
+    ConversationModule,
+    MessageModule,
+    ChatModule,
     ProcessorsModule,
   ],
   controllers: [AppController],

@@ -8,11 +8,15 @@
 **Database:** `core_aiwm` (MongoDB)
 **Service Name:** `aiwm`
 
+**Dual Mode Operation:**
+- **API Mode (default)**: Full HTTP/WebSocket API server cho web applications
+- **MCP Mode**: MCP protocol server cho AI agent integration (Claude Desktop, etc.)
+
 ---
 
 ## Kiến Trúc và Modules
 
-AIWM được tổ chức theo kiến trúc modular với 12 modules chính:
+AIWM được tổ chức theo kiến trúc modular với 16 modules chính:
 
 ### 1. **Model Module** (`/modules/model`)
 Quản lý AI models metadata và lifecycle.
@@ -276,6 +280,108 @@ Generate reports và analytics cho hệ thống.
 
 ---
 
+### 13. **MCP Module** (`/modules/mcp`)
+Quản lý MCP (Model Context Protocol) integration để agents có thể sử dụng tools.
+
+**Chức năng:**
+- List tools available cho agents (filtered by allowedToolIds)
+- Execute tools bằng cách proxy requests tới CBM service
+- Transform responses sang MCP protocol format
+- Support JSON-RPC 2.0 protocol
+- Agent JWT authentication
+
+**Schema chính:**
+- Sử dụng Tool schema từ Tool Module
+- MCP-specific DTOs cho protocol compliance
+
+**Features:**
+- Tool authorization checking
+- HTTP request building với path parameter substitution
+- Error handling và transformation
+- Support GET/POST/PATCH/PUT/DELETE methods
+
+**API Documentation:** [`docs/aiwm/MCP-*.md`](../../docs/aiwm/)
+
+---
+
+### 14. **Conversation Module** (`/modules/conversation`)
+Quản lý conversations giữa users và agents.
+
+**Chức năng:**
+- Track multi-turn conversations
+- Link conversations với agents và models
+- Store conversation metadata
+- Track token usage và message count
+- Support multiple participants
+
+**Schema chính:**
+- `conversationId`: Unique conversation identifier
+- `title`: Conversation title
+- `description`: Conversation description
+- `agentId`: Link đến agent
+- `modelId`: Link đến model
+- `conversationType`: Loại conversation
+- `status`: Trạng thái conversation
+- `totalTokens`: Tổng tokens sử dụng
+- `totalMessages`: Tổng số messages
+- `participants`: Danh sách participants với roles
+
+**Note:** Module chưa có controller/service - chỉ có schema và DTO definitions
+
+---
+
+### 15. **Message Module** (`/modules/message`)
+Quản lý individual messages trong conversations.
+
+**Chức năng:**
+- Store messages trong conversations
+- Track message role (user, assistant, system)
+- Store function calls và tool calls
+- Track token usage per message
+- Store response metadata (latency, error)
+
+**Schema chính:**
+- `conversationId`: Link đến conversation
+- `agentId`: Link đến agent
+- `role`: Message role (user/assistant/system)
+- `content`: Message content
+- `functionCall`: Function call data (nếu có)
+- `toolCalls`: Array of tool calls
+- `toolResults`: Array of tool results
+- `usage`: Token usage tracking
+- `latency`: Response time
+- `error`: Error message (nếu có)
+
+**Note:** Module chưa có controller/service - chỉ có schema và DTO definitions
+
+---
+
+### 16. **Util Module** (`/modules/util`)
+Cung cấp utility functions cho hệ thống.
+
+**Chức năng:**
+- Text generation sử dụng OpenAI Responses API
+- AI-powered field generation cho forms
+- Smart text processing và post-processing
+- Configuration-based API key management
+
+**Features:**
+- Generate text với constraints (maxLength, no greetings, concise)
+- Remove Vietnamese greetings và salutations
+- Smart truncation tại sentence boundaries
+- OpenAI GPT-5-nano integration
+- Configurable through Configuration Module
+
+**API Endpoint:**
+- `POST /util/generate-text` - Generate text based on field description
+
+**Use Cases:**
+- Auto-fill form fields với AI
+- Generate descriptions, summaries
+- Content suggestions
+
+---
+
 ## Queue System
 
 AIWM sử dụng message queue (Bull + Redis) để xử lý async tasks:
@@ -312,6 +418,8 @@ mongodb://{MONGODB_URI}/core_aiwm
 - `configurations` - System settings
 - `executions` - Execution logs
 - `reports` - Generated reports
+- `conversations` - Agent conversations
+- `messages` - Conversation messages
 
 **Base Schema Pattern:**
 All collections extend `BaseSchema` với các fields:
@@ -343,7 +451,11 @@ npm install
 
 #### Development Mode (with hot reload)
 ```bash
+# API mode (default)
 npx nx serve aiwm
+
+# MCP mode
+MODE=mcp npx nx serve aiwm
 ```
 
 #### Production Mode
@@ -351,8 +463,11 @@ npx nx serve aiwm
 # Build first
 npx nx build aiwm --configuration=production
 
-# Then run
+# Run API mode (default)
 node dist/services/aiwm/main.js
+
+# Run MCP mode
+MODE=mcp node dist/services/aiwm/main.js
 ```
 
 ### Building
@@ -529,6 +644,15 @@ Similar patterns for:
 - `/tools`
 - `/executions`
 - `/reports`
+- `/configurations`
+
+### MCP-Specific Endpoints
+- `POST /mcp/agents/:agentId/tools/list` - List tools cho agent
+- `POST /mcp/agents/:agentId/tools/call` - Execute tool via MCP protocol
+- `POST /mcp` - JSON-RPC 2.0 endpoint cho MCP protocol
+
+### Utility Endpoints
+- `POST /util/generate-text` - Generate text using OpenAI
 
 ### Pagination
 All list endpoints support pagination:
@@ -726,23 +850,36 @@ services/aiwm/
 │   │   ├── app.controller.ts    # Root controller
 │   │   └── app.service.ts       # Root service
 │   ├── modules/                  # Feature modules
-│   │   ├── agent/               # Agent module
-│   │   ├── model/               # Model module
-│   │   ├── node/                # Node module
-│   │   ├── resource/            # Resource module
-│   │   ├── deployment/          # Deployment module
-│   │   ├── instruction/         # Instruction module
-│   │   ├── pii/                 # PII module
-│   │   ├── guardrail/           # Guardrail module
-│   │   ├── tool/                # Tool module
-│   │   ├── configuration/       # Configuration module
-│   │   ├── execution/           # Execution module
-│   │   └── reports/             # Reports module
+│   │   ├── agent/               # Agent module (full CRUD)
+│   │   ├── model/               # Model module (full CRUD)
+│   │   ├── node/                # Node module (full CRUD + WebSocket)
+│   │   ├── resource/            # Resource module (full CRUD)
+│   │   ├── deployment/          # Deployment module (full CRUD + proxy)
+│   │   ├── instruction/         # Instruction module (full CRUD)
+│   │   ├── pii/                 # PII module (full CRUD)
+│   │   ├── guardrail/           # Guardrail module (full CRUD)
+│   │   ├── tool/                # Tool module (full CRUD)
+│   │   ├── configuration/       # Configuration module (full CRUD)
+│   │   ├── execution/           # Execution module (full CRUD + orchestrator)
+│   │   ├── reports/             # Reports module (read-only analytics)
+│   │   ├── mcp/                 # MCP module (tool integration)
+│   │   ├── conversation/        # Conversation module (schemas only)
+│   │   ├── message/             # Message module (schemas only)
+│   │   └── util/                # Util module (AI utilities)
 │   ├── queues/                   # Queue system
 │   │   ├── queue.module.ts      # Queue configuration
 │   │   └── processors.module.ts # Job processors
-│   └── main.ts                   # Entry point
+│   ├── bootstrap-api.ts          # API server bootstrap
+│   ├── bootstrap-mcp.ts          # MCP server bootstrap
+│   └── main.ts                   # Entry point (dual mode)
 ├── test/                         # E2E tests
+├── scripts/                      # Seed scripts
+│   ├── seed-models.js
+│   ├── seed-instructions.js
+│   ├── seed-pii-patterns.js
+│   ├── seed-guardrails.js
+│   ├── seed-vtv-agents.js
+│   └── seed-tools.js
 ├── project.json                  # Nx project configuration
 ├── tsconfig.json                 # TypeScript config
 ├── tsconfig.app.json            # App-specific TS config

@@ -182,9 +182,11 @@ export function logError(message: string, data?: any, context?: string): void {
  * Usage:
  *   const logger = createLogger('CategoryService');
  *   logger.info('Category created', { id: '123' });
+ *   logger.log('Category created', { id: '123' }); // Alias for info (NestJS compatibility)
  */
 export function createLogger(context: string) {
   return {
+    log: (message: string, data?: any) => logInfo(message, data, context), // Alias for NestJS Logger compatibility
     info: (message: string, data?: any) => logInfo(message, data, context),
     debug: (message: string, data?: any) => logDebug(message, data, context),
     warn: (message: string, data?: any) => logWarn(message, data, context),

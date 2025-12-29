@@ -81,7 +81,8 @@
       "Bash(npx nx run-many:*)",
       "Bash(pm2 restart:*)",
       "Bash(pm2 start:*)",
-      "Bash(pm2 logs:*)"
+      "Bash(pm2 logs:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

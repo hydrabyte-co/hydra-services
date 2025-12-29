@@ -2,55 +2,80 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { BaseSchema } from '@hydrabyte/base';
 import { Agent } from '../agent/agent.schema';
-import { Model } from '../model/model.schema';
 
 export type ConversationDocument = Conversation & Document;
 
 @Schema({ timestamps: true })
 export class Conversation extends BaseSchema {
-  @Prop({ required: true, unique: true })
-  conversationId: string;
-
+  // Conversation title (auto-generated from first message or user-set)
   @Prop({ required: true })
   title: string;
 
-  @Prop({ required: true })
+  // Brief description
+  @Prop({ default: '' })
   description: string;
 
-  @Prop({ required: true, type: String, ref: 'Agent' })
+  // Primary agent handling this conversation
+  @Prop({ required: true, type: String, ref: 'Agent', index: true })
   agentId: string;
 
-  @Prop({ required: true, type: String, ref: 'Model' })
-  modelId: string;
-
-  @Prop({ required: true })
+  // Conversation type: 'chat', 'support', 'workflow'
+  @Prop({ required: true, default: 'chat' })
   conversationType: string;
 
-  @Prop({ required: true })
+  // Status: 'active', 'archived', 'closed'
+  @Prop({ required: true, default: 'active', index: true })
   status: string;
 
+  // Total tokens consumed
   @Prop({ default: 0 })
   totalTokens: number;
 
+  // Total messages count
   @Prop({ default: 0 })
   totalMessages: number;
 
-  // @Prop() - Removed to avoid BaseSchema conflict
-  // metadata?: Record<string, string>;
+  // Total cost (in USD)
+  @Prop({ default: 0 })
+  totalCost: number;
 
-  @Prop({ default: [] })
+  // Participants in conversation
+  @Prop({
+    type: [
+      {
+        type: { type: String, enum: ['user', 'agent'], required: true },
+        id: { type: String, required: true },
+        joined: { type: Date, required: true, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  participants: Array<{
+    type: 'user' | 'agent';
+    id: string;
+    joined: Date;
+  }>;
+
+  // Last message preview (for conversation list UI)
+  @Prop({ type: Object, required: false })
+  lastMessage?: {
+    content: string;
+    role: string;
+    createdAt: Date;
+  };
+
+  // Tags for categorization
+  @Prop({ type: [String], default: [] })
   tags: string[];
 
-  @Prop({ default: true })
-  isActive: boolean;
-
-  @Prop({ default: [] })
-  participants: [{
-    userId: string;
-    role: string;
-    joinedAt: Date;
-    leftAt?: Date;
-  }];
+  // Context summary (auto-generated every 10 messages)
+  @Prop({ type: String, required: false })
+  contextSummary?: string;
 }
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);
+
+// Indexes for performance
+ConversationSchema.index({ agentId: 1, status: 1, createdAt: -1 });
+ConversationSchema.index({ 'participants.id': 1, status: 1 });
+ConversationSchema.index({ createdBy: 1, status: 1, createdAt: -1 });

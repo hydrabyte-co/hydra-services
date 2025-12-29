@@ -52,7 +52,7 @@ export class ExecutionService extends BaseService<Execution> {
       context
     );
 
-    this.logger.info(`Execution created: ${executionId} - ${dto.name}`);
+    this.logger.log(`Execution created: ${executionId} - ${dto.name}`);
 
     return execution as Execution;
   }
@@ -124,7 +124,7 @@ export class ExecutionService extends BaseService<Execution> {
       .exec();
 
     if (execution) {
-      this.logger.info(`Execution ${executionId} status updated: ${status}`);
+      this.logger.log(`Execution ${executionId} status updated: ${status}`);
     }
 
     return execution as Execution | null;
@@ -183,7 +183,7 @@ export class ExecutionService extends BaseService<Execution> {
       await this.recalculateProgress(executionId);
     }
 
-    this.logger.info(`Step ${stepIndex} updated in execution ${executionId}: ${dto.status}`);
+    this.logger.log(`Step ${stepIndex} updated in execution ${executionId}: ${dto.status}`);
 
     return updated as Execution | null;
   }
@@ -325,7 +325,7 @@ export class ExecutionService extends BaseService<Execution> {
       )
       .exec();
 
-    this.logger.info(`Execution ${executionId} cancelled: ${reason}`);
+    this.logger.log(`Execution ${executionId} cancelled: ${reason}`);
 
     return updated as Execution | null;
   }
@@ -400,7 +400,7 @@ export class ExecutionService extends BaseService<Execution> {
       .findOneAndUpdate({ executionId }, update, { new: true })
       .exec();
 
-    this.logger.info(
+    this.logger.log(
       `Execution ${executionId} retry attempt ${execution.retryCount + 1}`
     );
 
