@@ -8,9 +8,11 @@ import { ConversationModule } from '../conversation/conversation.module';
 
 @Module({
   imports: [
-    // JWT for WebSocket authentication
+    // JWT for WebSocket authentication - MUST match IAM service secret
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
+      secret: process.env.JWT_SECRET || (() => {
+        throw new Error('JWT_SECRET environment variable is required for WebSocket authentication');
+      })(),
       signOptions: { expiresIn: '1h' },
     }),
 
