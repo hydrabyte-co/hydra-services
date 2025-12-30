@@ -61,7 +61,7 @@ export async function bootstrapApiServer() {
   Logger.log(`🚀 AIWM Service is running on: http://localhost:${port}`);
   Logger.log(`📚 API Documentation available at: http://localhost:${port}/api-docs`);
   Logger.log(`🔌 Node WebSocket Gateway: ws://localhost:${port}/ws/node`);
-  Logger.log(`💬 Chat WebSocket Gateway: ws://localhost:${port}/chat`);
+  Logger.log(`💬 Chat WebSocket Gateway: ws://localhost:${port}/ws`);
   Logger.log(`📊 Redis: ${process.env.REDIS_URL || 'redis://localhost:6379'}`);
   Logger.log(`💾 MongoDB: ${process.env.MONGODB_URI}`);
 }
