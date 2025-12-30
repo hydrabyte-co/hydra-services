@@ -33,7 +33,7 @@ import { ConversationService } from '../conversation/conversation.service';
  * - presence:update - Online status update
  */
 @WebSocketGateway({
-  namespace: '/chat',
+  namespace: '/ws',
   cors: {
     origin: '*', // TODO: Configure CORS properly in production
     credentials: true,

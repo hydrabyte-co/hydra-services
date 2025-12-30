@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
+import { ChatController } from './chat.controller';
 import { MessageModule } from '../message/message.module';
 import { ConversationModule } from '../conversation/conversation.module';
 
@@ -48,6 +49,7 @@ import { ConversationModule } from '../conversation/conversation.module';
     // Conversation module for auto-creating conversations
     ConversationModule,
   ],
+  controllers: [ChatController],
   providers: [ChatGateway, ChatService],
   exports: [ChatService],
 })
