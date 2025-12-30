@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
@@ -9,24 +10,36 @@ import { ConversationModule } from '../conversation/conversation.module';
 @Module({
   imports: [
     // JWT for WebSocket authentication - MUST match IAM service secret
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || (() => {
-        throw new Error('JWT_SECRET environment variable is required for WebSocket authentication');
-      })(),
-      signOptions: { expiresIn: '1h' },
+    // Use registerAsync to ensure JWT_SECRET is loaded from .env file
+    JwtModule.registerAsync({
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is required for WebSocket authentication');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '1h' },
+        };
+      },
+      inject: [ConfigService],
     }),
 
     // Redis for presence tracking and horizontal scaling
-    RedisModule.forRoot({
-      type: 'single',
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-      options: {
-        retryStrategy: (times) => {
-          const delay = Math.min(times * 50, 2000);
-          return delay;
+    // Use forRootAsync to ensure REDIS_URL is loaded from .env file
+    RedisModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        type: 'single',
+        url: configService.get<string>('REDIS_URL') || 'redis://localhost:6379',
+        options: {
+          retryStrategy: (times) => {
+            const delay = Math.min(times * 50, 2000);
+            return delay;
+          },
+          maxRetriesPerRequest: 3,
         },
-        maxRetriesPerRequest: 3,
-      },
+      }),
+      inject: [ConfigService],
     }),
 
     // Message module for creating messages
