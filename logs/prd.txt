@@ -1,0 +1,106 @@
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [MessageService] Creating entity
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [MessageService] Object(1) {
+   userId: ''
+ }
+ Role-Based Permissions: {
+   role: 'organization.editor',
+   scope: 'organization',
+   roleName: 'editor',
+   permissions: {
+     allowRead: true,
+     allowWrite: true,
+     allowDelete: true,
+     allowAdministrative: false,
+     scope: 'organization',
+     filter: { 'owner.orgId': '691eb9e6517f917943ae1f9d' }
+   }
+ }
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM     LOG [MessageService] Entity created
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM     LOG [MessageService] Object(2) {
+   id: new ObjectId('695383821c4f71b88e843e16'),
+   userId: ''
+ }
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [ConversationService] Updated last message for conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [ConversationService] Finding entity by ID
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [ConversationService] Object(2) {
+   id: '695247765cedd121b96885c6',
+   userId: ''
+ }
+ Role-Based Permissions: {
+   role: 'organization.editor',
+   scope: 'organization',
+   roleName: 'editor',
+   permissions: {
+     allowRead: true,
+     allowWrite: true,
+     allowDelete: true,
+     allowAdministrative: false,
+     scope: 'organization',
+     filter: { 'owner.orgId': '691eb9e6517f917943ae1f9d' }
+   }
+ }
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [ConversationService] Entity found
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM   DEBUG [ConversationService] Object(1) {
+   id: '695247765cedd121b96885c6'
+ }
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM     LOG [MessageService] Created message 695383821c4f71b88e843e16 in conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:47:14 PM     LOG [ChatGateway] Message sent in conversation 695247765cedd121b96885c6 by agent 69520162e1abb06986fdcee5
+ [Nest] 640524  - 12/30/2025, 2:47:15 PM     LOG [ChatGateway] Client yzFAYpaBgO2siN9AAAAL disconnected (agent: 69520162e1abb06986fdcee5)
+ [Nest] 640524  - 12/30/2025, 2:47:18 PM   DEBUG [ChatService] Agent 69520162e1abb06986fdcee5 is now online (socket: i_vqbyx_KwKuecu5AAAT)
+ [Nest] 640524  - 12/30/2025, 2:47:18 PM     LOG [ChatGateway] Client i_vqbyx_KwKuecu5AAAT connected (agent: 69520162e1abb06986fdcee5)
+ [Nest] 640524  - 12/30/2025, 2:47:18 PM     LOG [ConversationService] Reusing existing conversation 695247765cedd121b96885c6 for agent 69520162e1abb06986fdcee5
+ [Nest] 640524  - 12/30/2025, 2:47:18 PM   DEBUG [ChatService] Participant 69520162e1abb06986fdcee5 joined conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:47:18 PM     LOG [ChatGateway] Agent 69520162e1abb06986fdcee5 auto-joined conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:49:10 PM   DEBUG [ChatService] User 691eba08517f917943ae1fa1 is now offline
+ [Nest] 640524  - 12/30/2025, 2:49:10 PM     LOG [ChatGateway] Client 8Hu2xUcwMa1RwaYqAAAR disconnected (user: 691eba08517f917943ae1fa1)
+ [Nest] 640524  - 12/30/2025, 2:49:18 PM   DEBUG [ChatService] User 691eba08517f917943ae1fa1 is now online (socket: 7P334WLmqR_-x5SKAAAV)
+ [Nest] 640524  - 12/30/2025, 2:49:18 PM     LOG [ChatGateway] Client 7P334WLmqR_-x5SKAAAV connected (user: 691eba08517f917943ae1fa1)
+ [Nest] 640524  - 12/30/2025, 2:49:30 PM   DEBUG [ChatService] Participant 691eba08517f917943ae1fa1 joined conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:49:30 PM     LOG [ChatGateway] User 691eba08517f917943ae1fa1 joined conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [MessageService] Creating entity
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [MessageService] Object(1) {
+   userId: '691eba08517f917943ae1fa1'
+ }
+ Role-Based Permissions: {
+   role: 'universe.owner',
+   scope: 'universe',
+   roleName: 'owner',
+   permissions: {
+     allowRead: true,
+     allowWrite: true,
+     allowDelete: true,
+     allowAdministrative: true,
+     scope: 'universe',
+     filter: {}
+   }
+ }
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM     LOG [MessageService] Entity created
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM     LOG [MessageService] Object(2) {
+   id: new ObjectId('6953840f1c4f71b88e843e22'),
+   userId: '691eba08517f917943ae1fa1'
+ }
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [ConversationService] Updated last message for conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [ConversationService] Finding entity by ID
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [ConversationService] Object(2) {
+   id: '695247765cedd121b96885c6',
+   userId: '691eba08517f917943ae1fa1'
+ }
+ Role-Based Permissions: {
+   role: 'universe.owner',
+   scope: 'universe',
+   roleName: 'owner',
+   permissions: {
+     allowRead: true,
+     allowWrite: true,
+     allowDelete: true,
+     allowAdministrative: true,
+     scope: 'universe',
+     filter: {}
+   }
+ }
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [ConversationService] Entity found
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM   DEBUG [ConversationService] Object(1) {
+   id: '695247765cedd121b96885c6'
+ }
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM     LOG [MessageService] Created message 6953840f1c4f71b88e843e22 in conversation 695247765cedd121b96885c6
+ [Nest] 640524  - 12/30/2025, 2:49:35 PM     LOG [ChatGateway] Message sent in conversation 695247765cedd121b96885c6 by user 691eba08517f917943ae1fa1

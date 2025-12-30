@@ -28,6 +28,8 @@ export class RedisIoAdapter extends IoAdapter {
   async connectToRedis(): Promise<void> {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
+    this.logger.log(`[REDIS-ADAPTER] Connecting to Redis: ${redisUrl}`);
+
     try {
       // Create Redis clients for pub/sub
       const pubClient = createClient({ url: redisUrl });
@@ -37,10 +39,12 @@ export class RedisIoAdapter extends IoAdapter {
 
       this.adapterConstructor = createAdapter(pubClient, subClient);
 
-      this.logger.log('Redis adapter connected successfully');
+      this.logger.log('[REDIS-ADAPTER] ✅ Redis adapter connected successfully');
+      this.logger.log('[REDIS-ADAPTER] WebSocket events will be synced across all instances');
     } catch (error) {
-      this.logger.error('Failed to connect Redis adapter:', error.message);
-      this.logger.warn('Falling back to in-memory adapter (single instance only)');
+      this.logger.error(`[REDIS-ADAPTER] ❌ Failed to connect: ${error.message}`);
+      this.logger.warn('[REDIS-ADAPTER] ⚠️  Falling back to in-memory adapter (single instance only)');
+      this.logger.warn('[REDIS-ADAPTER] ⚠️  WebSocket will NOT work properly with load balancer!');
       // Adapter will fall back to default in-memory adapter
     }
   }
@@ -51,9 +55,9 @@ export class RedisIoAdapter extends IoAdapter {
     // Apply Redis adapter if connected
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
-      this.logger.log('Socket.IO using Redis adapter for horizontal scaling');
+      this.logger.log('[REDIS-ADAPTER] ✅ Socket.IO using Redis adapter for horizontal scaling');
     } else {
-      this.logger.warn('Socket.IO using default in-memory adapter (single instance only)');
+      this.logger.warn('[REDIS-ADAPTER] ⚠️  Socket.IO using default in-memory adapter (single instance only)');
     }
 
     return server;

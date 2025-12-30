@@ -4,7 +4,7 @@
 
 This guide shows how to integrate your agent with the AIWM WebSocket service to receive messages, process them, and send responses in real-time.
 
-**Base WebSocket URL:** `wss://api.x-or.cloud/dev/aiwm/chat`
+**Base WebSocket URL:** `https://api.x-or.cloud/ws`
 
 ---
 
@@ -40,7 +40,7 @@ const io = require('socket.io-client');
 const agentToken = await getAgentToken(); // Your function to get token
 
 // Step 2: Connect to WebSocket
-const socket = io('wss://api.x-or.cloud/dev/aiwm/chat', {
+const socket = io('https://api.x-or.cloud/ws', {
   auth: {
     token: agentToken  // Pass JWT token in auth
   },
@@ -73,7 +73,7 @@ sio = socketio.Client()
 
 # Step 3: Connect with authentication
 sio.connect(
-    'wss://api.x-or.cloud/dev/aiwm/chat',
+    'https://api.x-or.cloud/ws',
     auth={'token': agent_token},
     transports=['websocket']
 )
@@ -126,15 +126,15 @@ The agent token is passed via the `auth` object when connecting:
 
 ```javascript
 // Method 1: Via auth object (Recommended)
-const socket = io('wss://api.x-or.cloud/dev/aiwm/chat', {
+const socket = io('https://api.x-or.cloud/ws', {
   auth: { token: agentToken }
 });
 
 // Method 2: Via query parameters
-const socket = io('wss://api.x-or.cloud/dev/aiwm/chat?token=' + agentToken);
+const socket = io('https://api.x-or.cloud/ws?token=' + agentToken);
 
 // Method 3: Via headers
-const socket = io('wss://api.x-or.cloud/dev/aiwm/chat', {
+const socket = io('https://api.x-or.cloud/ws', {
   extraHeaders: {
     Authorization: `Bearer ${agentToken}`
   }
@@ -370,7 +370,7 @@ class AIWMAgent {
     console.log('✓ Token obtained');
 
     // Step 2: Connect to WebSocket
-    this.socket = io('wss://api.x-or.cloud/dev/aiwm/chat', {
+    this.socket = io('https://api.x-or.cloud/ws', {
       auth: { token: this.token },
       transports: ['websocket'],
       reconnection: true,
@@ -512,7 +512,7 @@ class AIWMAgent:
 
         # Step 2: Connect to WebSocket
         self.sio.connect(
-            'wss://api.x-or.cloud/dev/aiwm/chat',
+            'https://api.x-or.cloud/ws',
             auth={'token': self.token},
             transports=['websocket']
         )
@@ -743,7 +743,7 @@ socket.on('reconnect_failed', () => {
 ### Postman WebSocket Testing
 
 1. Open Postman → New → WebSocket Request
-2. URL: `wss://api.x-or.cloud/dev/aiwm/chat?token=YOUR_TOKEN`
+2. URL: `https://api.x-or.cloud/ws?token=YOUR_TOKEN`
 3. Connect
 4. Send events:
    ```json
@@ -772,7 +772,7 @@ curl -X POST https://api.x-or.cloud/dev/aiwm/agents/YOUR_AGENT_ID/connect \
 const io = require('socket.io-client');
 
 const token = process.env.AGENT_TOKEN;
-const socket = io('wss://api.x-or.cloud/dev/aiwm/chat', {
+const socket = io('https://api.x-or.cloud/ws', {
   auth: { token }
 });
 
@@ -893,7 +893,7 @@ AGENT_TOKEN=your-token node test-agent-ws.js
 - **Documentation**: [CHAT-IMPLEMENTATION-SUMMARY.md](./CHAT-IMPLEMENTATION-SUMMARY.md)
 - **Auto-Conversation**: [CHAT-AUTO-CONVERSATION.md](./CHAT-AUTO-CONVERSATION.md)
 - **API Base**: `https://api.x-or.cloud/dev/aiwm`
-- **WebSocket**: `wss://api.x-or.cloud/dev/aiwm/chat`
+- **WebSocket**: `https://api.x-or.cloud/ws`
 
 ---
 

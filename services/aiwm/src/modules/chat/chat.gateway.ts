@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { CreateMessageDto } from '../message/dto/create-message.dto';
 import { ConversationService } from '../conversation/conversation.service';
+import { MessageDocument } from '../message/message.schema';
 
 /**
  * ChatGateway - WebSocket Gateway for real-time chat
@@ -87,8 +88,8 @@ export class ChatGateway
       // Track online presence
       if (isAgent) {
         await this.chatService.setAgentOnline(client.data.agentId, client.id);
-        this.logger.log(
-          `Client ${client.id} connected (agent: ${client.data.agentId})`,
+        this.logger.debug(
+          `[WS-CONNECT] Agent connected | socketId=${client.id} | agentId=${client.data.agentId}`,
         );
 
         // Auto-create or reuse conversation for agent
@@ -109,13 +110,17 @@ export class ChatGateway
           client.data.agentId,
         );
 
+        // Get room info
+        const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+        const roomSize = room?.size || 0;
+
         this.logger.log(
-          `Agent ${client.data.agentId} auto-joined conversation ${conversationId}`,
+          `[WS-JOIN] Agent auto-joined | agentId=${client.data.agentId} | conversationId=${conversationId} | roomSize=${roomSize}`,
         );
       } else {
         await this.chatService.setUserOnline(client.data.userId, client.id);
-        this.logger.log(
-          `Client ${client.id} connected (user: ${client.data.userId})`,
+        this.logger.debug(
+          `[WS-CONNECT] User connected | socketId=${client.id} | userId=${client.data.userId}`,
         );
       }
 
@@ -140,8 +145,8 @@ export class ChatGateway
   async handleDisconnect(client: Socket) {
     if (client.data.type === 'agent' && client.data.agentId) {
       await this.chatService.setAgentOffline(client.data.agentId, client.id);
-      this.logger.log(
-        `Client ${client.id} disconnected (agent: ${client.data.agentId})`,
+      this.logger.debug(
+        `[WS-DISCONNECT] Agent disconnected | socketId=${client.id} | agentId=${client.data.agentId} | conversationId=${client.data.conversationId || 'none'}`,
       );
 
       // Broadcast offline status
@@ -153,8 +158,8 @@ export class ChatGateway
       });
     } else if (client.data.type === 'user' && client.data.userId) {
       await this.chatService.setUserOffline(client.data.userId, client.id);
-      this.logger.log(
-        `Client ${client.id} disconnected (user: ${client.data.userId})`,
+      this.logger.debug(
+        `[WS-DISCONNECT] User disconnected | socketId=${client.id} | userId=${client.data.userId} | conversationId=${client.data.conversationId || 'none'}`,
       );
 
       // Broadcast offline status
@@ -180,6 +185,7 @@ export class ChatGateway
 
       // Join the room
       await client.join(`conversation:${conversationId}`);
+      client.data.conversationId = conversationId;
 
       // Track presence in conversation
       await this.chatService.joinConversation(
@@ -187,12 +193,15 @@ export class ChatGateway
         client.data.userId || client.data.agentId,
       );
 
-      const identifier = client.data.type === 'agent'
-        ? `Agent ${client.data.agentId}`
-        : `User ${client.data.userId}`;
+      // Get room info after join
+      const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+      const roomSize = room?.size || 0;
+
+      const participantId = client.data.userId || client.data.agentId;
+      const participantType = client.data.type;
 
       this.logger.log(
-        `${identifier} joined conversation ${conversationId}`,
+        `[WS-JOIN] ${participantType} joined | ${participantType}Id=${participantId} | conversationId=${conversationId} | roomSize=${roomSize}`,
       );
 
       // Notify others in the room
@@ -224,6 +233,7 @@ export class ChatGateway
 
       // Leave the room
       await client.leave(`conversation:${conversationId}`);
+      client.data.conversationId = null;
 
       // Remove from conversation tracking
       await this.chatService.leaveConversation(
@@ -231,12 +241,15 @@ export class ChatGateway
         client.data.userId || client.data.agentId,
       );
 
-      const identifier = client.data.type === 'agent'
-        ? `Agent ${client.data.agentId}`
-        : `User ${client.data.userId}`;
+      // Get room info after leave
+      const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+      const roomSize = room?.size || 0;
+
+      const participantId = client.data.userId || client.data.agentId;
+      const participantType = client.data.type;
 
       this.logger.log(
-        `${identifier} left conversation ${conversationId}`,
+        `[WS-LEAVE] ${participantType} left | ${participantType}Id=${participantId} | conversationId=${conversationId} | roomSize=${roomSize}`,
       );
 
       // Notify others in the room
@@ -291,6 +304,29 @@ export class ChatGateway
       const message = await this.chatService.sendMessage(messageDto, context);
 
       // Emit to all clients in the conversation room
+      const messageDoc = message as MessageDocument;
+      const messageId = messageDoc._id?.toString() || 'unknown';
+
+      // Get room size for debugging
+      const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+      const roomSize = room?.size || 0;
+
+      // Truncate content for logging (first 20 chars)
+      const contentPreview = dto.content.length > 20
+        ? dto.content.substring(0, 20) + '...'
+        : dto.content;
+
+      const senderId = client.data.userId || client.data.agentId;
+      const senderType = client.data.type;
+
+      this.logger.log(
+        `[WS-MSG-SEND] Message created | msgId=${messageId} | ${senderType}Id=${senderId} | role=${dto.role} | conversationId=${conversationId} | content="${contentPreview}"`,
+      );
+
+      this.logger.debug(
+        `[WS-BROADCAST] Broadcasting to room | room=conversation:${conversationId} | roomSize=${roomSize} | msgId=${messageId}`,
+      );
+
       this.server
         .to(`conversation:${conversationId}`)
         .emit('message:new', message);
@@ -298,17 +334,9 @@ export class ChatGateway
       // Confirm to sender
       client.emit('message:sent', {
         success: true,
-        messageId: (message as any)._id,
+        messageId: messageDoc._id?.toString() || '',
         timestamp: new Date(),
       });
-
-      const identifier = client.data.type === 'agent'
-        ? `agent ${client.data.agentId}`
-        : `user ${client.data.userId}`;
-
-      this.logger.log(
-        `Message sent in conversation ${conversationId} by ${identifier}`,
-      );
 
       return { success: true, message };
     } catch (error) {
