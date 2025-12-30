@@ -110,9 +110,14 @@ export class ChatGateway
           client.data.agentId,
         );
 
-        // Get room info
-        const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
-        const roomSize = room?.size || 0;
+        // Get room info (safely check if server is ready)
+        let roomSize = 0;
+        try {
+          const room = this.server?.sockets?.adapter?.rooms?.get(`conversation:${conversationId}`);
+          roomSize = room?.size || 0;
+        } catch {
+          // Adapter not ready yet, skip room size
+        }
 
         this.logger.log(
           `[WS-JOIN] Agent auto-joined | agentId=${client.data.agentId} | conversationId=${conversationId} | roomSize=${roomSize}`,
@@ -193,9 +198,14 @@ export class ChatGateway
         client.data.userId || client.data.agentId,
       );
 
-      // Get room info after join
-      const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
-      const roomSize = room?.size || 0;
+      // Get room info after join (safely)
+      let roomSize = 0;
+      try {
+        const room = this.server?.sockets?.adapter?.rooms?.get(`conversation:${conversationId}`);
+        roomSize = room?.size || 0;
+      } catch {
+        // Adapter not ready yet, skip room size
+      }
 
       const participantId = client.data.userId || client.data.agentId;
       const participantType = client.data.type;
@@ -241,9 +251,14 @@ export class ChatGateway
         client.data.userId || client.data.agentId,
       );
 
-      // Get room info after leave
-      const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
-      const roomSize = room?.size || 0;
+      // Get room info after leave (safely)
+      let roomSize = 0;
+      try {
+        const room = this.server?.sockets?.adapter?.rooms?.get(`conversation:${conversationId}`);
+        roomSize = room?.size || 0;
+      } catch {
+        // Adapter not ready yet, skip room size
+      }
 
       const participantId = client.data.userId || client.data.agentId;
       const participantType = client.data.type;
@@ -307,9 +322,14 @@ export class ChatGateway
       const messageDoc = message as MessageDocument;
       const messageId = messageDoc._id?.toString() || 'unknown';
 
-      // Get room size for debugging
-      const room = this.server.sockets.adapter.rooms.get(`conversation:${conversationId}`);
-      const roomSize = room?.size || 0;
+      // Get room size for debugging (safely)
+      let roomSize = 0;
+      try {
+        const room = this.server?.sockets?.adapter?.rooms?.get(`conversation:${conversationId}`);
+        roomSize = room?.size || 0;
+      } catch {
+        // Adapter not ready yet, skip room size
+      }
 
       // Truncate content for logging (first 20 chars)
       const contentPreview = dto.content.length > 20
