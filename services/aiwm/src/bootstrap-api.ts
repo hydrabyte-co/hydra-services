@@ -8,7 +8,6 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { GlobalExceptionFilter, customQueryParser } from '@hydrabyte/base';
 import { AppModule } from './app/app.module';
-import { WsJwtAdapter } from './modules/node/ws-jwt.adapter';
 import { RedisIoAdapter } from './modules/chat/redis-io.adapter';
 
 export async function bootstrapApiServer() {

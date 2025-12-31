@@ -35,10 +35,10 @@ import { MessageDocument } from '../message/message.schema';
  */
 @WebSocketGateway({
   namespace: '/ws',
-  cors: {
+  /* cors: {
     origin: '*', // TODO: Configure CORS properly in production
     credentials: true,
-  },
+  }, */
 })
 export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
