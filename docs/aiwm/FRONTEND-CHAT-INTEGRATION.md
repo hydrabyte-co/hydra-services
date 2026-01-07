@@ -113,6 +113,7 @@ export const useChat = ({ token, conversationId, onMessage, onError }: UseChatOp
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
 
   useEffect(() => {
     const socketInstance = io(process.env.REACT_APP_WS_URL!, {
@@ -141,6 +142,8 @@ export const useChat = ({ token, conversationId, onMessage, onError }: UseChatOp
     socketInstance.on('message:new', (message: Message) => {
       setMessages(prev => [...prev, message]);
       onMessage?.(message);
+      // Agent finished typing when message arrives
+      setIsAgentTyping(false);
     });
 
     socketInstance.on('message:sent', (data) => {
@@ -150,6 +153,12 @@ export const useChat = ({ token, conversationId, onMessage, onError }: UseChatOp
     socketInstance.on('message:error', (error) => {
       console.error('❌ Message error:', error.message);
       onError?.(new Error(error.message));
+    });
+
+    // Typing events - User listens to agent typing
+    socketInstance.on('agent:typing', (data) => {
+      console.log('🤖 Agent typing:', data.isTyping);
+      setIsAgentTyping(data.isTyping);
     });
 
     setSocket(socketInstance);
@@ -195,11 +204,22 @@ export const useChat = ({ token, conversationId, onMessage, onError }: UseChatOp
     });
   }, [socket, connected]);
 
+  const sendTyping = useCallback((isTyping: boolean) => {
+    if (!socket || !connected || !conversationId) return;
+
+    socket.emit('message:typing', {
+      conversationId,
+      isTyping,
+    });
+  }, [socket, connected, conversationId]);
+
   return {
     socket,
     connected,
     messages,
+    isAgentTyping,
     sendMessage,
+    sendTyping,
   };
 };
 ```
@@ -280,17 +300,18 @@ socket.emit('message:send',
 );
 ```
 
-#### 4. Typing Indicator (Start)
+#### 4. Typing Indicator
 ```typescript
-socket.emit('typing:start', {
+// Start typing
+socket.emit('message:typing', {
   conversationId: 'xxx',
+  isTyping: true,
 });
-```
 
-#### 5. Typing Indicator (Stop)
-```typescript
-socket.emit('typing:stop', {
+// Stop typing
+socket.emit('message:typing', {
   conversationId: 'xxx',
+  isTyping: false,
 });
 ```
 
@@ -372,20 +393,37 @@ socket.on('message:error', (error) => {
 
 #### 5. Typing Events
 ```typescript
-socket.on('typing:start', (data) => {
-  console.log('User is typing:', data);
+// For USER CLIENT: Listen to agent typing
+socket.on('agent:typing', (data) => {
+  console.log('Agent is typing:', data);
   // data = {
+  //   type: 'agent',
+  //   agentId: string,
+  //   userId: null,
   //   conversationId: string,
-  //   user: {
-  //     type: 'user' | 'agent',
-  //     id: string,
-  //     name?: string
-  //   }
+  //   isTyping: true | false,
+  //   timestamp: Date
   // }
+
+  // Show/hide typing indicator
+  if (data.isTyping) {
+    showTypingIndicator(`Agent is typing...`);
+  } else {
+    hideTypingIndicator();
+  }
 });
 
-socket.on('typing:stop', (data) => {
-  console.log('User stopped typing');
+// For AGENT CLIENT: Listen to user typing
+socket.on('user:typing', (data) => {
+  console.log('User is typing:', data);
+  // data = {
+  //   type: 'user',
+  //   userId: string,
+  //   agentId: null,
+  //   conversationId: string,
+  //   isTyping: true | false,
+  //   timestamp: Date
+  // }
 });
 ```
 
@@ -407,10 +445,10 @@ interface ChatProps {
 
 export const Chat: React.FC<ChatProps> = ({ conversationId, userToken }) => {
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const { connected, messages, sendMessage } = useChat({
+  const { connected, messages, isAgentTyping, sendMessage, sendTyping } = useChat({
     token: userToken,
     conversationId,
     onMessage: (msg) => {
@@ -424,10 +462,31 @@ export const Chat: React.FC<ChatProps> = ({ conversationId, userToken }) => {
     },
   });
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+
+    // Send typing indicator
+    sendTyping(true);
+
+    // Auto-stop typing after 2s of inactivity
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTyping(false);
+    }, 2000);
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
     try {
+      // Stop typing indicator
+      sendTyping(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
       await sendMessage(input, 'user');
       setInput('');
     } catch (error) {
@@ -471,7 +530,7 @@ export const Chat: React.FC<ChatProps> = ({ conversationId, userToken }) => {
       </div>
 
       {/* Typing Indicator */}
-      {isTyping && (
+      {isAgentTyping && (
         <div className="typing-indicator">
           🤖 Agent is typing...
         </div>
@@ -481,7 +540,7 @@ export const Chat: React.FC<ChatProps> = ({ conversationId, userToken }) => {
       <div className="chat-input">
         <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleInputChange}
           onKeyPress={handleKeyPress}
           placeholder="Type a message..."
           disabled={!connected}
@@ -594,12 +653,9 @@ onMounted(() => {
     });
   });
 
-  socket.value.on('typing:start', () => {
-    isTyping.value = true;
-  });
-
-  socket.value.on('typing:stop', () => {
-    isTyping.value = false;
+  // Listen to agent typing
+  socket.value.on('agent:typing', (data) => {
+    isTyping.value = data.isTyping;
   });
 });
 
@@ -856,14 +912,24 @@ socket.on('message:new', (msg: Message) => {
 // Debounce typing events
 const debouncedTyping = useMemo(
   () => debounce(() => {
-    socket.emit('typing:stop', { conversationId });
+    socket.emit('message:typing', {
+      conversationId,
+      isTyping: false
+    });
   }, 2000),
   [socket, conversationId]
 );
 
 const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
   setInput(e.target.value);
-  socket.emit('typing:start', { conversationId });
+
+  // Notify agent that user is typing
+  socket.emit('message:typing', {
+    conversationId,
+    isTyping: true
+  });
+
+  // Auto-stop typing after 2s of inactivity
   debouncedTyping();
 };
 ```

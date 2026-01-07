@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { BaseService } from '@hydrabyte/base';
+import { BaseService, FindManyOptions, FindManyResult } from '@hydrabyte/base';
 import { RequestContext } from '@hydrabyte/shared';
 import { Conversation, ConversationDocument } from './conversation.schema';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -19,6 +19,10 @@ export class ConversationService extends BaseService<Conversation> {
     private readonly utilService: UtilService,
   ) {
     super(conversationModel as any);
+  }
+
+  async findAll(options: FindManyOptions, context: RequestContext): Promise<FindManyResult<Conversation>> {
+    return await super.findAll(options, context);
   }
 
   /**

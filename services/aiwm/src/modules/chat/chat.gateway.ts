@@ -19,18 +19,19 @@ import { MessageDocument } from '../message/message.schema';
 /**
  * ChatGateway - WebSocket Gateway for real-time chat
  *
- * Events:
+ * Client Events (emit to server):
  * - conversation:join - Join a conversation room
  * - conversation:leave - Leave a conversation room
  * - message:send - Send a new message
- * - message:typing - User is typing
+ * - message:typing - Typing indicator (both user and agent)
  * - presence:online - User/agent online status
  *
- * Emitted events:
+ * Server Events (emit to client):
  * - message:new - New message received
  * - message:sent - Message successfully sent
  * - message:error - Error sending message
- * - user:typing - Another user is typing
+ * - agent:typing - Agent is typing (received by users)
+ * - user:typing - User is typing (received by agents)
  * - presence:update - Online status update
  */
 @WebSocketGateway({
@@ -374,7 +375,10 @@ export class ChatGateway
   }
 
   /**
-   * User is typing indicator
+   * Typing indicator for both user and agent
+   * Emits different events based on sender type:
+   * - Agent typing → emits 'agent:typing' (received by users)
+   * - User typing → emits 'user:typing' (received by agents)
    */
   @SubscribeMessage('message:typing')
   async handleTyping(
@@ -383,8 +387,12 @@ export class ChatGateway
   ) {
     const { conversationId, isTyping } = data;
 
+    // Determine event name based on sender type
+    const isAgent = client.data.type === 'agent';
+    const eventName = isAgent ? 'agent:typing' : 'user:typing';
+
     // Broadcast typing status to others in the room (exclude sender)
-    client.to(`conversation:${conversationId}`).emit('user:typing', {
+    client.to(`conversation:${conversationId}`).emit(eventName, {
       type: client.data.type,
       userId: client.data.userId,
       agentId: client.data.agentId,
@@ -392,6 +400,10 @@ export class ChatGateway
       isTyping,
       timestamp: new Date(),
     });
+
+    this.logger.debug(
+      `[WS-TYPING] ${eventName} | conversationId=${conversationId} | isTyping=${isTyping} | ${isAgent ? 'agentId' : 'userId'}=${isAgent ? client.data.agentId : client.data.userId}`,
+    );
 
     return { success: true };
   }
