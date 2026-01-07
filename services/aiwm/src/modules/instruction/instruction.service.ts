@@ -88,8 +88,23 @@ export class InstructionService extends BaseService<Instruction> {
     options: FindManyOptions,
     context: RequestContext
   ): Promise<FindManyResult<Instruction>> {
+    if(options.filter !== null) {
+      // loop each filter if value = null, "", undefined, remove from filter
+      for (const key in options.filter) {
+        if (
+          options.filter[key] === null ||
+          options.filter[key] === '' ||
+          options.filter[key] === undefined
+        ) {
+          delete options.filter[key];
+        }
+      }
+    }
     const findResult = await super.findAll(options, context);
+
     // Aggregate statistics by status
+
+
     const statusStats = await super.aggregate(
       [
         { $match: { ...options.filter } },
